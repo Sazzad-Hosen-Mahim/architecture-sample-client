@@ -36,24 +36,57 @@ function WorldProject() {
   } | null>(null);
   const [votes, setVotes] = useState<{ [key: string]: number }>({});
 
+  const [tagFilter, setTagFilter] = useState("");
+  const [continentFilter, setContinentFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+
   // First filter by search query globally (name or locationName)
-  const filteredBySearch = worldProjects.filter(
+  // const filteredBySearch = worldProjects.filter(
+  //   (p) =>
+  //     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //     (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase())
+  // );
+
+  // // Then filter by distance if a location is selected
+  // const displayedProjects = selectedLocation
+  //   ? filteredBySearch.filter(
+  //       (p) =>
+  //         p.location &&
+  //         getDistanceKm(
+  //           p.location as { lat: number; lng: number },
+  //           selectedLocation
+  //         ) <= 200
+  //     )
+  //   : filteredBySearch;
+
+  // Step 1: Search filter
+  let filtered = worldProjects.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Then filter by distance if a location is selected
+  // Step 2: Tag filter
+  if (tagFilter) {
+    filtered = filtered.filter((p) => p.tags?.includes(tagFilter));
+  }
+
+  // Step 3: Continent filter
+  if (continentFilter) {
+    filtered = filtered.filter((p) => p.continent === continentFilter);
+  }
+
+  // Step 4: Year filter
+  if (yearFilter) {
+    filtered = filtered.filter((p) => String(p.year) === yearFilter);
+  }
+
+  // Step 5: Location filter (if map location is selected)
   const displayedProjects = selectedLocation
-    ? filteredBySearch.filter(
-        (p) =>
-          p.location &&
-          getDistanceKm(
-            p.location as { lat: number; lng: number },
-            selectedLocation
-          ) <= 200
+    ? filtered.filter(
+        (p) => p.location && getDistanceKm(p.location, selectedLocation) <= 200
       )
-    : filteredBySearch;
+    : filtered;
 
   // for vote
   const handleVote = (projectId: string) => {
@@ -89,19 +122,78 @@ function WorldProject() {
 
   return (
     <div>
-      <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4">
+      <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4 pb-34">
         {/* Header & search input */}
-        <div className="flex flex-row justify-between mb-2">
-          <h1 className="text-xl font-light">Featured Projects</h1>
-          <div className="flex items-center gap-2 px-4 py-0 w-1/3 border rounded-lg  bg-white">
-            <Search className="text-gray-600" size={14} />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 outline-none py-2  bg-transparent text-gray-700 text-xs"
-            />
+        {/* Header & Filters */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          {/* Title (Left Side) */}
+          <h1 className="text-xl font-bold md:w-1/4 text-center md:text-left">
+            Featured Projects
+          </h1>
+
+          {/* Search (Center) */}
+          <div className="flex items-center justify-center md:w-1/3 w-full">
+            <div className="flex items-center gap-2 px-4 w-full border rounded-lg bg-white shadow-sm">
+              <Search className="text-gray-600" size={14} />
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 outline-none py-2 bg-transparent text-gray-700 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Filters (Right Side) */}
+          <div className="flex flex-wrap md:flex-nowrap justify-center md:justify-end gap-2 md:w-1/3">
+            {/* Tag Filter */}
+            <select
+              className="border rounded-lg px-3 py-2 text-sm bg-white"
+              onChange={(e) => setTagFilter(e.target.value)}
+              value={tagFilter}
+            >
+              <option value="">All Tags</option>
+              {Array.from(
+                new Set(worldProjects.flatMap((p) => p.tags || []))
+              ).map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+
+            {/* Continent Filter */}
+            <select
+              className="border rounded-lg px-3 py-1 text-sm bg-white"
+              onChange={(e) => setContinentFilter(e.target.value)}
+              value={continentFilter}
+            >
+              <option value="">All Continents</option>
+              {Array.from(new Set(worldProjects.map((p) => p.continent))).map(
+                (continent) => (
+                  <option key={continent} value={continent}>
+                    {continent}
+                  </option>
+                )
+              )}
+            </select>
+
+            {/* Year Filter */}
+            <select
+              className="border rounded-lg px-3 py-1 text-sm bg-white"
+              onChange={(e) => setYearFilter(e.target.value)}
+              value={yearFilter}
+            >
+              <option value="">All Years</option>
+              {Array.from(new Set(worldProjects.map((p) => p.year))).map(
+                (year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                )
+              )}
+            </select>
           </div>
         </div>
 
@@ -170,7 +262,7 @@ function WorldProject() {
                         handleVote(project.id);
                       }}
                     >
-                      👍 Vote ({votes[project.id] || 0})
+                      Vote ({votes[project.id] || 0})
                     </button>
                     <button
                       className=" text-xs px-6 py-1.5 border rounded"
@@ -179,11 +271,11 @@ function WorldProject() {
                         handleVote(project.id);
                       }}
                     >
-                      👍 View Comments ({votes[project.id] || 0})
+                      View Comments ({votes[project.id] || 0})
                     </button>
                   </div>
 
-                  {/* ✅ Comments Section */}
+                  {/*  Comments Section */}
                   <div className="mt-2 space-y-2">
                     <h4 className="text-sm font-semibold">Comments</h4>
                     <ul className="space-y-1 text-xs">

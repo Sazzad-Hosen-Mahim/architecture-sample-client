@@ -146,7 +146,7 @@ export default function Portfolio() {
   return (
     <div>
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-light mb-6">Our Portfoliott</h1>
+        <h1 className="text-3xl font-bold mb-6">Our Portfolio</h1>
 
         {/* search filter, sort option  */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">

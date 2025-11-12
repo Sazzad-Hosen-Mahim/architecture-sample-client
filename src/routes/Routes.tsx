@@ -24,6 +24,7 @@ import Media from "@/pages/Dashboard/Media";
 import Financials from "@/pages/Dashboard/Financials";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import NewsFeedDetails from "@/pages/NewsFeedDetails";
 // import ProfileSettings from "@/pages/ProfileSettings";
 
 const routes = createBrowserRouter([
@@ -38,6 +39,10 @@ const routes = createBrowserRouter([
       {
         path: "/newsFeed",
         element: <NewsFeed />,
+      },
+      {
+        path: "/newsFeed/:id",
+        element: <NewsFeedDetails />,
       },
       {
         path: "/world-project",

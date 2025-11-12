@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { Link } from "react-router-dom";
+
 function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
   return (
     <div>
@@ -27,8 +29,8 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
                     <h2 className="text-sm sm:text-base font-semibold">
                       {news.title}
                     </h2>
-                    <span className="text-xs sm:text-sm text-gray-500 mt-1 md:mt-0">
-                      {news.date}
+                    <span className="font-bold text-sm text-gray-500 mt-1 md:mt-0">
+                      Published date: {news.date}
                     </span>
                   </div>
 
@@ -37,11 +39,14 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
                   </p>
 
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <button className="px-3 sm:px-4 py-2 border border-gray-800 rounded-md text-xs sm:text-sm hover:text-white hover:bg-black text-gray-700 bg-white cursor-pointer focus:outline-none">
+                    <Link
+                      to={`/newsFeed/${news.id}`}
+                      className="px-3 sm:px-4 py-2 border border-gray-800 rounded-md text-xs sm:text-sm hover:text-white hover:bg-black text-gray-700 bg-white cursor-pointer focus:outline-none text-center"
+                    >
                       Read Full Article
-                    </button>
+                    </Link>
                     <span className="text-xs sm:text-sm text-gray-500">
-                      Source: {news.source}
+                      Author: {news.source}
                     </span>
                   </div>
                 </div>
@@ -49,6 +54,9 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
             </div>
           </div>
         ))}
+        {filteredNews.length === 0 && (
+          <p className="text-gray-500 text-sm">No news found.</p>
+        )}
       </div>
     </div>
   );

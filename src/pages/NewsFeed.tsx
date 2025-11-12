@@ -3,6 +3,15 @@ import { useState } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import LatestNews from "@/components/newsFeed/LatestNews";
+import preview1 from "@/assets/newsfeed/preview-1.jpg";
+import preview2 from "@/assets/newsfeed/preview-2.jpg";
+import preview3 from "@/assets/newsfeed/preview-3.jpg";
+import article1 from "@/assets/newsfeed/newsfeed-1.jpg";
+import article2 from "@/assets/newsfeed/newsfeed-2.jpg";
+import article3 from "@/assets/newsfeed/newsfeed-3.jpg";
+import article4 from "@/assets/newsfeed/newsfeed-4.jpg";
+import article5 from "@/assets/newsfeed/newsfeed-5.jpg";
+import { Link } from "react-router-dom";
 
 function NewsFeed() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,8 +22,7 @@ function NewsFeed() {
       date: "June 15, 2023",
       summary:
         "Our eco-friendly office complex project receives recognition for innovative sustainable design.Our eco-friendly office complex project receives recognition for innovative sustainable design.Our eco-friendly office complex project receives recognition for innovative sustainable design.",
-      image:
-        "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
+      image: article1,
       source: "Architectural Digest",
     },
     {
@@ -23,8 +31,7 @@ function NewsFeed() {
       date: "June 10, 2023",
       summary:
         "We're partnering with the city to develop a new community-focused urban renewal project.",
-      image:
-        "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
+      image: article2,
       source: "CityLab",
     },
     {
@@ -33,8 +40,7 @@ function NewsFeed() {
       date: "June 5, 2023",
       summary:
         "Explore our modern approach to home design in our recently completed residential project.",
-      image:
-        "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
+      image: article3,
       source: "Dwell Magazine",
     },
     {
@@ -43,8 +49,7 @@ function NewsFeed() {
       date: "May 28, 2023",
       summary:
         "We're excited to welcome new talent to our growing team of architects and designers.",
-      image:
-        "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
+      image: article4,
       source: "Architect Magazine",
     },
     {
@@ -53,8 +58,7 @@ function NewsFeed() {
       date: "May 20, 2023",
       summary:
         "Join us for an insightful discussion on the future trends in sustainable architectural design.",
-      image:
-        "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
+      image: article5,
       source: "ArchDaily",
     },
   ];
@@ -74,7 +78,7 @@ function NewsFeed() {
   );
 
   const featuredProject = {
-    id: 1,
+    id: 0,
     name: "Floating Pavilion",
     year: 2023,
     architect: "Zaha Hadid Architects",
@@ -82,11 +86,7 @@ function NewsFeed() {
     location: "Rotterdam, Netherlands",
     summary:
       "A stunning waterfront structure that seamlessly blends with its environment, showcasing innovative use of sustainable materials and cutting-edge design techniques. This project of the month exemplifies the future of adaptive architecture, responding to both environmental and social needs of urban spaces.",
-    images: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
+    images: [preview1, preview2, preview3],
   };
   const [sliderRef, instanceRef] = useKeenSlider({
     loop: true,
@@ -166,9 +166,12 @@ function NewsFeed() {
                   {featuredProject.summary}
                 </p>
 
-                <button className="px-4 py-2 border border-border text-xs bg-background cursor-pointer hover:bg-accent text-gray-600 hover:text-accent-foreground rounded-md hover:text-white hover:bg-black  transition-colors">
+                <Link
+                  to={`/newsFeed/${featuredProject.id}`}
+                  className="px-4 py-2 border border-border text-xs bg-background cursor-pointer hover:bg-accent text-gray-600 hover:text-accent-foreground rounded-md hover:text-white hover:bg-black  transition-colors"
+                >
                   View Project Details
-                </button>
+                </Link>
               </div>
             </div>
           </div>

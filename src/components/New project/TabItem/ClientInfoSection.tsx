@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import ThumbprintButton from "../ThumbprintButton";
-import { countries, usStates } from "@/data/countries-states";
+import { countries } from "@/data/countries-states";
 import {
   Select,
   SelectContent,
@@ -44,19 +44,76 @@ export default function ClientInfoSection({
     additionalComments: formData?.additionalComments || "",
   });
 
-  const [selectedCountry, setSelectedCountry] = useState(
-    localFormData.country || "United States"
-  );
-  const [showStateSelect, setShowStateSelect] = useState(
-    selectedCountry === "United States"
-  );
+  const [states, setStates] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
 
+  const selectedCountry = localFormData.country;
+  // const selectedCountryCode =
+  //   countries.find((c) => c.name === selectedCountry)?.code || "";
+
+  // 🆕 Fetch states dynamically when country changes
   useEffect(() => {
-    setShowStateSelect(selectedCountry === "United States");
-    if (selectedCountry !== "United States") {
-      setLocalFormData((prev) => ({ ...prev, state: "" }));
+    async function fetchStates() {
+      if (!selectedCountry) return;
+      setLoadingStates(true);
+      setStates([]);
+      setCities([]);
+
+      try {
+        const res = await fetch(
+          "https://countriesnow.space/api/v0.1/countries/states",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: selectedCountry }),
+          }
+        );
+        const data = await res.json();
+        if (data?.data?.states) {
+          setStates(data.data.states.map((s: any) => s.name));
+        }
+      } catch (err) {
+        console.error("Error fetching states:", err);
+      } finally {
+        setLoadingStates(false);
+      }
     }
+
+    fetchStates();
   }, [selectedCountry]);
+
+  // 🆕 Fetch cities when state changes
+  useEffect(() => {
+    async function fetchCities() {
+      if (!selectedCountry || !localFormData.state) return;
+      setLoadingCities(true);
+      try {
+        const res = await fetch(
+          "https://countriesnow.space/api/v0.1/countries/state/cities",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              country: selectedCountry,
+              state: localFormData.state,
+            }),
+          }
+        );
+        const data = await res.json();
+        if (data?.data?.length) {
+          setCities(data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching cities:", err);
+      } finally {
+        setLoadingCities(false);
+      }
+    }
+
+    fetchCities();
+  }, [localFormData.state, selectedCountry]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -67,9 +124,6 @@ export default function ClientInfoSection({
 
   const handleSelectChange = (name: string, value: string) => {
     setLocalFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === "country") {
-      setSelectedCountry(value);
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,9 +131,6 @@ export default function ClientInfoSection({
     updateFormData(localFormData);
     goToNextSection();
   };
-
-  const selectedCountryCode =
-    countries.find((c) => c.name === selectedCountry)?.code || "";
 
   return (
     <div>
@@ -153,23 +204,17 @@ export default function ClientInfoSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="country">Client Contact Address</Label>
-          <div className="flex items-center gap-2">
-            {selectedCountryCode && (
-              <div className="flex-shrink-0 w-8 h-6 overflow-hidden rounded shadow ">
-                <img
-                  src={`https://flagcdn.com/w80/${selectedCountryCode.toLowerCase()}.png`}
-                  alt={`${selectedCountry} flag`}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            )}
+          <Label htmlFor="country" className="font-semibold my-7">
+            Client Contact Address
+          </Label>
+          {/* Country */}
+          <div className="space-y-2">
+            <Label htmlFor="country">Country</Label>
             <Select
               value={localFormData.country}
               onValueChange={(value) => handleSelectChange("country", value)}
             >
-              <SelectTrigger className="w-full ">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a country" />
               </SelectTrigger>
               <SelectContent className="max-h-[300px] bg-white">
@@ -177,23 +222,76 @@ export default function ClientInfoSection({
                   <SelectLabel>Countries</SelectLabel>
                   {countries.map((country) => (
                     <SelectItem key={country.code} value={country.name}>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-shrink-0 w-5 h-4 overflow-hidden rounded shadow">
-                          <img
-                            src={`https://flagcdn.com/w80/${country.code.toLowerCase()}.png`}
-                            alt={`${country.name} flag`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
-                        <span>{country.name}</span>
-                      </div>
+                      {country.name}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="state">State / Province</Label>
+          {loadingStates ? (
+            <p className="text-sm text-gray-500">Loading states...</p>
+          ) : states.length > 0 ? (
+            <Select
+              value={localFormData.state}
+              onValueChange={(value) => handleSelectChange("state", value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a state" />
+              </SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                {states.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              id="state"
+              name="state"
+              value={localFormData.state}
+              onChange={handleInputChange}
+              placeholder="Enter state or province"
+            />
+          )}
+        </div>
+
+        {/* 🆕 Dynamic City Dropdown */}
+        <div className="space-y-2">
+          <Label htmlFor="city">City</Label>
+          {loadingCities ? (
+            <p className="text-sm text-gray-500">Loading cities...</p>
+          ) : cities.length > 0 ? (
+            <Select
+              value={localFormData.city}
+              onValueChange={(value) => handleSelectChange("city", value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a city" />
+              </SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                {cities.map((city) => (
+                  <SelectItem key={city} value={city}>
+                    {city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              id="city"
+              name="city"
+              value={localFormData.city}
+              onChange={handleInputChange}
+              placeholder="Enter city"
+            />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -205,64 +303,6 @@ export default function ClientInfoSection({
             onChange={handleInputChange}
             required
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="city">City</Label>
-            <Input
-              id="city"
-              name="city"
-              value={localFormData.city}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          {showStateSelect ? (
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Select
-                value={localFormData.state}
-                onValueChange={(value) => handleSelectChange("state", value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a state" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup className="bg-white">
-                    <SelectLabel>States</SelectLabel>
-                    {usStates.map((state) => (
-                      <SelectItem key={state.code} value={state.name}>
-                        {state.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="state">State/Province</Label>
-              <Input
-                id="state"
-                name="state"
-                value={localFormData.state}
-                onChange={handleInputChange}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="zipCode">Zip/Postal Code</Label>
-            <Input
-              id="zipCode"
-              name="zipCode"
-              value={localFormData.zipCode}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
         </div>
 
         <Textarea
