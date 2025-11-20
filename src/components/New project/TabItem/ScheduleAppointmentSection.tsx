@@ -31,9 +31,7 @@ export default function ScheduleAppointmentSection({
   );
 
   // 🆕 Owner unavailable dates (greyed out)
-  const [unavailableDates, setUnavailableDates] = useState<Date[]>(
-    formData.unavailableDates || []
-  );
+  const [unavailableDates] = useState<Date[]>(formData.unavailableDates || []);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -59,7 +57,15 @@ export default function ScheduleAppointmentSection({
 
   const getAvailableTimes = (date: Date | undefined) => {
     console.log(date);
-    return ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"];
+    return [
+      "8:00 AM",
+      "9:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "1:00 PM",
+      "2:00 PM",
+    ];
   };
 
   const handleInputChange = (
@@ -76,28 +82,28 @@ export default function ScheduleAppointmentSection({
   };
 
   // 🆕 Toggle date as unavailable
-  const toggleUnavailableDate = (date: Date) => {
-    const exists = unavailableDates.find(
-      (d) => d.toDateString() === date.toDateString()
-    );
-    let updatedDates;
-    if (exists) {
-      updatedDates = unavailableDates.filter(
-        (d) => d.toDateString() !== date.toDateString()
-      );
-    } else {
-      updatedDates = [...unavailableDates, date];
-    }
-    setUnavailableDates(updatedDates);
-    updateFormData({ unavailableDates: updatedDates });
-  };
+  // const toggleUnavailableDate = (date: Date) => {
+  //   const exists = unavailableDates.find(
+  //     (d) => d.toDateString() === date.toDateString()
+  //   );
+  //   let updatedDates;
+  //   if (exists) {
+  //     updatedDates = unavailableDates.filter(
+  //       (d) => d.toDateString() !== date.toDateString()
+  //     );
+  //   } else {
+  //     updatedDates = [...unavailableDates, date];
+  //   }
+  //   setUnavailableDates(updatedDates);
+  //   updateFormData({ unavailableDates: updatedDates });
+  // };
 
   return (
     <div>
       <div className="space-y-6">
         <div className="space-y-6">
           <div>
-            <Label htmlFor="appointmentDate" className="text-xs">
+            <Label htmlFor="appointmentDate" className="text-md font-semibold">
               Select Date
             </Label>
             <Calendar
@@ -116,7 +122,7 @@ export default function ScheduleAppointmentSection({
             </div>
 
             {/* 🆕 Button to mark selected date unavailable */}
-            {selectedDate && (
+            {/* {selectedDate && (
               <Button
                 variant="outline"
                 className="mt-3 text-xs"
@@ -128,11 +134,11 @@ export default function ScheduleAppointmentSection({
                   ? "Mark as Available"
                   : "Mark as Unavailable"}
               </Button>
-            )}
+            )} */}
           </div>
 
           <div>
-            <Label htmlFor="appointmentTime" className="text-xs">
+            <Label htmlFor="appointmentTime" className="text-md font-semibold">
               Select Time
             </Label>
             {selectedDate ? (
@@ -234,6 +240,7 @@ export default function ScheduleAppointmentSection({
               // save current form data
               goToPreviousSection();
             }}
+            className="cursor-pointer border-2 border-black hover:bg-gray-600 hover:border-gray-600 hover:text-white"
           >
             Previous
           </Button>

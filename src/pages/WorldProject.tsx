@@ -128,7 +128,7 @@ function WorldProject() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           {/* Title (Left Side) */}
           <h1 className="text-xl font-bold md:w-1/4 text-center md:text-left">
-            Featured Projects
+            World Projects
           </h1>
 
           {/* Search (Center) */}

@@ -19,112 +19,16 @@ any) {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDetails, setPaymentDetails] = useState<any>({
     paymentMethod: "",
-    amount: 250, // Consultation fee
+    amount: 250,
   });
-  //   const [errors, setErrors] = useState<PaymentError[]>([]);
   const [isProcessing] = useState(false);
   //   const { toast } = useToast();
 
   const handlePaymentMethodChange = (value: string) => {
     setPaymentMethod(value);
     setPaymentDetails((prev: any) => ({ ...prev, paymentMethod: value }));
-    // setErrors([]);
     updateFormData({ paymentMethod: value });
   };
-
-  //   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     const { name, value } = e.target;
-  //     let formattedValue = value;
-
-  //     // Format input based on field type
-  //     if (name === "cardNumber") {
-  //       formattedValue = formatCardNumber(value);
-  //     } else if (name === "expiryDate") {
-  //       formattedValue = formatExpiryDate(value);
-  //     } else if (name === "zellePhone") {
-  //       formattedValue = formatPhoneNumber(value);
-  //     }
-
-  //     setPaymentDetails((prev) => ({
-  //       ...prev,
-  //       [name]: formattedValue,
-  //     }));
-
-  //     // Clear error for this field
-  //     setErrors((prev) => prev.filter((error) => error.field !== name));
-  //   };
-
-  //   const handleSubmitPayment = async () => {
-  //     const validationErrors = validatePaymentDetails(paymentDetails);
-  //     if (validationErrors.length > 0) {
-  //       setErrors(validationErrors);
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Validation Error",
-  //         description: "Please check your payment details and try again.",
-  //       });
-  //       return false;
-  //     }
-
-  //     setIsProcessing(true);
-  //     try {
-  //       const result = await processPayment(paymentDetails);
-  //       toast({
-  //         title: "Payment Successful",
-  //         description: result.message,
-  //       });
-  //       setIsProcessing(false);
-  //       return true;
-  //     } catch (error) {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Payment Failed",
-  //         description: error.message,
-  //       });
-  //       setIsProcessing(false);
-  //       return false;
-  //     }
-  //   };
-
-  //   const handleThumbprintClick = async () => {
-  //     setIsProcessing(true);
-  //     try {
-  //       const success = await handleSubmitPayment();
-  //       if (success) {
-  //         // Send confirmation email
-  //         await sendConfirmationEmail(formData.email, {
-  //           appointmentDate: formData.appointmentDate,
-  //           appointmentTime: formData.appointmentTime,
-  //           appointmentType: formData.appointmentType,
-  //           projectName: formData.projectName,
-  //         });
-  //         onPaymentSuccess();
-  //       } else {
-  //         toast({
-  //           variant: "destructive",
-  //           title: "Payment Failed",
-  //           description:
-  //             "There was an error processing your payment. Please try again.",
-  //         });
-  //       }
-  //     } catch (error) {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Error",
-  //         description: "An unexpected error occurred. Please try again later.",
-  //       });
-  //     } finally {
-  //       setIsProcessing(false);
-  //     }
-  //   };
-
-  //   const sendConfirmationEmail = async (email, appointmentDetails) => {
-  //     // In a real application, you would call your backend API to send the email
-  //     // For this example, we'll just simulate the email sending
-  //     console.log(`Sending confirmation email to ${email}`, appointmentDetails);
-  //     // Simulate API call delay
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-  //   };
 
   const [errors] = useState<any[]>([]);
 
@@ -202,7 +106,7 @@ any) {
               {formData.projectType || "Service type"}
             </p>
             <p className="text-sm">
-              <span className="font-medium">Square Footage:</span>{" "}
+              <span className="font-medium">Project Size:</span>{" "}
               {formData.squareFootage || "Square footage"} sq ft
             </p>
             <p className="text-sm">
@@ -276,7 +180,9 @@ any) {
           <h2 className="text-base font-medium mb-6">Payment</h2>
           <div className="bg-gray-50 p-6 rounded-lg mb-6">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-sm font-medium">Consultation Fee</span>
+              <span className="text-sm font-medium">
+                Consultation Fee: $250
+              </span>
               <span className="text-lg font-semibold">
                 {/* ${paymentDetails.amount.toFixed(2)} */}
               </span>

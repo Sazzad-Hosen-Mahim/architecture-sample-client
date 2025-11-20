@@ -37,7 +37,7 @@ const Navbar: React.FC = () => {
             <Link to="/" className="text-black text-2xl ">
               <div className="flex content-center gap-2">
                 <img src={logo} alt="" className="w-8 h-8" />
-                <span className="text-base mt-1 font-semibold tracking-wide ">
+                <span className="text-base mt-1 font-extralight tracking-wide ">
                   Architecture Simple <span className="text-yellow-400">.</span>
                 </span>
               </div>
