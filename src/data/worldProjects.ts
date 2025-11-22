@@ -21,6 +21,8 @@ export const worldProjects = [
     locationName: "Phuket", // 🌴 renamed for clarity
     location: { lat: 7.8804, lng: 98.3923 }, // ✅ correct coordinates for Phuket
     Photographer: "Jonas Tom",
+    Architect: "Jane Doe",
+    PublishedDate: "2022-05-15",
   },
   {
     id: "2",
@@ -43,6 +45,8 @@ export const worldProjects = [
     locationName: "Dubai",
     location: { lat: 25.1972, lng: 55.2744 }, // ✅ Burj Khalifa area
     Photographer: "Cupper Tom",
+    Architect: "Elisa Kyle",
+    PublishedDate: "2022-05-15",
   },
   {
     id: "3",
@@ -63,8 +67,10 @@ export const worldProjects = [
     type: "Residential",
     stage: "completed",
     locationName: "Phoenix",
-    location: { lat: 33.4484, lng: -112.074 }, // ✅ Arizona
+    location: { lat: 33.4484, lng: -112.074 },
     Photographer: "Cupper Tom",
+    Architect: "Mark Strong",
+    PublishedDate: "2022-05-15",
   },
   {
     id: "4",
@@ -87,6 +93,8 @@ export const worldProjects = [
     locationName: "india",
     location: { lat: 20.5937, lng: 78.9629 }, // ✅ Arizona
     Photographer: "Cupper Tom",
+    Architect: "Lucy Heart",
+    PublishedDate: "2022-05-15",
   },
   {
     id: "5",
@@ -109,5 +117,7 @@ export const worldProjects = [
     locationName: "bangladesh",
     location: { lat: 23.685, lng: 90.3563 }, // ✅ Arizona
     Photographer: "Cupper Tom",
+    Architect: "Emma Stone",
+    PublishedDate: "2022-05-15",
   },
 ];

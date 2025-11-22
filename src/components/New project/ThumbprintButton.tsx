@@ -14,7 +14,7 @@ export default function ThumbprintButton({
   const uniqueId = useId();
 
   const buttonClasses =
-    "w-22 h-24 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden";
+    "w-18 h-24 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden";
 
   const gridBackground = (
     <div className="absolute inset-0 pointer-events-none opacity-30">

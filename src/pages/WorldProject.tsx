@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -11,13 +12,14 @@ import {
 import { worldProjects } from "@/data/worldProjects";
 import { ChevronLeft, ChevronRight, Search, Send } from "lucide-react";
 import LeafletMapSearch from "@/test/LeafletMapSearch";
+import { SlidersHorizontal } from "lucide-react";
 
 // Simple distance calculation between two coordinates (Haversine formula)
 const getDistanceKm = (
   loc1: { lat: number; lng: number },
   loc2: { lat: number; lng: number }
 ) => {
-  const R = 6371; // Earth radius km
+  const R = 6371;
   const dLat = ((loc2.lat - loc1.lat) * Math.PI) / 180;
   const dLng = ((loc2.lng - loc1.lng) * Math.PI) / 180;
   const a =
@@ -29,35 +31,21 @@ const getDistanceKm = (
 };
 
 function WorldProject() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
   const [votes, setVotes] = useState<{ [key: string]: number }>({});
-
-  const [tagFilter, setTagFilter] = useState("");
   const [continentFilter, setContinentFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
+  const [showTagPopup, setShowTagPopup] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [comments, setComments] = useState<{ [key: string]: string[] }>({});
 
-  // First filter by search query globally (name or locationName)
-  // const filteredBySearch = worldProjects.filter(
-  //   (p) =>
-  //     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase())
-  // );
-
-  // // Then filter by distance if a location is selected
-  // const displayedProjects = selectedLocation
-  //   ? filteredBySearch.filter(
-  //       (p) =>
-  //         p.location &&
-  //         getDistanceKm(
-  //           p.location as { lat: number; lng: number },
-  //           selectedLocation
-  //         ) <= 200
-  //     )
-  //   : filteredBySearch;
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"all" | "top-rated">("all");
 
   // Step 1: Search filter
   let filtered = worldProjects.filter(
@@ -67,8 +55,10 @@ function WorldProject() {
   );
 
   // Step 2: Tag filter
-  if (tagFilter) {
-    filtered = filtered.filter((p) => p.tags?.includes(tagFilter));
+  if (selectedTags.length > 0) {
+    filtered = filtered.filter((p) =>
+      p.tags?.some((tag) => selectedTags.includes(tag))
+    );
   }
 
   // Step 3: Continent filter
@@ -82,31 +72,35 @@ function WorldProject() {
   }
 
   // Step 5: Location filter (if map location is selected)
-  const displayedProjects = selectedLocation
+  let displayedProjects = selectedLocation
     ? filtered.filter(
         (p) => p.location && getDistanceKm(p.location, selectedLocation) <= 200
       )
     : filtered;
 
-  // for vote
+  // Step 6: Apply tab filter - sort by votes for top-rated
+  if (activeTab === "top-rated") {
+    displayedProjects = [...displayedProjects].sort((a, b) => {
+      const votesA = votes[a.id] || 0;
+      const votesB = votes[b.id] || 0;
+      return votesB - votesA; // Sort descending by votes
+    });
+  }
+
   const handleVote = (projectId: string) => {
     const key = `voted-${projectId}`;
-    if (localStorage.getItem(key)) return; // already voted
+    if (localStorage.getItem(key)) return;
 
     const newVotes = { ...votes, [projectId]: (votes[projectId] || 0) + 1 };
     setVotes(newVotes);
     localStorage.setItem("projectVotes", JSON.stringify(newVotes));
     localStorage.setItem(key, "true");
   };
-  // for comment
-
-  const [comments, setComments] = useState<{ [key: string]: string[] }>({});
 
   const handleAddComment = (projectId: string, comment: string) => {
     const existing = comments[projectId] || [];
     const updated = [...existing, comment];
     setComments({ ...comments, [projectId]: updated });
-
     localStorage.setItem(
       "projectComments",
       JSON.stringify({ ...comments, [projectId]: updated })
@@ -114,24 +108,40 @@ function WorldProject() {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem("projectComments");
-    if (stored) {
-      setComments(JSON.parse(stored));
+    const handleClickOutside = (e: MouseEvent) => {
+      const popup = document.getElementById("tag-popup");
+      if (popup && !popup.contains(e.target as Node)) {
+        setShowTagPopup(false);
+      }
+    };
+    if (showTagPopup) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTagPopup]);
+
+  useEffect(() => {
+    const storedComments = localStorage.getItem("projectComments");
+    if (storedComments) {
+      setComments(JSON.parse(storedComments));
+    }
+    const storedVotes = localStorage.getItem("projectVotes");
+    if (storedVotes) {
+      setVotes(JSON.parse(storedVotes));
     }
   }, []);
 
   return (
     <div>
       <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4 pb-34">
-        {/* Header & search input */}
         {/* Header & Filters */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          {/* Title (Left Side) */}
           <h1 className="text-xl font-bold md:w-1/4 text-center md:text-left">
             World Projects
           </h1>
 
-          {/* Search (Center) */}
           <div className="flex items-center justify-center md:w-1/3 w-full">
             <div className="flex items-center gap-2 px-4 w-full border rounded-lg bg-white shadow-sm">
               <Search className="text-gray-600" size={14} />
@@ -145,25 +155,65 @@ function WorldProject() {
             </div>
           </div>
 
-          {/* Filters (Right Side) */}
           <div className="flex flex-wrap md:flex-nowrap justify-center md:justify-end gap-2 md:w-1/3">
-            {/* Tag Filter */}
-            <select
-              className="border rounded-lg px-3 py-2 text-sm bg-white"
-              onChange={(e) => setTagFilter(e.target.value)}
-              value={tagFilter}
-            >
-              <option value="">All Tags</option>
-              {Array.from(
-                new Set(worldProjects.flatMap((p) => p.tags || []))
-              ).map((tag) => (
-                <option key={tag} value={tag}>
-                  {tag}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                onClick={() => setShowTagPopup(!showTagPopup)}
+                className="border rounded-lg px-3 py-2 bg-white flex items-center gap-2"
+              >
+                <SlidersHorizontal size={16} />
+                Tags
+              </button>
 
-            {/* Continent Filter */}
+              {showTagPopup && (
+                <div
+                  id="tag-popup"
+                  className="absolute top-full mt-2 right-0 w-56 bg-white shadow-lg border rounded-lg p-4 z-50"
+                >
+                  <h3 className="text-sm font-semibold mb-2">Filter by Tags</h3>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {Array.from(
+                      new Set(worldProjects.flatMap((p) => p.tags || []))
+                    ).map((tag) => (
+                      <label
+                        key={tag}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTags.includes(tag)}
+                          onChange={() => {
+                            if (selectedTags.includes(tag)) {
+                              setSelectedTags(
+                                selectedTags.filter((t) => t !== tag)
+                              );
+                            } else {
+                              setSelectedTags([...selectedTags, tag]);
+                            }
+                          }}
+                        />
+                        {tag}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex justify-between mt-4">
+                    <button
+                      onClick={() => setSelectedTags([])}
+                      className="text-xs px-3 py-1 border rounded"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setShowTagPopup(false)}
+                      className="text-xs px-3 py-1 bg-black text-white rounded"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <select
               className="border rounded-lg px-3 py-1 text-sm bg-white"
               onChange={(e) => setContinentFilter(e.target.value)}
@@ -179,7 +229,6 @@ function WorldProject() {
               )}
             </select>
 
-            {/* Year Filter */}
             <select
               className="border rounded-lg px-3 py-1 text-sm bg-white"
               onChange={(e) => setYearFilter(e.target.value)}
@@ -197,22 +246,51 @@ function WorldProject() {
           </div>
         </div>
 
-        {/* Google Map search */}
+        {/* Map Search */}
         <div className="py-6 mb-10">
           <LeafletMapSearch onLocationSelect={setSelectedLocation} />
+        </div>
+
+        {/* Tab Component */}
+        <div className="flex border-b border-gray-200 mb-6">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "all"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            All Projects
+          </button>
+          <button
+            onClick={() => setActiveTab("top-rated")}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "top-rated"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Top Rated Projects
+          </button>
         </div>
 
         {/* Projects grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {displayedProjects.length === 0 ? (
-            <div className="flex justify-center items-center min-h-[50vh]">
-              <h2>No projects found for this area.</h2>
+            <div className="col-span-full flex justify-center items-center min-h-[50vh]">
+              <h2>
+                {activeTab === "top-rated"
+                  ? "No voted projects yet."
+                  : "No projects found for this area."}
+              </h2>
             </div>
           ) : (
             displayedProjects.map((project) => (
               <Card
                 key={project.id}
-                className="cursor-pointer bg-white p-0 border-gray-300 overflow-hidden"
+                className="cursor-pointer bg-white p-0 border-gray-300 overflow-hidden hover:shadow-lg transition-shadow"
+                onClick={() => navigate(`/world-project/${project.id}`)}
               >
                 <Carousel className="w-full bg-black">
                   <CarouselContent>
@@ -233,7 +311,15 @@ function WorldProject() {
                 </Carousel>
 
                 <CardContent className="py-4">
-                  <h2 className="text-sm font-bold">{project.name}</h2>
+                  <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-sm font-bold">{project.name}</h2>
+                    <p className="text-xs text-gray-500">
+                      Published: {project.PublishedDate}
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-500">
+                    Architect: {project.Architect}
+                  </p>
                   <p className="text-sm text-gray-500">
                     Photographer: {project.Photographer}
                   </p>
@@ -241,7 +327,7 @@ function WorldProject() {
                     Description: {project.description}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Location: {(project as any).locationName || "Unknown"}
+                    Location: {project.locationName || "Unknown"}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {project.tags?.map((tag) => (
@@ -253,8 +339,8 @@ function WorldProject() {
                       </button>
                     ))}
                   </div>
-                  {/* here vot and comment  */}
-                  <div className="  mt-4">
+
+                  <div className="mt-4">
                     <button
                       className="mr-4 text-xs px-6 py-1.5 border rounded"
                       onClick={(e) => {
@@ -265,17 +351,13 @@ function WorldProject() {
                       Vote ({votes[project.id] || 0})
                     </button>
                     <button
-                      className=" text-xs px-6 py-1.5 border rounded"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVote(project.id);
-                      }}
+                      className="text-xs px-6 py-1.5 border rounded"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      View Comments ({votes[project.id] || 0})
+                      View Comments ({(comments[project.id] || []).length})
                     </button>
                   </div>
 
-                  {/*  Comments Section */}
                   <div className="mt-2 space-y-2">
                     <h4 className="text-sm font-semibold">Comments</h4>
                     <ul className="space-y-1 text-xs">
@@ -285,7 +367,6 @@ function WorldProject() {
                         </li>
                       ))}
                     </ul>
-
                     <form
                       onClick={(e) => e.stopPropagation()}
                       onSubmit={(e) => {
@@ -309,7 +390,7 @@ function WorldProject() {
                       />
                       <button
                         type="submit"
-                        className="p-2 text-white bg-black  rounded-full hover:bg-gray-700 cursor-pointer"
+                        className="p-2 text-white bg-black rounded-full hover:bg-gray-700 cursor-pointer"
                       >
                         <Send size={16} />
                       </button>
@@ -321,7 +402,7 @@ function WorldProject() {
           )}
         </div>
 
-        {/* Pagination (optional) */}
+        {/* Pagination */}
         <div className="flex justify-center items-center space-x-2 mt-10">
           <Button variant="outline" size="sm">
             <ChevronLeft className="h-4 w-4" />

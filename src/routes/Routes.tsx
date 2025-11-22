@@ -25,6 +25,7 @@ import Financials from "@/pages/Dashboard/Financials";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NewsFeedDetails from "@/pages/NewsFeedDetails";
+import WorldProjectDetails from "@/pages/WorldProjectDetails";
 // import ProfileSettings from "@/pages/ProfileSettings";
 
 const routes = createBrowserRouter([
@@ -47,6 +48,10 @@ const routes = createBrowserRouter([
       {
         path: "/world-project",
         element: <WorldProject />,
+      },
+      {
+        path: "/world-project/:id",
+        element: <WorldProjectDetails />,
       },
       {
         path: "/new-project",
