@@ -70,6 +70,17 @@ export default function NavbarAdminDashboard() {
             </NavLink>
           </div>
 
+          <NavLink
+            to="/employees"
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                isActive ? "border-b-2 border-black" : ""
+              }`
+            }
+          >
+            Employees
+          </NavLink>
+
           {/* Logo */}
           <div className="flex-shrink-0 mx-auto md:mx-0">
             <Link to="/" className="flex items-center gap-2">

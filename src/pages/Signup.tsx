@@ -2,8 +2,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
+import { useRegisterMutation } from "@/redux/api/authApi";
 
-// ✅ Validation Schema
 const signUpSchema = z
   .object({
     username: z.string().min(1, "Username is required"),
@@ -29,10 +29,23 @@ const SignUp = () => {
     resolver: zodResolver(signUpSchema),
   });
 
-  const onSubmit = (data: SignUpFormInputs) => {
-    console.log("Sign Up Data:", data);
-    alert("Account created successfully!");
-    navigate("/login");
+  const [registerUser, { isLoading }] = useRegisterMutation();
+
+  const onSubmit = async (data: SignUpFormInputs) => {
+    try {
+      const payload = {
+        name: data.username,
+        email: data.email,
+        password: data.password,
+      };
+
+      const res = await registerUser(payload).unwrap();
+
+      alert(res.message || "Registration successful!");
+      navigate("/login");
+    } catch (error: any) {
+      alert(error?.data?.message || "Registration failed");
+    }
   };
 
   return (
@@ -136,9 +149,10 @@ const SignUp = () => {
           {/* Sign Up Button */}
           <button
             type="submit"
-            className="w-full bg-black text-white py-2.5 px-4 rounded-md text-sm font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            disabled={isLoading}
+            className="w-full bg-black text-white py-2.5 px-4 rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-60"
           >
-            Sign Up
+            {isLoading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
 

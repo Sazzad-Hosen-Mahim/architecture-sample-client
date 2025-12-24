@@ -4,12 +4,12 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { jwtDecode } from "jwt-decode";
+// import { jwtDecode } from "jwt-decode";
 import { useAppDispatch } from "@/hooks/useRedux";
-import { useLoginMutation } from "@/redux/features/auth/authApi";
-import { setUser } from "@/redux/features/auth/authSlice";
 import { toast } from "sonner";
 import SyncLoader from "react-spinners/SyncLoader";
+import { setCredentials } from "@/redux/features/auth/authSlice";
+import { useLoginMutation } from "@/redux/api/authApi";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -23,7 +23,7 @@ const Login = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [loginUser, { isLoading }] = useLoginMutation();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting] = useState(false);
 
   const {
     register,
@@ -35,54 +35,29 @@ const Login = () => {
 
   // const navigate = useNavigate();
   const onSubmit = async (data: LoginFormInputs) => {
-    console.log("Login Data:", data);
-    setIsSubmitting(true);
-
     try {
-      // ✅ Call login mutation
-      const response = await loginUser({
-        email: data.email,
-        password: data.password,
-      }).unwrap();
+      const response = await loginUser(data).unwrap();
 
-      console.log("Backend Response:", response);
+      const { accessToken, user } = response.data;
 
-      const accessToken = response?.data?.accessToken;
-      if (!accessToken) {
-        throw new Error("Login failed! No access token returned.");
-      }
-
-      // ✅ Decode JWT
-      const decoded: any = jwtDecode(accessToken);
-      const user = {
-        userId: decoded.sub,
-        email: decoded.email,
-        role: decoded.role,
-        name: decoded.name,
-        imagUrl: decoded.imagUrl,
-        iat: decoded.iat,
-        exp: decoded.exp,
-      };
-
-      //  Save user & token to Redux
-      dispatch(setUser({ user, token: accessToken }));
-
-      //  Show success toast
-      toast.success(response?.message || "Login Successful!");
-
-      // Redirect to homepage or dashboard
-      navigate("/dashboard"); // change path as needed
-    } catch (error: any) {
-      // console.error("FULL ERROR:", error);
-      toast.error(
-        error?.data?.message ||
-          error?.message ||
-          "Login failed! Please check your credentials."
+      dispatch(
+        setCredentials({
+          user,
+          accessToken,
+        })
       );
-    } finally {
-      setIsSubmitting(false);
+
+      toast.success("Login successful!");
+      if (user.role === "USER") {
+        navigate("/user-dashboard");
+      } else {
+        navigate("/dashboard"); // fallback / admin / other roles
+      }
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Login failed");
     }
   };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 md:px-0">
       <div className="w-full max-w-sm bg-white rounded-lg shadow-sm border border-gray-200 p-6">

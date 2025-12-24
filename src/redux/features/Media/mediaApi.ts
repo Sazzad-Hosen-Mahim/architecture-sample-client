@@ -1,22 +1,25 @@
-import { baseApi } from "../../api/baseApi";
+import { baseApi } from "@/redux/api/baseApi";
 
-const mediaApi = baseApi.injectEndpoints({
+export const mediaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createMedia: builder.mutation({
-      query: (formData: FormData) => ({
-        url: "/media/create",
+    // ✅ GET all media
+    getAllMedia: builder.query<any, void>({
+      query: () => ({
+        url: "/media",
+        method: "GET",
+      }),
+    }),
+
+    // ✅ CREATE media (multipart/form-data)
+    createMedia: builder.mutation<any, FormData>({
+      query: (formData) => ({
+        url: "/media",
         method: "POST",
         body: formData,
       }),
     }),
-    // get all media
-    getAllMedia: builder.query({
-      query: () => ({
-        url: "/media/me", // your GET endpoint
-        method: "GET",
-      }),
-    }),
   }),
+  overrideExisting: false,
 });
 
-export const { useCreateMediaMutation, useGetAllMediaQuery } = mediaApi;
+export const { useGetAllMediaQuery, useCreateMediaMutation } = mediaApi;

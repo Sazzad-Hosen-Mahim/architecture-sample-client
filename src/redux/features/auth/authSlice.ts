@@ -1,52 +1,65 @@
 import { RootState } from "@/redux/store";
-import { createSlice } from "@reduxjs/toolkit";
-// import { RootState } from "../../store";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import Cookies from "js-cookie";
 
-export type TUser = {
-  name: string;
+interface User {
+  id: string;
   email: string;
+  name: string;
   role: string;
-  imagUrl?: string;
-  phoneNumber?: string;
-  bio?: string;
-  companyName?: string;
-};
+  imagUrl?: string | null;
+  phoneNumber?: string | null;
+  companyName?: string | null;
+  bio?: string | null;
+}
 
-type TAuthState = {
-  user: null | TUser;
-  accessToken: null | string;
-};
+interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+}
 
-const initialState: TAuthState = {
+const initialState: AuthState = {
   user: null,
-  accessToken: null,
+  accessToken: Cookies.get("accessToken") || null,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setUser: (state, action) => {
-      const { user, token } = action.payload;
-      state.user = user;
-      state.accessToken = token;
+    setCredentials: (
+      state,
+      action: PayloadAction<{ user: User; accessToken: string }>
+    ) => {
+      state.user = action.payload.user;
+      state.accessToken = action.payload.accessToken;
+
+      Cookies.set("accessToken", action.payload.accessToken, {
+        expires: 7,
+        secure: true,
+        sameSite: "strict",
+      });
     },
+
+    updateUser: (state, action) => {
+      if (state.user) {
+        state.user = {
+          ...state.user,
+          ...action.payload,
+        };
+      }
+    },
+
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
-    },
-    // ✅ new reducer for profile update
-    updateUser: (state, action) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
+      Cookies.remove("accessToken");
     },
   },
 });
 
-export const { setUser, logout, updateUser } = authSlice.actions;
-
+export const { setCredentials, logout, updateUser } = authSlice.actions;
 export default authSlice.reducer;
 
-export const selectCurrentToken = (state: RootState) => state.auth.accessToken;
 export const selectCurrentUser = (state: RootState) => state.auth.user;
+export const selectAccessToken = (state: RootState) => state.auth.accessToken;

@@ -7,6 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCreateProjectRequestMutation } from "@/redux/api/newProjectAPi";
+import { buildProjectPayload } from "@/utils/projectPayload";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -15,13 +17,15 @@ export default function ReviewConfirmSection({
   updateFormData,
 }: // onPaymentSuccess,
 any) {
+  const [createProject, { isLoading }] = useCreateProjectRequestMutation();
+  const [, setError] = useState<string | null>(null);
   console.log("formData in ReviewConfirmSection:", formData);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDetails, setPaymentDetails] = useState<any>({
     paymentMethod: "",
     amount: 250,
   });
-  const [isProcessing] = useState(false);
+  // const [isProcessing] = useState(false);
   //   const { toast } = useToast();
 
   const handlePaymentMethodChange = (value: string) => {
@@ -35,6 +39,16 @@ any) {
   const getErrorMessage = (field: string): string => {
     const foundError = errors.find((e: any) => e.field === field);
     return foundError ? foundError.message : "";
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const payload = buildProjectPayload(formData);
+      await createProject(payload).unwrap();
+    } catch (err: any) {
+      setError(err?.data?.message || "Failed to submit project request");
+      console.error(err);
+    }
   };
 
   return (
@@ -393,7 +407,7 @@ any) {
             {/* Removed Submit Project Button */}
           </div>
         </div>
-        <div className="flex justify-center items-center mt-8">
+        {/* <div className="flex justify-center items-center mt-8">
           <button
             // onClick={handleThumbprintClick}
             disabled={isProcessing}
@@ -426,6 +440,45 @@ any) {
               </svg>
             </div>
             {isProcessing && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+              </div>
+            )}
+          </button>
+        </div> */}
+        <div className="flex justify-center items-center mt-12">
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="w-20 h-20 sm:w-24 sm:h-24 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden"
+          >
+            <div className="relative z-10">
+              <svg
+                viewBox="0 0 100 140"
+                className="w-20 h-20 sm:w-24 sm:h-32 fill-none"
+                strokeWidth="1.5"
+              >
+                <text
+                  x="50"
+                  y="60"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-white text-[11px] sm:text-[11px] font-light tracking-[0.2em]"
+                >
+                  SUBMIT
+                </text>
+                <text
+                  x="50"
+                  y="80"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-white text-[11px] sm:text-[11px] font-light tracking-[0.2em]"
+                >
+                  PROJECT
+                </text>
+              </svg>
+            </div>
+            {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
                 <Loader2 className="w-8 h-8 text-white animate-spin" />
               </div>

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import HeroSocialMedia from "./HeroSocialMedia";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
-import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 import { HashLoader } from "react-spinners";
+import { useGetAllMediaQuery } from "@/redux/features/media/mediaApi";
 
 function Hero() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -1,9 +1,3 @@
-// export default function ProfileSettings() {
-//   return <div>hey iam the ProfileSettings</div>;
-// }
-
-"use client";
-
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -32,10 +26,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useUpdatedProfileInfoMutation } from "@/redux/features/ProfileSettings/profileSettingsApi";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser, updateUser } from "@/redux/features/auth/authSlice";
 import { toast } from "sonner";
+import { useUpdatedProfileInfoMutation } from "@/redux/features/ProfileSettings/profileSettings";
 
 type ProfileData = {
   name: string;

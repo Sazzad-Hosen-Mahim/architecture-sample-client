@@ -26,6 +26,9 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NewsFeedDetails from "@/pages/NewsFeedDetails";
 import WorldProjectDetails from "@/pages/WorldProjectDetails";
+import VerifyEmail from "@/pages/VerifyEmail";
+import UserDashboard from "@/pages/UserDashboard";
+import Employees from "@/pages/Dashboard/Employees";
 // import ProfileSettings from "@/pages/ProfileSettings";
 
 const routes = createBrowserRouter([
@@ -102,8 +105,16 @@ const routes = createBrowserRouter([
         element: <ResetPassword />,
       },
       {
+        path: "/verify-email",
+        element: <VerifyEmail />,
+      },
+      {
         path: "/profile-settings",
         element: <ProfileSettings />,
+      },
+      {
+        path: "/user-dashboard",
+        element: <UserDashboard />,
       },
       // {
       //   path: "/admin",
@@ -123,6 +134,7 @@ const routes = createBrowserRouter([
       { path: "new-proposal", element: <NewProposal /> },
       { path: "media", element: <Media /> },
       { path: "financials", element: <Financials /> },
+      { path: "employees", element: <Employees /> },
     ],
   },
   {

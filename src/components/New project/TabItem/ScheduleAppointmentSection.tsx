@@ -82,23 +82,6 @@ export default function ScheduleAppointmentSection({
     updateFormData({ meetingLocation: e.target.value });
   };
 
-  // 🆕 Toggle date as unavailable
-  // const toggleUnavailableDate = (date: Date) => {
-  //   const exists = unavailableDates.find(
-  //     (d) => d.toDateString() === date.toDateString()
-  //   );
-  //   let updatedDates;
-  //   if (exists) {
-  //     updatedDates = unavailableDates.filter(
-  //       (d) => d.toDateString() !== date.toDateString()
-  //     );
-  //   } else {
-  //     updatedDates = [...unavailableDates, date];
-  //   }
-  //   setUnavailableDates(updatedDates);
-  //   updateFormData({ unavailableDates: updatedDates });
-  // };
-
   return (
     <div>
       <div className="space-y-6">
@@ -153,21 +136,6 @@ export default function ScheduleAppointmentSection({
             <div className="text-xs text-gray-500 mt-2">
               Greyed out dates indicate unavailability.
             </div>
-
-            {/* 🆕 Button to mark selected date unavailable */}
-            {/* {selectedDate && (
-              <Button
-                variant="outline"
-                className="mt-3 text-xs"
-                onClick={() => toggleUnavailableDate(selectedDate)}
-              >
-                {unavailableDates.some(
-                  (d) => d.toDateString() === selectedDate.toDateString()
-                )
-                  ? "Mark as Available"
-                  : "Mark as Unavailable"}
-              </Button>
-            )} */}
           </div>
 
           <div>
