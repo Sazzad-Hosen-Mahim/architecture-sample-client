@@ -29,6 +29,8 @@ import WorldProjectDetails from "@/pages/WorldProjectDetails";
 import VerifyEmail from "@/pages/VerifyEmail";
 import UserDashboard from "@/pages/UserDashboard";
 import Employees from "@/pages/Dashboard/Employees";
+import NewDynamicProposalPage from "@/pages/Dashboard/NewDynamicProposal";
+import Proposals from "@/pages/Dashboard/Proposals";
 // import ProfileSettings from "@/pages/ProfileSettings";
 
 const routes = createBrowserRouter([
@@ -132,9 +134,11 @@ const routes = createBrowserRouter([
     children: [
       { path: "", element: <Dashboard /> },
       { path: "new-proposal", element: <NewProposal /> },
+      { path: "new-proposal/:id", element: <NewDynamicProposalPage /> },
       { path: "media", element: <Media /> },
       { path: "financials", element: <Financials /> },
       { path: "employees", element: <Employees /> },
+      { path: "proposals", element: <Proposals /> },
     ],
   },
   {

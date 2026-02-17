@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-// import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -11,19 +10,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import ProjectDetailesModal from "./ProjectDetailesModal";
 import { useNavigate } from "react-router-dom";
-import { projects } from "@/data/dashboardProjects";
-import { Project } from "@/types/dashboardProjects";
+import { ProjectRequest, useGetProjectRequestsQuery } from "@/redux/api/adminDashboard/proposalApi";
+import ProjectDetailsModal from "./ProjectDetailesModal";
 
-// No imports or project data changed
 export function ProjectManagementTab() {
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectRequest | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  const openModal = (project: any) => {
+  // Fetch project requests from API
+  const { data, isLoading, isError } = useGetProjectRequestsQuery();
+
+  const openModal = (project: ProjectRequest) => {
     setSelectedProject(project);
     setIsModalOpen(true);
   };
@@ -32,132 +32,176 @@ export function ProjectManagementTab() {
     setIsModalOpen(false);
     setSelectedProject(null);
   };
+
+  // Helper function to format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Helper function to get stage badge color
+  const getStageBadgeClass = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800 border-amber-300 rounded-full hover:bg-yellow-100 font-medium text-xs";
+      case "REVIEWED":
+        return "bg-blue-100 text-blue-800 border-blue-400 rounded-full hover:bg-blue-100 font-medium text-xs";
+      case "SCHEDULED":
+        return "bg-green-100 text-green-800 border-green-400 rounded-full hover:bg-green-100 font-medium text-xs";
+      case "ACTIVE":
+        return "bg-green-100 text-green-800 border-green-400 rounded-full hover:bg-green-100 font-medium text-xs";
+      case "COMPLETED":
+        return "bg-purple-100 text-purple-800 border-purple-300 rounded-full hover:bg-purple-100 font-medium text-xs";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300 rounded-full hover:bg-gray-100 font-medium text-xs";
+    }
+  };
+
+  // Helper function to map API status to user-friendly labels
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "PENDING": return "Initial";
+      case "REVIEWED": return "Inquiry";
+      case "SCHEDULED": return "Bidding";
+      case "ACTIVE": return "Active";
+      case "COMPLETED": return "Completed";
+      default: return status;
+    }
+  };
+
+  // Helper function to calculate progress based on status
+  const getProgress = (status: string) => {
+    switch (status) {
+      case "PENDING": return 25;
+      case "REVIEWED": return 50;
+      case "SCHEDULED": return 75;
+      case "ACTIVE": return 90;
+      case "COMPLETED": return 100;
+      default: return 0;
+    }
+  };
+
   const getFilteredProjects = (stage: string) => {
-    if (stage === "all") return projects;
-    return projects.filter(
-      (p) => p.stage.toLowerCase() === stage.toLowerCase()
+    if (!data?.data) return [];
+    if (stage === "all") return data.data;
+    // Inquiry tab shows both PENDING and REVIEWED
+    if (stage === "inquiry") {
+      return data.data.filter(
+        (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
+      );
+    }
+    return data.data.filter(
+      (p) => p.status.toLowerCase() === stage.toLowerCase()
     );
   };
 
   const getStageCount = (stage: string) => {
-    if (stage === "all") return projects.length;
-    return projects.filter((p) => p.stage.toLowerCase() === stage.toLowerCase())
-      .length;
+    if (!data?.data) return 0;
+    if (stage === "all") return data.data.length;
+    // Inquiry tab shows both PENDING and REVIEWED
+    if (stage === "inquiry") {
+      return data.data.filter(
+        (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
+      ).length;
+    }
+    return data.data.filter((p) => p.status.toLowerCase() === stage.toLowerCase()).length;
   };
 
-  const renderProjectTable = (filteredProjects: Project[]) => (
+  const renderProjectTable = (filteredProjects: ProjectRequest[]) => (
     <div className="rounded-lg border bg-card border-gray-200">
       <div className="p-4 border-b border-gray-200">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Project Workflow: Projects progress through stages from Inquiry to
-          Completed. Once a contract is signed, the scope of services is locked
-          and the project moves to Active stage.
+          Project Workflow: Projects progress through stages from Pending to Completed.
+          Once a consultation is scheduled, the project moves to Scheduled stage.
         </p>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className=" text-xs font-bold text-gray-600">
-              Project
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Project location
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Project Type
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Client
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Consultation Date
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Stage
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Progress
-            </TableHead>
-            <TableHead className="text-xs font-bold text-gray-600">
-              Action
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredProjects.map((project) => (
-            <TableRow
-              key={project.id}
-              className="hover:bg-gray-100 cursor-pointer"
-            >
-              <TableCell>
-                <div>
-                  <div className="text-xs font-semibold">{project.name}</div>
-                  <div className="text-xs  text-gray-400">{project.code}</div>
-                </div>
-              </TableCell>
-              <TableCell className="text-xs">{project.location}</TableCell>
-              <TableCell>
-                {project.projectType === "Not Assigned" ? (
+
+      {isLoading ? (
+        <div className="p-8 text-center text-gray-500">Loading projects...</div>
+      ) : isError ? (
+        <div className="p-8 text-center text-red-500">Error loading projects. Please try again.</div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">No projects found.</div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Location</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Client</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Appointment Date</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Progress</TableHead>
+              <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredProjects.map((project) => (
+              <TableRow
+                key={project.id}
+                className="hover:bg-gray-100 cursor-pointer"
+              >
+                <TableCell>
+                  <div>
+                    <div className="text-xs font-semibold">{project.projectName}</div>
+                    <div className="text-xs text-gray-400">{project.companyName}</div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs">
+                  {project.projectCity}, {project.projectState}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">{project.serviceType.replace(/_/g, ' ')}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs">
+                  {project.clientFirstName} {project.clientLastName}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {formatDate(project.appointmentDate)}
+                </TableCell>
+                <TableCell>
                   <Badge
                     variant="secondary"
-                    className="bg-yellow-100 text-yellow-800 border-amber-400 rounded-full hover:bg-yellow-100  text-xs"
+                    className={getStageBadgeClass(project.status)}
                   >
-                    {project.projectType}
+                    {getStatusLabel(project.status)}
                   </Badge>
-                ) : (
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs">👤</span>
-                    <span className="text-xs">{project.projectType}</span>
+                    <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-2 bg-green-500 rounded-full"
+                        style={{ width: `${getProgress(project.status)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs">{getProgress(project.status)}%</span>
                   </div>
-                )}
-              </TableCell>
-              <TableCell className="text-xs ">{project.client}</TableCell>
-              <TableCell className="text-xs">
-                {project.consultationDate}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="secondary"
-                  className={
-                    project.stage === "Inquiry"
-                      ? "bg-yellow-100 text-yellow-800 border-amber-300 rounded-full hover:bg-yellow-100 font-medium text-xs"
-                      : project.stage === "Bidding"
-                      ? "bg-blue-100 text-blue-800 border-blue-400 rounded-full hover:bg-blue-100 font-medium text-xs"
-                      : project.stage === "Active"
-                      ? "bg-green-100 text-green-800 border-green-400 rounded-full hover:bg-green-100 font-medium text-xs"
-                      : "bg-purple-100 text-purple-800 border-purple-300 rounded-full hover:bg-purple-100 font-medium text-xs"
-                  }
-                >
-                  {project.stage}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-2 bg-green-500 rounded-full"
-                      style={{ width: `${project.progress}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-text-xs ">{project.progressText}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className=" bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
-                  onClick={() => openModal(project)}
-                >
-                  View Details
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {/* project detailes modal  */}
-      <ProjectDetailesModal
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
+                    onClick={() => openModal(project)}
+                  >
+                    View Details
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      <ProjectDetailsModal
         isOpen={isModalOpen}
         onClose={closeModal}
         project={selectedProject}
@@ -166,57 +210,52 @@ export function ProjectManagementTab() {
   );
 
   return (
-    <div className=" p-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full ">
-        <div className="flex items-center justify-between gap-4 mb-6 bg-gray-100 py-0.5  overflow-x-auto sm:overflow-x-visible ">
+    <div className="p-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between gap-4 mb-6 bg-gray-100 py-0.5 overflow-x-auto sm:overflow-x-visible">
           <TabsList className="flex-1 cursor-pointer">
             <TabsTrigger
               value="all"
-              className={`flex-1 font-medium border-b-2 ${
-                activeTab === "all"
-                  ? "border-b-gray-800 py-4 cursor-pointer"
-                  : "border-b-transparent"
-              }`}
+              className={`flex-1 font-medium border-b-2 ${activeTab === "all"
+                ? "border-b-gray-800 py-4 cursor-pointer"
+                : "border-b-transparent"
+                }`}
             >
               All ({getStageCount("all")})
             </TabsTrigger>
             <TabsTrigger
               value="inquiry"
-              className={`flex-1 font-medium border-b-2 ${
-                activeTab === "inquiry"
-                  ? "border-b-gray-800 py-4 cursor-pointer"
-                  : "border-b-transparent"
-              }`}
+              className={`flex-1 font-medium border-b-2 ${activeTab === "inquiry"
+                ? "border-b-gray-800 py-4 cursor-pointer"
+                : "border-b-transparent"
+                }`}
             >
               Inquiry ({getStageCount("inquiry")})
             </TabsTrigger>
             <TabsTrigger
-              value="bidding"
-              className={`flex-1 font-medium border-b-2 ${
-                activeTab === "bidding"
-                  ? "border-b-gray-800 py-4 cursor-pointer"
-                  : "border-b-transparent"
-              }`}
+              value="scheduled"
+              className={`flex-1 font-medium border-b-2 ${activeTab === "scheduled"
+                ? "border-b-gray-800 py-4 cursor-pointer"
+                : "border-b-transparent"
+                }`}
             >
-              Bidding ({getStageCount("bidding")})
+              Bidding ({getStageCount("scheduled")})
             </TabsTrigger>
             <TabsTrigger
               value="active"
-              className={`flex-1 font-medium border-b-2 ${
-                activeTab === "active"
-                  ? "border-b-gray-800 py-4 cursor-pointer"
-                  : "border-b-transparent"
-              }`}
+              className={`flex-1 font-medium border-b-2 ${activeTab === "active"
+                ? "border-b-gray-800 py-4 cursor-pointer"
+                : "border-b-transparent"
+                }`}
             >
               Active ({getStageCount("active")})
             </TabsTrigger>
             <TabsTrigger
               value="completed"
-              className={`flex-1 font-medium border-b-2 ${
-                activeTab === "completed"
-                  ? "border-b-gray-800 py-4 cursor-pointer"
-                  : "border-b-transparent"
-              }`}
+              className={`flex-1 font-medium border-b-2 ${activeTab === "completed"
+                ? "border-b-gray-800 py-4 cursor-pointer"
+                : "border-b-transparent"
+                }`}
             >
               Completed ({getStageCount("completed")})
             </TabsTrigger>
@@ -235,8 +274,8 @@ export function ProjectManagementTab() {
         <TabsContent value="inquiry">
           {renderProjectTable(getFilteredProjects("inquiry"))}
         </TabsContent>
-        <TabsContent value="bidding">
-          {renderProjectTable(getFilteredProjects("bidding"))}
+        <TabsContent value="scheduled">
+          {renderProjectTable(getFilteredProjects("scheduled"))}
         </TabsContent>
         <TabsContent value="active">
           {renderProjectTable(getFilteredProjects("active"))}

@@ -10,6 +10,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useGetProposalInfoQuery, useSubmitNewProposalMutation } from "@/redux/api/adminDashboard/proposalApi";
+import { useEffect } from "react";
+import Cookies from "js-cookie";
 
 interface ProjectFormProps {
   projectInfo: {
@@ -31,6 +34,7 @@ interface ProjectFormProps {
   handleProjectInfoChange: (field: string, value: string | boolean) => void;
   handleNext: () => void;
   handleBack: () => void;
+  id: string | undefined;
 }
 
 export default function ProjectTabForm({
@@ -38,7 +42,149 @@ export default function ProjectTabForm({
   handleProjectInfoChange,
   handleNext,
   handleBack,
+  id,
 }: ProjectFormProps) {
+
+  const { data: projectInformation } = useGetProposalInfoQuery(id || "", {
+    skip: !id, // Skip the query if there's no id
+  });
+
+  const [submitNewProposal, { isLoading }] = useSubmitNewProposalMutation();
+
+  // Helper function to convert display values to API enum values
+  const convertToApiFormat = (serviceType: string, projectType: string) => {
+    const serviceTypeMapping: Record<string, string> = {
+      'New Construction': 'NEW_CONSTRUCTION',
+      'Renovation': 'RENOVATION',
+      'Addition': 'ADDITION',
+      'Interior Design': 'INTERIOR_DESIGN',
+    };
+
+    const projectCategoryMapping: Record<string, string> = {
+      'Residential': 'RESIDENTIAL',
+      'Commercial': 'COMMERCIAL',
+      'Mixed-Use': 'MIXED_USE',
+      'Institutional': 'INSTITUTIONAL',
+    };
+
+    return {
+      serviceType: serviceTypeMapping[serviceType] || serviceType,
+      projectCategory: projectCategoryMapping[projectType] || projectType,
+    };
+  };
+
+  const handleContinue = async () => {
+    if (!id) {
+      console.error("No project request ID available");
+      return;
+    }
+
+    const { serviceType, projectCategory } = convertToApiFormat(
+      projectInfo.serviceType,
+      projectInfo.projectType
+    );
+
+    const cleanPayload = {
+      projectRequestId: String(id),
+      name: String(projectInfo.projectName || ""),
+      description: String(projectInfo.projectDescription || ""),
+      additionalContext: String(projectInfo.additionalContext || ""),
+      streetAddress: String(projectInfo.streetAddress || ""),
+      city: String(projectInfo.city || ""),
+      state: String(projectInfo.state || ""),
+      country: String(projectInfo.country || ""),
+      zip: String(projectInfo.zip || ""),
+      serviceType: String(serviceType).toUpperCase().replace(/\s+/g, '_'),
+      projectCategory: String(projectCategory).toUpperCase().replace(/\s+/g, '_'),
+      squareFootage: String(projectInfo.squareFootage || ""),
+      budgetRange: String(projectInfo.budgetRange || ""),
+      expectedTimeline: String(projectInfo.timeline || ""),
+    };
+
+    try {
+      console.log("SENDING CLEANED PAYLOAD:", JSON.stringify(cleanPayload));
+
+      const response = await submitNewProposal(cleanPayload).unwrap();
+      console.log("PROPOSAL RESPONSE:", response);
+
+      // Save response to cookies
+      Cookies.set("proposal_data", JSON.stringify(response), { expires: 7 });
+
+      // Proceed to next step
+      handleNext();
+    } catch (error: any) {
+      console.error("Failed to send proposal (RTK):", error);
+
+      // DEBUG: If it fails with 400, try a direct fetch to see if RTK Query is adding something hidden
+      if (error?.status === 400 || error?.data?.statusCode === 400) {
+        console.log("RTK FAILED WITH 400. ATTEMPTING DIRECT FETCH FOR DEBUGGING...");
+        try {
+          const fetchResponse = await fetch("http://localhost:3000/v1/proposals", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Cookies.get("accessToken")}`
+            },
+            body: JSON.stringify(cleanPayload)
+          });
+
+          const result = await fetchResponse.json();
+          console.log("DIRECT FETCH RESULT:", result);
+
+          if (fetchResponse.ok) {
+            console.log("DIRECT FETCH SUCCEEDED! Proceeding...");
+            Cookies.set("proposal_data", JSON.stringify(result), { expires: 7 });
+            handleNext();
+          }
+        } catch (fetchErr) {
+          console.error("DIRECT FETCH ALSO FAILED:", fetchErr);
+        }
+      }
+    }
+  };
+
+  // Populate form when project information is loaded
+  useEffect(() => {
+    if (projectInformation) {
+      // Helper function to convert API enum values to display values
+      const formatServiceType = (type: string) => {
+        const mapping: Record<string, string> = {
+          'NEW_CONSTRUCTION': 'New Construction',
+          'RENOVATION': 'Renovation',
+          'ADDITION': 'Addition',
+          'INTERIOR_DESIGN': 'Interior Design',
+        };
+        return mapping[type] || type;
+      };
+
+      const formatProjectCategory = (category: string) => {
+        const mapping: Record<string, string> = {
+          'RESIDENTIAL': 'Residential',
+          'COMMERCIAL': 'Commercial',
+          'MIXED_USE': 'Mixed-Use',
+          'INSTITUTIONAL': 'Institutional',
+        };
+        return mapping[category] || category;
+      };
+
+      // Map the API response to the form fields
+      handleProjectInfoChange("projectName", projectInformation.projectName || "");
+      handleProjectInfoChange("projectDescription", ""); // Not in API response
+      handleProjectInfoChange("additionalContext", projectInformation.additionalNotes || "");
+      handleProjectInfoChange("streetAddress", projectInformation.projectStreetAddress || "");
+      handleProjectInfoChange("city", projectInformation.projectCity || "");
+      handleProjectInfoChange("state", projectInformation.projectState || "");
+      handleProjectInfoChange("country", projectInformation.projectCountry || "");
+      handleProjectInfoChange("zip", projectInformation.projectZipCode || "");
+      handleProjectInfoChange("sameAsMailingAddress", projectInformation.projectLocationSameAsClient || false);
+      handleProjectInfoChange("serviceType", formatServiceType(projectInformation.serviceType || ""));
+      handleProjectInfoChange("projectType", formatProjectCategory(projectInformation.projectCategory || ""));
+      handleProjectInfoChange("squareFootage", projectInformation.projectSize || "");
+      handleProjectInfoChange("budgetRange", projectInformation.budgetRange || "");
+      handleProjectInfoChange("timeline", ""); // Not in API response
+    }
+  }, [projectInformation]);
+
   return (
     <div className="bg-white  ">
       <h2 className="text-sm font-semibold mb-6 border-l-4 border-blue-600 pl-3">
@@ -138,21 +284,12 @@ export default function ProjectTabForm({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="projectCountry">Country</Label>
-            <Select
+            <Input
+              id="projectCountry"
               value={projectInfo.country}
-              onValueChange={(value) =>
-                handleProjectInfoChange("country", value)
-              }
-            >
-              <SelectTrigger id="projectCountry" className="w-full">
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="United States">United States</SelectItem>
-                <SelectItem value="Canada">Canada</SelectItem>
-                <SelectItem value="Mexico">Mexico</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(e) => handleProjectInfoChange("country", e.target.value)}
+              placeholder="Enter country"
+            />
           </div>
 
           <div className="flex flex-col gap-2">
@@ -166,19 +303,12 @@ export default function ProjectTabForm({
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="projectState">State</Label>
-            <Select
+            <Input
+              id="projectState"
               value={projectInfo.state}
-              onValueChange={(value) => handleProjectInfoChange("state", value)}
-            >
-              <SelectTrigger id="projectState" className="w-full">
-                <SelectValue placeholder="Select state" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="CA">California</SelectItem>
-                <SelectItem value="NY">New York</SelectItem>
-                <SelectItem value="TX">Texas</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(e) => handleProjectInfoChange("state", e.target.value)}
+              placeholder="Enter state"
+            />
           </div>
 
           <div className="flex flex-col gap-2">
@@ -297,10 +427,11 @@ export default function ProjectTabForm({
           Back
         </Button>
         <Button
-          onClick={handleNext}
+          onClick={handleContinue}
           className="bg-gray-800 text-white hover:bg-black cursor-pointer"
+          disabled={isLoading}
         >
-          Continue to Services
+          {isLoading ? "Saving..." : "Continue to Services"}
         </Button>
       </div>
     </div>

@@ -39,8 +39,7 @@ export default function NavbarAdminDashboard() {
             <NavLink
               to="/admin"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -50,8 +49,7 @@ export default function NavbarAdminDashboard() {
             <NavLink
               to="/media"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -61,8 +59,7 @@ export default function NavbarAdminDashboard() {
             <NavLink
               to="/financials"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -73,8 +70,7 @@ export default function NavbarAdminDashboard() {
           <NavLink
             to="/employees"
             className={({ isActive }) =>
-              `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                isActive ? "border-b-2 border-black" : ""
+              `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
               }`
             }
           >

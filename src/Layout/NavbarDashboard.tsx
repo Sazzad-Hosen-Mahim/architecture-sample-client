@@ -59,8 +59,7 @@ export default function NavbarDashboard() {
               to="/dashboard"
               end
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -70,8 +69,7 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/media"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -81,8 +79,7 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/financials"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -91,12 +88,20 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/employees"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
               Employees
+            </NavLink>
+            <NavLink
+              to="/dashboard/proposals"
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                }`
+              }
+            >
+              Proposals
             </NavLink>
           </div>
 
@@ -280,8 +285,7 @@ export default function NavbarDashboard() {
               to="/dashboard"
               end
               className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-4 border-black bg-gray-100" : ""
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
                 }`
               }
             >
@@ -290,8 +294,7 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/media"
               className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-4 border-black bg-gray-100" : ""
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
                 }`
               }
             >
@@ -300,8 +303,7 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/financials"
               className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-4 border-black bg-gray-100" : ""
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
                 }`
               }
             >

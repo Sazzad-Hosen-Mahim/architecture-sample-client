@@ -11,6 +11,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { FileText } from "lucide-react";
+// import { useParams } from "react-router-dom";
+import { useAddServiceMutation } from "@/redux/api/adminDashboard/proposalApi";
+import Cookies from "js-cookie";
 
 interface Credit {
   id: string;
@@ -70,6 +73,16 @@ export default function ServicesTabForm({
     amount: 0,
     description: "",
   });
+
+  // const { id } = useParams();
+
+  const proposalData = Cookies.get("proposal_data") || "";
+  const parsedProposalData = JSON.parse(proposalData);
+  console.log(parsedProposalData, "proposalData")
+  const id = parsedProposalData?.data?.id;
+  console.log(id, "id in service scope @@@@@@@@@@@@@@")
+
+  const [addService] = useAddServiceMutation();
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -141,6 +154,52 @@ export default function ServicesTabForm({
                       placeholder="Weeks"
                     />
                     <span className="text-sm text-gray-500 ml-1">wks</span>
+                  </div>
+                  <div>
+                    <button
+                      className="bg-teal-700 cursor-pointer hover:bg-teal-800 text-white px-4 py-2 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={async () => {
+                        if (!id) {
+                          alert("Project ID is missing");
+                          return;
+                        }
+
+                        const cost = Number(objectiveCosts[objective.id]) || 0;
+                        const timelineWeeks = Number(objectiveTimelines[objective.id]) || 0;
+
+                        if (cost === 0 || timelineWeeks === 0) {
+                          alert("Please enter both cost and timeline before adding the service");
+                          return;
+                        }
+
+                        const payload = {
+                          name: objective.label,
+                          cost: cost,
+                          timelineWeeks: timelineWeeks,
+                          id: id
+                        };
+
+                        console.log("=== ADDING SERVICE ===");
+                        console.log("Objective:", objective);
+                        console.log("Payload:", payload);
+                        console.log("Name type:", typeof payload.name, "Value:", payload.name);
+                        console.log("Cost type:", typeof payload.cost, "Value:", payload.cost);
+                        console.log("TimelineWeeks type:", typeof payload.timelineWeeks, "Value:", payload.timelineWeeks);
+                        console.log("ID type:", typeof payload.id, "Value:", payload.id);
+
+                        try {
+                          const result = await addService(payload).unwrap();
+                          console.log("Service added successfully:", result);
+                          alert(`Service "${objective.label}" added successfully!`);
+                        } catch (error) {
+                          console.error("Failed to add service:", error);
+                          alert("Failed to add service. Please try again.");
+                        }
+                      }}
+                      disabled={!id || (objectiveCosts[objective.id] || 0) === 0 || (objectiveTimelines[objective.id] || 0) === 0}
+                    >
+                      Add
+                    </button>
                   </div>
                 </div>
               </div>

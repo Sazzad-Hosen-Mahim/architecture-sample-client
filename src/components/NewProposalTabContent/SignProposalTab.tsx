@@ -9,6 +9,8 @@
 import { Button } from "@/components/ui/button";
 import SignatureCanvas from "react-signature-canvas";
 import React from "react";
+import Cookies from "js-cookie";
+import { useSendProposalToClientMutation } from "@/redux/api/adminDashboard/proposalApi";
 
 interface ProposalSignProps {
   clientInfo: any;
@@ -53,11 +55,25 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   clientSignatureRef,
   architectSignatureRef,
   clearSignature,
-  handleSubmit,
+  // handleSubmit,
   handleBack,
   downloadPDF,
 }) => {
   // inside SignProposalTab
+
+
+  const proposalData = Cookies.get("proposal_data") || "";
+  const parsedProposalData = JSON.parse(proposalData);
+  console.log(parsedProposalData, "proposalData in sign tab")
+  const id = parsedProposalData?.data?.id;
+
+  console.log(id, "id in sing tab")
+
+  const [sendProposalToClient] = useSendProposalToClientMutation();
+
+  const handleSendProposalToClient = () => {
+    sendProposalToClient({ id });
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -269,9 +285,9 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                           {credit.type === "dollar"
                             ? `$${credit.amount.toLocaleString()}`
                             : `$${(
-                                (totalCost * credit.amount) /
-                                100
-                              ).toLocaleString()} (${credit.amount}%)`}
+                              (totalCost * credit.amount) /
+                              100
+                            ).toLocaleString()} (${credit.amount}%)`}
                         </td>
                       </tr>
                     ))}
@@ -577,7 +593,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             Download PDF
           </Button>
           <Button variant="outline">Print</Button>
-          <Button onClick={handleSubmit}>Send Proposal</Button>
+          <Button onClick={handleSendProposalToClient} className="bg-slate-700 cursor-pointer hover:bg-slate-800 text-white">Send Proposal</Button>
         </div>
       </div>
 

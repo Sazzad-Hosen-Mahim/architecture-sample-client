@@ -7,6 +7,7 @@ export const baseApi = createApi({
   reducerPath: "baseApi", // or just "api" if you prefer
   baseQuery: fetchBaseQuery({
     baseUrl: "http://localhost:3000/v1",
+    credentials: "include",
     // baseUrl: "https://eric-architecture.onrender.com/v1",
 
     prepareHeaders: (headers, { getState }) => {
@@ -20,5 +21,5 @@ export const baseApi = createApi({
     },
   }),
   endpoints: () => ({}),
-  tagTypes: ["User", "Project"],
+  tagTypes: ["User", "Project", "Amendment"],
 });
