@@ -9,122 +9,46 @@ import {
 import { Filter } from "lucide-react";
 import { useMemo, useState } from "react";
 
-interface Project {
-  id: number;
-  title: string;
-  category: string;
-  image: string[];
-  year: number;
-  description?: string;
-}
-
-const projects: Project[] = [
-  {
-    id: 1,
-    title: "Modern Residence",
-    category: "Residential",
-    description: "Historic Building ",
-    image: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
-    year: 2023,
-  },
-  {
-    id: 2,
-    title: "City Center Plaza",
-    description: "Historic Building Renovation",
-    category: "Urban Planning",
-    image: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
-    year: 2022,
-  },
-  {
-    id: 3,
-    title: "Eco-Friendly Office Complex",
-    description: "Historic Building Renovation",
-    category: "Commercial",
-    image: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
-    year: 2021,
-  },
-  {
-    id: 4,
-    title: "Historic Building Renovation",
-    description: "Historic Building Renovation",
-    category: "Restoration",
-    image: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
-    year: 2020,
-  },
-  {
-    id: 5,
-    title: "Sustainable Community Center",
-    description: "Historic Building Renovation",
-    category: "Public",
-    image: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
-    year: 2022,
-  },
-  {
-    id: 6,
-    title: "Luxury Hotel Design",
-    description: "Historic Building Renovation",
-    category: "Hospitality",
-    image: [
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-      "https://res.cloudinary.com/dy0b6hvog/image/upload/v1755015665/istockphoto-2179523209-2048x2048_a6ytef.jpg",
-    ],
-    year: 2023,
-  },
-];
+import { useNavigate } from "react-router-dom";
+import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 
 export default function Portfolio() {
+  const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<"title" | "year">("title");
   const [filterBy, setFilterBy] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [expanded] = useState<number | null>(null); // track expanded description per project
+
+  const [expanded] = useState<number | null>(null);
+
+  const { data: apiData, isLoading } = useGetAllMediaQuery({ type: "PORTFOLIO" });
+
+  const projects = useMemo(() => {
+    return apiData?.data?.map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      category: item.category || "Uncategorized",
+      description: item.excerpt || item.content?.substring(0, 100) + "...",
+      image: item.assets?.map((a: any) => a.cdnUrl) || [],
+      year: item.projectYear || 2024,
+    })) || [];
+  }, [apiData]);
 
   const categories = useMemo(() => {
-    return Array.from(new Set(projects.map((project) => project.category)));
-  }, []);
+    return Array.from(new Set(projects.map((project: any) => project.category)));
+  }, [projects]);
 
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
 
-  console.log(handleCategoryChange);
+
   const filteredAndSortedProjects = useMemo(() => {
     return projects
-      .filter((project) => {
-        // Filter by dropdown filterBy (if set)
+      .filter((project: any) => {
         if (
           filterBy &&
           project.category.toLowerCase() !== filterBy.toLowerCase()
         ) {
           return false;
         }
-        // Filter by selected categories checkbox (if any selected)
-        if (
-          selectedCategories.length > 0 &&
-          !selectedCategories.includes(project.category)
-        ) {
-          return false;
-        }
-        // Filter by search term in title or description (case insensitive)
+
         if (searchTerm) {
           const lowerSearch = searchTerm.toLowerCase();
           const inTitle = project.title.toLowerCase().includes(lowerSearch);
@@ -135,14 +59,20 @@ export default function Portfolio() {
         }
         return true;
       })
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         if (sortBy === "title") {
           return a.title.localeCompare(b.title);
         } else {
           return b.year - a.year;
         }
       });
-  }, [filterBy, searchTerm, selectedCategories, sortBy]);
+  }, [filterBy, searchTerm, sortBy, projects]);
+
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+    </div>
+  );
   return (
     <div>
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -188,7 +118,7 @@ export default function Portfolio() {
                   className="w-full  bg-transparent border-black  appearance-none outline-none text-black border cursor-pointer py-1.5 px-6 pr-10 rounded text-sm"
                 >
                   <option value="">Filter by Category</option>
-                  {categories.map((cat) => (
+                  {categories.map((cat: any) => (
                     <option key={cat} value={cat.toLowerCase()}>
                       {cat}
                     </option>
@@ -197,30 +127,13 @@ export default function Portfolio() {
                 <Filter className="absolute right-1 top-1/2 -translate-y-1/2 text-black w-4 h-4 pointer-events-none" />
               </div>
               {/* -------------------  */}
-              {/* Optional: Checkbox category filter */}
-              {/* <div className="mb-8 flex flex-wrap gap-4">
-                {categories.map((category) => (
-                  <label
-                    key={category}
-                    className="inline-flex items-center cursor-pointer space-x-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(category)}
-                      onChange={() => handleCategoryChange(category)}
-                      className="cursor-pointer"
-                    />
-                    <span>{category}</span>
-                  </label>
-                ))}
-              </div> */}
             </div>
           </div>
           {/* filter by category */}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-scroll ">
-          {filteredAndSortedProjects.map((project) => (
+          {filteredAndSortedProjects.map((project: any) => (
             <Card
               key={project.id}
               className="overflow-hidden py-0  border-gray-200"
@@ -234,7 +147,7 @@ export default function Portfolio() {
               /> */}
               <Carousel className="mb-4 relative">
                 <CarouselContent>
-                  {project.image.map((img, index) => (
+                  {project.image.map((img: string, index: number) => (
                     <CarouselItem key={index}>
                       <img
                         src={img || "/placeholder.svg"}
@@ -253,9 +166,8 @@ export default function Portfolio() {
               <CardContent className="p-4 ">
                 <h2 className="text-sm font-semibold mb-2">{project.title}</h2>
                 <p
-                  className={`text-gray-600 mb-1 ${
-                    expanded ? "" : "line-clamp-2"
-                  }`}
+                  className={`text-gray-600 mb-1 ${expanded ? "" : "line-clamp-2"
+                    }`}
                 >
                   <strong></strong> {project.description}
                   <button
@@ -272,11 +184,17 @@ export default function Portfolio() {
                 </p>
                 <div className=" ">
                   <div className="flex flex-col md:flex-row gap-4 justify-center w-full">
-                    <button className="flex-1 px-6 py-1.5 text-xs border rounded shadow-sm hover:shadow-md transition cursor-pointer">
+                    <button
+                      onClick={() => navigate(`/world-project/${project.id}`)}
+                      className="flex-1 px-6 py-1.5 text-xs border rounded shadow-sm hover:shadow-md transition cursor-pointer"
+                    >
                       View Project
                     </button>
 
-                    <button className="flex-1 px-6 py-1.5 text-xs border rounded shadow-sm hover:shadow-md transition cursor-pointer">
+                    <button
+                      onClick={() => navigate(`/world-project/${project.id}`)}
+                      className="flex-1 px-6 py-1.5 text-xs border rounded shadow-sm hover:shadow-md transition cursor-pointer"
+                    >
                       View Comments
                     </button>
                   </div>

@@ -23,8 +23,11 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
 
     const amendmentsRaw = amendmentsData?.data;
     const amendments = Array.isArray(amendmentsRaw) ? amendmentsRaw : [];
-    const allProposalsRaw = allProposalsData?.data;
-    const allProposals = Array.isArray(allProposalsRaw) ? allProposalsRaw : [];
+
+    // Backend returns { normalProposal, amendmentProposals, totalProposals }
+    const amendmentProposals = Array.isArray(allProposalsData?.data?.amendmentProposals)
+        ? allProposalsData.data.amendmentProposals
+        : [];
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "N/A";
@@ -91,7 +94,7 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
             PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Pending" },
             APPROVED: { bg: "bg-green-100", text: "text-green-800", label: "Approved" },
             REJECTED: { bg: "bg-red-100", text: "text-red-800", label: "Rejected" },
-            IN_PROGRESS: { bg: "bg-blue-100", text: "text-blue-800", label: "In Progress" },
+            UNDER_REVIEW: { bg: "bg-blue-100", text: "text-blue-800", label: "Under Review" },
             COMPLETED: { bg: "bg-teal-100", text: "text-teal-800", label: "Completed" },
         };
         const c = config[status] || { bg: "bg-gray-100", text: "text-gray-800", label: status };
@@ -328,6 +331,19 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                                                     <span className="font-medium text-gray-700">Review Notes:</span> {amendment.reviewNotes}
                                                 </div>
                                             )}
+                                            {/* Show linked amendment proposal info */}
+                                            {amendment.amendmentProposal && (
+                                                <div className="text-sm mb-2 bg-blue-50 p-2 rounded border border-blue-100">
+                                                    <span className="font-medium text-blue-800">Amendment Proposal:</span>{" "}
+                                                    <span className="text-blue-700">{amendment.amendmentProposal.proposalNumber}</span>
+                                                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${amendment.amendmentProposal.status === "ACCEPTED" ? "bg-green-100 text-green-800" :
+                                                            amendment.amendmentProposal.status === "SENT" ? "bg-blue-100 text-blue-800" :
+                                                                "bg-gray-100 text-gray-800"
+                                                        }`}>
+                                                        {amendment.amendmentProposal.status}
+                                                    </span>
+                                                </div>
+                                            )}
                                             <div className="text-xs text-gray-400">
                                                 Created: {formatDate(amendment.createdAt)}
                                             </div>
@@ -344,16 +360,17 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                             </h3>
                             {isLoadingAllProposals ? (
                                 <div className="text-center text-gray-500 py-4">Loading proposals...</div>
-                            ) : allProposals.length === 0 ? (
+                            ) : amendmentProposals.length === 0 ? (
                                 <div className="text-center text-gray-400 py-4">No amendment proposals yet.</div>
                             ) : (
                                 <div className="space-y-3">
-                                    {allProposals.map((p: any) => (
+                                    {amendmentProposals.map((p: any) => (
                                         <div key={p.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
                                             <div className="flex items-start justify-between">
                                                 <div>
-                                                    <h4 className="font-semibold text-gray-900">{p.name || p.title || p.projectName}</h4>
-                                                    <p className="text-sm text-gray-500 mt-1">{p.description || p.projectDescription || "No description"}</p>
+                                                    <h4 className="font-semibold text-gray-900">{p.title || p.projectName}</h4>
+                                                    <p className="text-sm text-gray-500 mt-1">{p.proposalNumber}</p>
+                                                    <p className="text-sm text-gray-500 mt-1">{p.projectDescription || "No description"}</p>
                                                 </div>
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${p.status === "ACCEPTED" ? "bg-green-100 text-green-800" :
                                                     p.status === "SENT" ? "bg-blue-100 text-blue-800" :
@@ -438,7 +455,7 @@ const RejectServiceModal = ({
     isLoading,
 }: RejectServiceModalProps) => {
     return (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black bg-opacity-40 flex items-center justify-center z-[60] p-4">
             <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
                 <div className="px-6 py-4 border-b">
                     <h3 className="text-lg font-semibold text-gray-800">Reject Service</h3>

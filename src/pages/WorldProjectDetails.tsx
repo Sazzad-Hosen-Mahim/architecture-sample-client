@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { worldProjects } from "@/data/worldProjects";
 import {
   ArrowLeft,
   Send,
@@ -11,59 +10,73 @@ import {
   Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  useGetMediaByIdOrSlugQuery,
+  useToggleLikeMutation,
+  useCreateCommentMutation,
+  useGetMediaCommentsQuery
+} from "@/redux/features/Media/mediaApi";
 
 function WorldProjectDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [votes, setVotes] = useState<{ [key: string]: number }>({});
-  const [comments, setComments] = useState<{
-    [key: string]: { text: string; date: string; author: string }[];
-  }>({});
   const [newComment, setNewComment] = useState("");
   const [selectedImage, setSelectedImage] = useState(0);
 
-  const project = worldProjects.find((p) => p.id === id);
+  const { data: response, isLoading } = useGetMediaByIdOrSlugQuery(id || "");
+  const { data: commentResponse } = useGetMediaCommentsQuery({ id: id || "" }, { skip: !id });
+  const [toggleLike] = useToggleLikeMutation();
+  const [addComment] = useCreateCommentMutation();
 
-  useEffect(() => {
-    const storedVotes = localStorage.getItem("projectVotes");
-    if (storedVotes) setVotes(JSON.parse(storedVotes));
+  const item = response?.data;
 
-    const storedComments = localStorage.getItem("projectCommentsDetailed");
-    if (storedComments) setComments(JSON.parse(storedComments));
-  }, []);
-
-  const handleVote = () => {
-    if (!project) return;
-    const key = `voted-${project.id}`;
-    if (localStorage.getItem(key)) return;
-
-    const newVotes = { ...votes, [project.id]: (votes[project.id] || 0) + 1 };
-    setVotes(newVotes);
-    localStorage.setItem("projectVotes", JSON.stringify(newVotes));
-    localStorage.setItem(key, "true");
-  };
-
-  const handleAddComment = () => {
-    if (!project || !newComment.trim()) return;
-
-    const comment = {
-      text: newComment.trim(),
-      date: new Date().toLocaleDateString(),
-      author: "Anonymous User",
+  const project = useMemo(() => {
+    if (!item) return null;
+    return {
+      id: item.id,
+      name: item.title,
+      PublishedDate: item.publishDate ? new Date(item.publishDate).toLocaleDateString() : new Date(item.createdAt).toLocaleDateString(),
+      Architect: item.architect || "TBA",
+      Photographer: item.photographer || "TBA",
+      description: item.content,
+      locationName: item.location || (item.city ? `${item.city}, ${item.country}` : "Global"),
+      country: item.country || "TBA",
+      continent: item.country?.toLowerCase().includes("usa") ? "North America" : "Global",
+      year: item.projectYear || 2024,
+      tags: item.projectTags || [],
+      images: item.assets?.map((a: any) => a.cdnUrl) || [],
+      climate: "TBA",
+      style: "Modern",
+      buildingType: item.category || "Building",
+      likeCount: item.likeCount || 0,
     };
+  }, [item]);
 
-    const existing = comments[project.id] || [];
-    const updated = [...existing, comment];
-    const newComments = { ...comments, [project.id]: updated };
-
-    setComments(newComments);
-    localStorage.setItem(
-      "projectCommentsDetailed",
-      JSON.stringify(newComments)
-    );
-    setNewComment("");
+  const handleVote = async () => {
+    if (!id) return;
+    try {
+      await toggleLike(id).unwrap();
+    } catch (err) {
+      console.error("Failed to vote:", err);
+    }
   };
+
+  const handleAddComment = async () => {
+    if (!id || !newComment.trim()) return;
+    try {
+      await addComment({ id, content: newComment.trim() }).unwrap();
+      setNewComment("");
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+    }
+  };
+
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+    </div>
+  );
 
   if (!project) {
     return (
@@ -78,7 +91,7 @@ function WorldProjectDetails() {
     );
   }
 
-  const projectComments = comments[project.id] || [];
+  const projectComments = commentResponse?.data || [];
 
   return (
     <div className="max-w-7xl mx-auto mt-6 px-4 pb-20">
@@ -117,15 +130,14 @@ function WorldProjectDetails() {
             {/* Thumbnail Gallery */}
             {project.images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {project.images.map((img, idx) => (
+                {project.images.map((img: string, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedImage === idx
-                        ? "border-black"
-                        : "border-transparent opacity-70 hover:opacity-100"
-                    }`}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx
+                      ? "border-black"
+                      : "border-transparent opacity-70 hover:opacity-100"
+                      }`}
                   >
                     <img
                       src={img}
@@ -145,7 +157,7 @@ function WorldProjectDetails() {
               className="flex items-center gap-2 px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
             >
               <Heart size={18} />
-              <span>Vote ({votes[project.id] || 0})</span>
+              <span>Vote ({project.likeCount})</span>
             </button>
           </div>
 
@@ -230,7 +242,7 @@ function WorldProjectDetails() {
           <div>
             <h2 className="text-lg font-semibold mb-3">Tags</h2>
             <div className="flex flex-wrap gap-2">
-              {project.tags?.map((tag) => (
+              {project.tags?.map((tag: string) => (
                 <span
                   key={tag}
                   className="bg-gray-100 px-4 py-2 rounded-full text-sm"
@@ -264,17 +276,17 @@ function WorldProjectDetails() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {projectComments.map((cmt, idx) => (
+                    {projectComments.map((cmt: any, idx: number) => (
                       <div key={idx} className="bg-gray-50 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium">
-                            {cmt.author}
+                            {cmt.user?.name || "Anonymous User"}
                           </span>
                           <span className="text-xs text-gray-400">
-                            {cmt.date}
+                            {new Date(cmt.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">{cmt.text}</p>
+                        <p className="text-sm text-gray-600">{cmt.content}</p>
                       </div>
                     ))}
                   </div>

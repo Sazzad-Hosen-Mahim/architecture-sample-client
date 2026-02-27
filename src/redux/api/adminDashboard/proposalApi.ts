@@ -40,6 +40,7 @@ export interface ProjectRequest {
     updatedAt: string;
     user: any | null;
     assets: any[];
+    proposals?: Proposal[];
 }
 
 export interface ProjectRequestsResponse {
@@ -217,18 +218,19 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
-        addService: builder.mutation<ProjectRequest, { name: string; cost: number; timelineWeeks: number; id: string }>({
-            query: ({ name, cost, timelineWeeks, id }) => ({
+        addService: builder.mutation<ProjectRequest, { name: string; cost: number; timelineWeeks?: number; description?: string; id: string }>({
+            query: ({ name, cost, timelineWeeks, description, id }) => ({
                 url: `/proposals/${id}/services`,
                 method: "POST",
-                body: { name, cost, timelineWeeks },
+                body: { name, cost, timelineWeeks, description },
             }),
             invalidatesTags: ["Project"],
         }),
-        sendProposalToClient: builder.mutation<ProjectRequest, { id: string }>({
-            query: ({ id }) => ({
+        sendProposalToClient: builder.mutation<ProjectRequest, { id: string; architectSignature?: string }>({
+            query: ({ id, architectSignature }) => ({
                 url: `/proposals/${id}/send`,
                 method: "POST",
+                body: { architectSignature },
             }),
             invalidatesTags: ["Project"],
         }),

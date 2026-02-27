@@ -3,7 +3,7 @@ import HeroSocialMedia from "./HeroSocialMedia";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { HashLoader } from "react-spinners";
-import { useGetAllMediaQuery } from "@/redux/features/media/mediaApi";
+import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 
 function Hero() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,10 +16,10 @@ function Hero() {
   // Get latest media
   const latestMedia: any = data?.data?.length
     ? data.data.reduce((latest: any, current: any) =>
-        new Date(current.createdAt) > new Date(latest.createdAt)
-          ? current
-          : latest
-      )
+      new Date(current.createdAt) > new Date(latest.createdAt)
+        ? current
+        : latest
+    )
     : null;
 
   console.log("i am the ", latestMedia);
@@ -93,9 +93,8 @@ function Hero() {
 
       {/* Sliding Menu Panel */}
       <div
-        className={`fixed bottom-0 left-0 h-[550px] right-0 bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-10 ${
-          isMenuOpen ? "translate-y-0" : "translate-y-full"
-        }`}
+        className={`fixed bottom-0 left-0 h-[550px] right-0 bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-10 ${isMenuOpen ? "translate-y-0" : "translate-y-full"
+          }`}
       >
         <div className="p-6 max-h-96 overflow-y-auto">
           <div className="flex justify-between items-center mb-4">

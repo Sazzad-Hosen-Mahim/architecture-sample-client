@@ -9,10 +9,9 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { worldProjects } from "@/data/worldProjects";
-import { ChevronLeft, ChevronRight, Search, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Send, SlidersHorizontal } from "lucide-react";
 import LeafletMapSearch from "@/test/LeafletMapSearch";
-import { SlidersHorizontal } from "lucide-react";
+import { useGetAllMediaQuery, useToggleLikeMutation, useCreateCommentMutation } from "@/redux/features/Media/mediaApi";
 
 // Simple distance calculation between two coordinates (Haversine formula)
 const getDistanceKm = (
@@ -25,8 +24,8 @@ const getDistanceKm = (
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((loc1.lat * Math.PI) / 180) *
-      Math.cos((loc2.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos((loc2.lat * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
@@ -37,74 +36,101 @@ function WorldProject() {
     lat: number;
     lng: number;
   } | null>(null);
-  const [votes, setVotes] = useState<{ [key: string]: number }>({});
   const [continentFilter, setContinentFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [showTagPopup, setShowTagPopup] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [comments, setComments] = useState<{ [key: string]: string[] }>({});
 
-  // Tab state
   const [activeTab, setActiveTab] = useState<"all" | "top-rated">("all");
 
+  const { data: apiData, isLoading, error: apiError } = useGetAllMediaQuery({ type: "WORLD_PROJECT" });
+  const [toggleLike] = useToggleLikeMutation();
+  const [addComment] = useCreateCommentMutation();
+
+  if (apiError) console.error("Error fetching world projects:", apiError);
+
+  const worldProjectsDynamic = apiData?.data?.map((item: any) => ({
+    id: item.id,
+    name: item.title,
+    PublishedDate: item.publishDate ? new Date(item.publishDate).toLocaleDateString() : new Date(item.createdAt).toLocaleDateString(),
+    Architect: item.architect || "TBA",
+    Photographer: item.photographer || "TBA",
+    description: item.excerpt || item.content?.substring(0, 100) + "...",
+    locationName: item.location || (item.city ? `${item.city}, ${item.country}` : "Global"),
+    continent: item.country?.includes("USA") ? "North America" : "Global", // Simplified mapping
+    year: item.projectYear || 2024,
+    tags: item.projectTags || [],
+    images: item.assets?.map((a: any) => a.cdnUrl) || [],
+    location: item.coordinates ? (typeof item.coordinates === 'string' ? JSON.parse(item.coordinates) : item.coordinates) : null,
+    likeCount: item.likeCount || 0,
+    commentCount: item.commentCount || 0,
+  })) || [];
+
+  // Import mock projects for the map pins (as requested: "previous pin")
+  const mockProjectsForMap = [
+    { id: "m1", name: "Tropical Villa", locationName: "Phuket", location: { lat: 7.8804, lng: 98.3923 } },
+    { id: "m2", name: "Desert House", locationName: "Dubai", location: { lat: 25.1972, lng: 55.2744 } },
+    { id: "m3", name: "Modern Office", locationName: "New York", location: { lat: 40.7128, lng: -74.0060 } },
+    { id: "m4", name: "Sky Skyscraper", locationName: "Tokyo", location: { lat: 35.6762, lng: 139.6503 } },
+  ];
+
+  const mapProjects = [...worldProjectsDynamic, ...mockProjectsForMap];
+
+  // Get unique values for filters from dynamic data
+  const availableTags = Array.from(new Set(worldProjectsDynamic.flatMap((p: any) => p.tags || []))) as string[];
+  const availableContinents = Array.from(new Set(worldProjectsDynamic.map((p: any) => p.continent))) as string[];
+  const availableYears = Array.from(new Set(worldProjectsDynamic.map((p: any) => p.year))) as number[];
+
   // Step 1: Search filter
-  let filtered = worldProjects.filter(
-    (p) =>
+  let filtered = worldProjectsDynamic.filter(
+    (p: any) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Step 2: Tag filter
   if (selectedTags.length > 0) {
-    filtered = filtered.filter((p) =>
-      p.tags?.some((tag) => selectedTags.includes(tag))
+    filtered = filtered.filter((p: any) =>
+      p.tags?.some((tag: string) => selectedTags.includes(tag))
     );
   }
 
   // Step 3: Continent filter
   if (continentFilter) {
-    filtered = filtered.filter((p) => p.continent === continentFilter);
+    filtered = filtered.filter((p: any) => p.continent === continentFilter);
   }
 
   // Step 4: Year filter
   if (yearFilter) {
-    filtered = filtered.filter((p) => String(p.year) === yearFilter);
+    filtered = filtered.filter((p: any) => String(p.year) === yearFilter);
   }
 
   // Step 5: Location filter (if map location is selected)
   let displayedProjects = selectedLocation
     ? filtered.filter(
-        (p) => p.location && getDistanceKm(p.location, selectedLocation) <= 200
-      )
+      (p: any) => p.location && getDistanceKm(p.location, selectedLocation) <= 200
+    )
     : filtered;
 
-  // Step 6: Apply tab filter - sort by votes for top-rated
+  // Step 6: Apply tab filter - sort by real likes for top-rated
   if (activeTab === "top-rated") {
-    displayedProjects = [...displayedProjects].sort((a, b) => {
-      const votesA = votes[a.id] || 0;
-      const votesB = votes[b.id] || 0;
-      return votesB - votesA; // Sort descending by votes
-    });
+    displayedProjects = [...displayedProjects].sort((a: any, b: any) => b.likeCount - a.likeCount);
   }
 
-  const handleVote = (projectId: string) => {
-    const key = `voted-${projectId}`;
-    if (localStorage.getItem(key)) return;
-
-    const newVotes = { ...votes, [projectId]: (votes[projectId] || 0) + 1 };
-    setVotes(newVotes);
-    localStorage.setItem("projectVotes", JSON.stringify(newVotes));
-    localStorage.setItem(key, "true");
+  const handleVote = async (projectId: string) => {
+    try {
+      await toggleLike(projectId).unwrap();
+    } catch (err) {
+      console.error("Failed to vote:", err);
+    }
   };
 
-  const handleAddComment = (projectId: string, comment: string) => {
-    const existing = comments[projectId] || [];
-    const updated = [...existing, comment];
-    setComments({ ...comments, [projectId]: updated });
-    localStorage.setItem(
-      "projectComments",
-      JSON.stringify({ ...comments, [projectId]: updated })
-    );
+  const onCommentSubmit = async (projectId: string, content: string) => {
+    try {
+      await addComment({ id: projectId, content }).unwrap();
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+    }
   };
 
   useEffect(() => {
@@ -122,16 +148,11 @@ function WorldProject() {
     };
   }, [showTagPopup]);
 
-  useEffect(() => {
-    const storedComments = localStorage.getItem("projectComments");
-    if (storedComments) {
-      setComments(JSON.parse(storedComments));
-    }
-    const storedVotes = localStorage.getItem("projectVotes");
-    if (storedVotes) {
-      setVotes(JSON.parse(storedVotes));
-    }
-  }, []);
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+    </div>
+  );
 
   return (
     <div>
@@ -172,9 +193,7 @@ function WorldProject() {
                 >
                   <h3 className="text-sm font-semibold mb-2">Filter by Tags</h3>
                   <div className="max-h-48 overflow-y-auto space-y-2">
-                    {Array.from(
-                      new Set(worldProjects.flatMap((p) => p.tags || []))
-                    ).map((tag) => (
+                    {availableTags.map((tag: string) => (
                       <label
                         key={tag}
                         className="flex items-center gap-2 text-sm"
@@ -185,7 +204,7 @@ function WorldProject() {
                           onChange={() => {
                             if (selectedTags.includes(tag)) {
                               setSelectedTags(
-                                selectedTags.filter((t) => t !== tag)
+                                selectedTags.filter((t: string) => t !== tag)
                               );
                             } else {
                               setSelectedTags([...selectedTags, tag]);
@@ -220,8 +239,8 @@ function WorldProject() {
               value={continentFilter}
             >
               <option value="">All Continents</option>
-              {Array.from(new Set(worldProjects.map((p) => p.continent))).map(
-                (continent) => (
+              {availableContinents.map(
+                (continent: string) => (
                   <option key={continent} value={continent}>
                     {continent}
                   </option>
@@ -235,8 +254,8 @@ function WorldProject() {
               value={yearFilter}
             >
               <option value="">All Years</option>
-              {Array.from(new Set(worldProjects.map((p) => p.year))).map(
-                (year) => (
+              {availableYears.map(
+                (year: number) => (
                   <option key={year} value={year}>
                     {year}
                   </option>
@@ -246,30 +265,27 @@ function WorldProject() {
           </div>
         </div>
 
-        {/* Map Search */}
         <div className="py-6 mb-10">
-          <LeafletMapSearch onLocationSelect={setSelectedLocation} />
+          <LeafletMapSearch onLocationSelect={setSelectedLocation} projects={mapProjects} />
         </div>
 
         {/* Tab Component */}
         <div className="flex border-b border-gray-200 mb-6">
           <button
             onClick={() => setActiveTab("all")}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "all"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "all"
+              ? "border-b-2 border-black text-black"
+              : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             All Projects
           </button>
           <button
             onClick={() => setActiveTab("top-rated")}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "top-rated"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "top-rated"
+              ? "border-b-2 border-black text-black"
+              : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             Top Rated Projects
           </button>
@@ -286,7 +302,7 @@ function WorldProject() {
               </h2>
             </div>
           ) : (
-            displayedProjects.map((project) => (
+            displayedProjects.map((project: any) => (
               <Card
                 key={project.id}
                 className="cursor-pointer bg-white p-0 border-gray-300 overflow-hidden hover:shadow-lg transition-shadow"
@@ -294,7 +310,7 @@ function WorldProject() {
               >
                 <Carousel className="w-full bg-black">
                   <CarouselContent>
-                    {project.images.map((image, index) => (
+                    {project.images.map((image: string, index: number) => (
                       <CarouselItem key={index}>
                         <div className="h-56 w-full overflow-hidden">
                           <img
@@ -330,7 +346,7 @@ function WorldProject() {
                     Location: {project.locationName || "Unknown"}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {project.tags?.map((tag) => (
+                    {project.tags?.map((tag: string) => (
                       <button
                         key={tag}
                         className="bg-gray-100 px-3 py-1 rounded-full text-sm"
@@ -348,25 +364,20 @@ function WorldProject() {
                         handleVote(project.id);
                       }}
                     >
-                      Vote ({votes[project.id] || 0})
+                      Vote ({project.likeCount})
                     </button>
                     <button
                       className="text-xs px-6 py-1.5 border rounded"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/world-project/${project.id}`);
+                      }}
                     >
-                      View Comments ({(comments[project.id] || []).length})
+                      View Comments ({project.commentCount})
                     </button>
                   </div>
 
                   <div className="mt-2 space-y-2">
-                    <h4 className="text-sm font-semibold">Comments</h4>
-                    <ul className="space-y-1 text-xs">
-                      {(comments[project.id] || []).map((cmt, idx) => (
-                        <li key={idx} className="bg-secondary p-2 rounded">
-                          {cmt}
-                        </li>
-                      ))}
-                    </ul>
                     <form
                       onClick={(e) => e.stopPropagation()}
                       onSubmit={(e) => {
@@ -377,7 +388,7 @@ function WorldProject() {
                         ) as HTMLInputElement;
                         const value = input.value.trim();
                         if (value) {
-                          handleAddComment(project.id, value);
+                          onCommentSubmit(project.id, value);
                           input.value = "";
                         }
                       }}

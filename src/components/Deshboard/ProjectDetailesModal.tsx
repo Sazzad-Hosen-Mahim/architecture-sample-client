@@ -13,6 +13,7 @@ import {
   Loader2,
   VideoIcon,
   SendIcon,
+  FileTextIcon,
 } from "lucide-react";
 import {
   Select,
@@ -24,6 +25,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner"; // or your toast library
 import { useNavigate } from "react-router-dom";
+import ContractReviewModal from "./ContractReviewModal";
 
 type ProjectModalProps = {
   isOpen: boolean;
@@ -39,6 +41,10 @@ export default function ProjectDetailsModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const [selectedStatus, setSelectedStatus] = useState<ProjectRequest["status"] | null>(null);
   const navigate = useNavigate()
+
+  // Contract modal state
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [contractProposalId, setContractProposalId] = useState<string>("");
 
   // Call the mutation hook at the component level
   const [updateStatus, { isLoading: isUpdating }] = useUpdateProjectRequestStatusMutation();
@@ -208,6 +214,8 @@ export default function ProjectDetailsModal({
   const fullAddress = `${project.streetAddress}, ${project.city}, ${project.state}, ${project.country}`;
   const projectAddress = `${project.projectStreetAddress}, ${project.projectCity}, ${project.projectState}, ${project.projectCountry}`;
 
+  const acceptedProposal = project.proposals?.find(p => p.status === "ACCEPTED");
+
   const hasChanges = selectedStatus !== project.status;
 
   return (
@@ -237,6 +245,18 @@ export default function ProjectDetailsModal({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {acceptedProposal && (
+                <button
+                  onClick={() => {
+                    setContractProposalId(acceptedProposal.id);
+                    setIsContractModalOpen(true);
+                  }}
+                  className="bg-amber-100 hover:bg-amber-200 text-amber-700 text-sm font-medium px-4 py-2 rounded-md flex items-center gap-2 border border-amber-200 transition-colors"
+                >
+                  <FileTextIcon size={16} />
+                  See Contract
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-md"
@@ -520,6 +540,23 @@ export default function ProjectDetailsModal({
                     Make New Proposal
                   </button>
                 )}
+
+                {/* See Contract Button - Only show if there's an accepted proposal */}
+                {project.proposals?.some(p => p.status === "ACCEPTED") && (
+                  <button
+                    onClick={() => {
+                      const acceptedProposal = project.proposals?.find(p => p.status === "ACCEPTED");
+                      if (acceptedProposal) {
+                        setContractProposalId(acceptedProposal.id);
+                        setIsContractModalOpen(true);
+                      }
+                    }}
+                    className="w-full mt-2 border-2 border-amber-600 cursor-pointer bg-amber-600 text-white hover:bg-amber-700 text-sm font-medium py-2 rounded-md flex items-center justify-center transition-colors"
+                  >
+                    <FileTextIcon className="w-4 h-4 mr-2" />
+                    See Contract
+                  </button>
+                )}
               </div>
             </div>
 
@@ -666,6 +703,12 @@ export default function ProjectDetailsModal({
         >
           ×
         </button>
+
+        <ContractReviewModal
+          isOpen={isContractModalOpen}
+          onClose={() => setIsContractModalOpen(false)}
+          proposalId={contractProposalId}
+        />
       </div>
     </div>
   );

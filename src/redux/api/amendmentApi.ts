@@ -4,12 +4,20 @@ import { baseApi } from "./baseApi";
 
 export type AmendmentUrgency = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
+// Must match backend Prisma enum: PENDING, UNDER_REVIEW, APPROVED, REJECTED, COMPLETED
 export type AmendmentStatus =
     | "PENDING"
+    | "UNDER_REVIEW"
     | "APPROVED"
     | "REJECTED"
-    | "IN_PROGRESS"
     | "COMPLETED";
+
+export interface AmendmentProposalRef {
+    id: string;
+    proposalNumber: string;
+    status: string;
+    totalAmount?: string | number;
+}
 
 export interface Amendment {
     id: string;
@@ -21,12 +29,14 @@ export interface Amendment {
     status: AmendmentStatus;
     reviewNotes?: string | null;
     reviewedAt?: string | null;
-    reviewedBy?: string | null;
+    reviewedBy?: any;
+    requestedBy?: any;
     completedAt?: string | null;
+    amendmentProposalId?: string | null;
+    amendmentProposal?: AmendmentProposalRef | null;
     createdAt: string;
     updatedAt: string;
     proposal?: any;
-    proposals?: any[];
 }
 
 export interface CreateAmendmentRequest {
@@ -65,10 +75,15 @@ export interface AmendmentsListResponse {
     data: Amendment[];
 }
 
-export interface AmendmentProposalsResponse {
+// The all-proposals endpoint returns { normalProposal, amendmentProposals, totalProposals }
+export interface AllProposalsForProposalResponse {
     success: boolean;
     message: string;
-    data: any[];
+    data: {
+        normalProposal: any;
+        amendmentProposals: any[];
+        totalProposals: number;
+    };
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -85,7 +100,7 @@ export const amendmentApi = baseApi.injectEndpoints({
             invalidatesTags: ["Amendment", "Project"],
         }),
 
-        // Get pending amendments for a proposal (admin/PM)
+        // Get amendments for a proposal (admin/PM or client)
         getAmendments: builder.query<AmendmentsListResponse, { proposalId: string; status?: string }>({
             query: ({ proposalId, status }) => ({
                 url: `/proposals/${proposalId}/amendments`,
@@ -115,8 +130,8 @@ export const amendmentApi = baseApi.injectEndpoints({
             invalidatesTags: ["Amendment", "Project"],
         }),
 
-        // Both user and PM can get all proposals for a given proposal (includes amendment proposals)
-        getAllProposalsForProposal: builder.query<AmendmentProposalsResponse, string>({
+        // Get all proposals for a specific proposal (normal + amendments)
+        getAllProposalsForProposal: builder.query<AllProposalsForProposalResponse, string>({
             query: (proposalId) => ({
                 url: `/proposals/${proposalId}/all-proposals`,
                 method: "GET",
@@ -124,7 +139,7 @@ export const amendmentApi = baseApi.injectEndpoints({
             providesTags: ["Amendment", "Project"],
         }),
 
-        // PM completes an amendment
+        // PM completes an amendment (only after amendment proposal is ACCEPTED by client)
         completeAmendment: builder.mutation<AmendmentResponse, string>({
             query: (amendmentId) => ({
                 url: `/proposals/amendments/${amendmentId}/complete`,

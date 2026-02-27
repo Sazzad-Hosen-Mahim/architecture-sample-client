@@ -543,6 +543,7 @@ export default function NewProposalPage({
         {/* Client Information Step */}
         {activeStep === "client" && (
           <ClientTabFrom
+            id={undefined}
             clientInfo={clientInfo}
             handleClientInfoChange={handleClientInfoChange}
             handleNext={handleNext}
@@ -552,6 +553,7 @@ export default function NewProposalPage({
         {/* Project Information Step */}
         {activeStep === "project" && (
           <ProjectTabForm
+            id={undefined}
             projectInfo={projectInfo}
             handleProjectInfoChange={handleProjectInfoChange}
             handleNext={handleNext}

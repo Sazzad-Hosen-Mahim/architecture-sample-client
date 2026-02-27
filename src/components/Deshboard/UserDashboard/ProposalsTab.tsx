@@ -6,16 +6,22 @@ import {
     AmendmentUrgency,
 } from "@/redux/api/amendmentApi";
 import ViewProposalDetailsModal from '@/components/Modal/ViewProposalDetailsModal';
+import ContractReviewModal from '@/components/Deshboard/ContractReviewModal';
+import { toast } from 'sonner';
 
 interface ProposalsTabProps {
     searchQuery?: string;
 }
 
 const ProposalsTab = ({ searchQuery = "" }: ProposalsTabProps) => {
-    const { data: proposalsData, isLoading, isError } = useGetMyProposalsQuery();
+    const { data: proposalsData, isLoading, isError, refetch } = useGetMyProposalsQuery();
     const [changeProposalStatus, { isLoading: isUpdating }] = useChangeProposalStatusMutation();
     const [selectedProposal, setSelectedProposal] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Contract modal state
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [contractProposalId, setContractProposalId] = useState<string>("");
 
     // Amendment modal state
     const [isAmendmentModalOpen, setIsAmendmentModalOpen] = useState(false);
@@ -42,16 +48,39 @@ const ProposalsTab = ({ searchQuery = "" }: ProposalsTabProps) => {
         )
         : proposals;
 
-    const handleAccept = async (proposalId: string) => {
+    const handleAccept = async (proposal: any) => {
+        // If contract is not signed and proposal has contract sections, open modal first
+        if (!proposal.clientContractSignature && proposal.contractSections) {
+            setContractProposalId(proposal.id);
+            setIsContractModalOpen(true);
+            return;
+        }
+
         try {
-            await changeProposalStatus({ id: proposalId, status: "ACCEPTED" }).unwrap();
-        } catch (error) {
+            await changeProposalStatus({ id: proposal.id, status: "ACCEPTED" }).unwrap();
+            toast.success("Proposal accepted successfully!");
+        } catch (error: any) {
             console.error("Failed to accept proposal:", error);
+            toast.error(error?.data?.message || "Failed to accept proposal");
         }
     };
 
+    const handleOpenContract = (proposalId: string) => {
+        setContractProposalId(proposalId);
+        setIsContractModalOpen(true);
+    };
+
+    const handleContractSigned = () => {
+        refetch();
+    };
+
     const handleReject = async (proposalId: string) => {
-        console.log("Reject handler - API not ready:", proposalId);
+        try {
+            await changeProposalStatus({ id: proposalId, status: "REJECTED" }).unwrap();
+            toast.success("Proposal rejected.");
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to reject proposal");
+        }
     };
 
     const handleViewDetails = (proposal: any) => {
@@ -180,10 +209,16 @@ const ProposalsTab = ({ searchQuery = "" }: ProposalsTabProps) => {
                                         >
                                             Proposals
                                         </button>
+                                        <button
+                                            onClick={() => handleOpenContract(proposal.id)}
+                                            className="text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+                                        >
+                                            Contract
+                                        </button>
                                         {proposal.status === "SENT" || proposal.status === "VIEWED" ? (
                                             <>
                                                 <button
-                                                    onClick={() => handleAccept(proposal.id)}
+                                                    onClick={() => handleAccept(proposal)}
                                                     disabled={isUpdating}
                                                     className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                                 >
@@ -238,6 +273,14 @@ const ProposalsTab = ({ searchQuery = "" }: ProposalsTabProps) => {
                     }}
                 />
             )}
+
+            {/* Contract Review Modal */}
+            <ContractReviewModal
+                isOpen={isContractModalOpen}
+                onClose={() => setIsContractModalOpen(false)}
+                proposalId={contractProposalId}
+                onContractSigned={handleContractSigned}
+            />
         </>
     );
 };
@@ -362,8 +405,12 @@ interface AmendmentProposalsModalProps {
 
 const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModalProps) => {
     const { data, isLoading } = useGetAllProposalsForProposalQuery(proposalId);
-    const allProposalsRaw = data?.data;
-    const allProposals = Array.isArray(allProposalsRaw) ? allProposalsRaw : [];
+    const [changeProposalStatus, { isLoading: isChangingStatus }] = useChangeProposalStatusMutation();
+
+    // Backend returns { normalProposal, amendmentProposals, totalProposals }
+    const amendmentProposals = Array.isArray(data?.data?.amendmentProposals)
+        ? data.data.amendmentProposals
+        : [];
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "N/A";
@@ -374,6 +421,26 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModa
         });
     };
 
+    const handleAcceptProposal = async (id: string) => {
+        try {
+            await changeProposalStatus({ id, status: "ACCEPTED" }).unwrap();
+            alert("Proposal accepted!");
+        } catch (error) {
+            console.error("Failed to accept proposal:", error);
+            alert("Failed to accept proposal.");
+        }
+    };
+
+    const handleRejectProposal = async (id: string) => {
+        try {
+            await changeProposalStatus({ id, status: "REJECTED" }).unwrap();
+            alert("Proposal rejected.");
+        } catch (error) {
+            console.error("Failed to reject proposal:", error);
+            alert("Failed to reject proposal.");
+        }
+    };
+
     return (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto">
@@ -381,7 +448,7 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModa
                 <div className="sticky top-0 bg-white px-6 py-4 border-b flex items-center justify-between">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-800">Amendment Proposals</h3>
-                        <p className="text-sm text-gray-500 mt-1">All proposals related to this project and its amendments.</p>
+                        <p className="text-sm text-gray-500 mt-1">Amendment proposals related to this project.</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -395,21 +462,23 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModa
                 <div className="p-6">
                     {isLoading ? (
                         <div className="text-center text-gray-500 py-8">Loading proposals...</div>
-                    ) : allProposals.length === 0 ? (
+                    ) : amendmentProposals.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">No amendment proposals found.</div>
                     ) : (
                         <div className="space-y-4">
-                            {allProposals.map((p: any) => (
+                            {amendmentProposals.map((p: any) => (
                                 <div key={p.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <h4 className="font-semibold text-gray-900">{p.name || p.title || p.projectName}</h4>
-                                            <p className="text-sm text-gray-500 mt-1">{p.description || p.projectDescription || "No description"}</p>
+                                            <h4 className="font-semibold text-gray-900">{p.title || p.projectName}</h4>
+                                            <p className="text-xs text-gray-400 mt-0.5">{p.proposalNumber}</p>
+                                            <p className="text-sm text-gray-500 mt-1">{p.projectDescription || "No description"}</p>
                                         </div>
                                         <span className={`px-2 py-1 rounded text-xs font-medium ${p.status === "ACCEPTED" ? "bg-green-100 text-green-800" :
                                             p.status === "SENT" ? "bg-blue-100 text-blue-800" :
                                                 p.status === "DRAFT" ? "bg-gray-100 text-gray-800" :
-                                                    "bg-yellow-100 text-yellow-800"
+                                                    p.status === "REJECTED" ? "bg-red-100 text-red-800" :
+                                                        "bg-yellow-100 text-yellow-800"
                                             }`}>
                                             {p.status}
                                         </span>
@@ -428,6 +497,43 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModa
                                             <span className="font-medium">{formatDate(p.createdAt)}</span>
                                         </div>
                                     </div>
+                                    <div className="col-span-3 mt-3 pt-3 border-t border-gray-100">
+                                        <h5 className="text-xs font-semibold text-gray-700 uppercase mb-2">Included Services</h5>
+                                        {p.services && p.services.length > 0 ? (
+                                            <div className="space-y-1.5">
+                                                {p.services.map((s: any) => (
+                                                    <div key={s.id} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                                                        <div>
+                                                            <span className="font-medium text-gray-800">{s.name}</span>
+                                                            {s.description && <p className="text-gray-500 mt-0.5">{s.description}</p>}
+                                                        </div>
+                                                        <span className="text-gray-600 font-semibold">${s.amount}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic">No services listed.</p>
+                                        )}
+                                    </div>
+                                    {/* Accept/Reject buttons for SENT or VIEWED amendment proposals */}
+                                    {(p.status === "SENT" || p.status === "VIEWED") && (
+                                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                                            <button
+                                                onClick={() => handleAcceptProposal(p.id)}
+                                                disabled={isChangingStatus}
+                                                className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                            >
+                                                Accept
+                                            </button>
+                                            <button
+                                                onClick={() => handleRejectProposal(p.id)}
+                                                disabled={isChangingStatus}
+                                                className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

@@ -9,7 +9,6 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { worldProjects } from "@/data/worldProjects";
 
 // Fix Leaflet default icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -21,11 +20,13 @@ L.Icon.Default.mergeOptions({
 });
 
 interface LeafletMapSearchProps {
-  onLocationSelect?: (coords: { lat: number; lng: number }) => void;
+  onLocationSelect?: (coords: { lat: number; lng: number } | null) => void;
+  projects?: any[];
 }
 
 export default function LeafletMapSearch({
   onLocationSelect,
+  projects = [],
 }: LeafletMapSearchProps) {
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     null
@@ -33,20 +34,25 @@ export default function LeafletMapSearch({
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map | null>(null);
 
-  // Filter projects by city or country
-  const filteredProjects = worldProjects.filter(
+  // Filter projects by city or country locally for marker display
+  const filteredProjects = projects.filter(
     (p) =>
-      p.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.country.toLowerCase().includes(searchQuery.toLowerCase())
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.country || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Fly map to bounds when filteredProjects changes
   useEffect(() => {
     if (mapRef.current && filteredProjects.length > 0) {
-      const group = L.featureGroup(
-        filteredProjects.map((p) => L.marker([p.location.lat, p.location.lng]))
-      );
-      mapRef.current.fitBounds(group.getBounds().pad(0.5));
+      const markers = filteredProjects
+        .filter(p => p.location && p.location.lat && p.location.lng)
+        .map((p) => L.marker([p.location.lat, p.location.lng]));
+
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        mapRef.current.fitBounds(group.getBounds().pad(0.5));
+      }
     }
   }, [filteredProjects]);
 
@@ -55,17 +61,27 @@ export default function LeafletMapSearch({
     useMapEvents({
       click(e) {
         const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
-        setSelected(coords);
-        onLocationSelect?.(coords);
+        if (selected && selected.lat === coords.lat && selected.lng === coords.lng) {
+          setSelected(null);
+          onLocationSelect?.(null);
+        } else {
+          setSelected(coords);
+          onLocationSelect?.(coords);
+        }
       },
     });
 
     return selected ? (
       <Marker position={selected}>
         <Popup>
-          📍 Selected Location
+          📍 Filtering projects near this area
           <br />
-          Lat: {selected.lat.toFixed(4)}, Lng: {selected.lng.toFixed(4)}
+          <button
+            onClick={() => { setSelected(null); onLocationSelect?.(null); }}
+            className="text-blue-500 underline mt-1"
+          >
+            Clear map filter
+          </button>
         </Popup>
       </Marker>
     ) : null;
@@ -80,7 +96,7 @@ export default function LeafletMapSearch({
       <div className="absolute top-4 left-16 z-[10] w-72 pointer-events-auto">
         <input
           type="text"
-          placeholder="Search by city or country..."
+          placeholder="Filter markers by city/country..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full px-4 py-1 border rounded-lg outline-none  shadow bg-white"
@@ -109,16 +125,18 @@ export default function LeafletMapSearch({
 
         {/* Project markers */}
         {filteredProjects.map((project) => (
-          <Marker
-            key={project.id}
-            position={[project.location.lat, project.location.lng]}
-          >
-            <Popup>
-              <strong>{project.name}</strong>
-              <br />
-              {project.locationName}, {project.country}
-            </Popup>
-          </Marker>
+          project.location && project.location.lat ? (
+            <Marker
+              key={project.id}
+              position={[project.location.lat, project.location.lng]}
+            >
+              <Popup>
+                <strong>{project.name}</strong>
+                <br />
+                {project.locationName}
+              </Popup>
+            </Marker>
+          ) : null
         ))}
       </MapContainer>
     </div>

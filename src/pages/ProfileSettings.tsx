@@ -7,12 +7,14 @@ import {
   Key,
   LogOut,
   Shield,
+  ClipboardPenLine,
   User,
   UserCog,
 } from "lucide-react";
 import { OwnerControlsTab } from "@/components/ProfileSetting/OwnerControlsTab";
 import { NotificationSettingsTab } from "@/components/ProfileSetting/NotificationSettingsTab";
 import { SecuritySettingsCard } from "@/components/ProfileSetting/SecuritySettingsCard";
+import MasterContractTab from "@/components/ProfileSetting/MasterContractTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,11 +177,10 @@ export function ProfileSettings() {
   }) => (
     <button
       onClick={() => setActiveTab(value)}
-      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-        isActive
-          ? "bg-white border-b-2 border-gray-800"
-          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-      }`}
+      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive
+        ? "bg-white border-b-2 border-gray-800"
+        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        }`}
     >
       <Icon className="h-4 w-4 mr-2" />
       {children}
@@ -287,6 +288,13 @@ export function ProfileSettings() {
                 isActive={activeTab === "notifications"}
               >
                 Notifications
+              </TabButton>
+              <TabButton
+                value="masterContract"
+                icon={ClipboardPenLine}
+                isActive={activeTab === "masterContract"}
+              >
+                Master Contract
               </TabButton>
               {isOwner && (
                 <TabButton
@@ -400,6 +408,9 @@ export function ProfileSettings() {
 
           {/* Notifications Tab */}
           {activeTab === "notifications" && <NotificationSettingsTab />}
+
+          {/* Master Contract Tab */}
+          {activeTab === "masterContract" && <MasterContractTab />}
 
           {/* Owner Controls Tab - Only visible to owners */}
           {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}

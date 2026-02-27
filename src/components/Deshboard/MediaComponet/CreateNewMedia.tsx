@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Cloud, X } from "lucide-react";
 import { toast } from "sonner";
-import { useCreateMediaMutation } from "@/redux/features/media/mediaApi";
+import { useCreateMediaMutation, useUploadMediaAssetsMutation } from "@/redux/features/Media/mediaApi";
 
 type MediaType = "newsfeed" | "world-project" | "portfolio";
 
@@ -21,17 +21,21 @@ type TagType = "ECO_FRIENDLY" | "SOLAR_POWERED" | "LUXURY";
 const AVAILABLE_TAGS: TagType[] = ["ECO_FRIENDLY", "SOLAR_POWERED", "LUXURY"];
 
 const PORTFOLIO_CATEGORIES = [
-  "Residential",
-  "Commercial",
-  "Industrial",
-  "Cultural",
-  "Educational",
+  { label: "Residential", value: "RESIDENTIAL" },
+  { label: "Commercial", value: "COMMERCIAL" },
+  { label: "Institutional", value: "INSTITUTIONAL" },
+  { label: "Landscape", value: "LANDSCAPE" },
+  { label: "Interior", value: "INTERIOR" },
+  { label: "Urban Planning", value: "URBAN_PLANNING" },
 ];
 
 export default function CreateNewMedia() {
   const [activeTab, setActiveTab] = useState<MediaType>("newsfeed");
-  const [createMedia, { isLoading }] = useCreateMediaMutation();
+  const [createMedia, { isLoading: isMetadataLoading }] = useCreateMediaMutation();
+  const [uploadAssets, { isLoading: isUploadLoading }] = useUploadMediaAssetsMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const isLoading = isMetadataLoading || isUploadLoading;
 
   // Common fields
   const [title, setTitle] = useState("");
@@ -51,7 +55,7 @@ export default function CreateNewMedia() {
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
 
   // Portfolio specific
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState<string>("");
   const [year, setYear] = useState("");
 
   const handleDrag = (e: React.DragEvent) => {
@@ -145,46 +149,67 @@ export default function CreateNewMedia() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("type", activeTab);
-    formData.append("description", description);
+    // Map types to backend enums
+    const contentTypeMap: Record<MediaType, string> = {
+      "newsfeed": "NEWS",
+      "world-project": "WORLD_PROJECT",
+      "portfolio": "PORTFOLIO"
+    };
+
+    // Step 1: Prepare metadata for initial creation
+    const metadata: any = {
+      contentType: contentTypeMap[activeTab],
+      title: title,
+      content: description, // Backend field is "content"
+    };
 
     // Add type-specific fields
     switch (activeTab) {
       case "newsfeed":
-        formData.append("author", author);
-        formData.append("location", location);
-        formData.append("publishedDate", publishedDate);
+        metadata.author = author;
+        metadata.location = location;
+        metadata.publishDate = new Date(publishedDate).toISOString();
         break;
       case "world-project":
-        formData.append("architect", architect);
-        formData.append("photographer", photographer);
-        formData.append("location", wpLocation);
-        formData.append("tags", JSON.stringify(selectedTags));
+        metadata.architect = architect;
+        metadata.photographer = photographer;
+        metadata.location = wpLocation;
+        metadata.projectTags = selectedTags; // Backend field is "projectTags"
         break;
       case "portfolio":
-        formData.append("category", category);
-        formData.append("year", year);
+        metadata.category = category; // Enum value (e.g., RESIDENTIAL)
+        metadata.projectYear = parseInt(year); // Backend field is "projectYear"
         break;
     }
 
-    selectedFiles.forEach((file) => {
-      formData.append("file", file);
-    });
-
     try {
-      const response = await createMedia(formData).unwrap();
+      // 1. Create Media Metadata
+      console.log("Creating media metadata:", metadata);
+      const metadataResponse = await createMedia(metadata).unwrap();
 
-      if (response.success) {
-        toast.success(response.message || "Media uploaded successfully!");
+      const mediaId = metadataResponse.data?.id;
+      if (!mediaId) {
+        throw new Error("Metadata created but no media ID returned.");
+      }
+
+      // 2. Upload Assets
+      console.log(`Step 2: Uploading ${selectedFiles.length} files for media ID: ${mediaId}`);
+      const assetFormData = new FormData();
+      selectedFiles.forEach((file) => {
+        assetFormData.append("files", file); // Backend expects "files" (plural) in FilesInterceptor
+      });
+
+      const assetResponse = await uploadAssets({ id: mediaId, formData: assetFormData }).unwrap();
+
+      if (assetResponse.status === "success") {
+        toast.success("Media uploaded successfully!");
         resetForm();
       } else {
-        toast.error(response.message || "Upload failed.");
+        toast.error(assetResponse.message || "File upload failed.");
       }
     } catch (error: any) {
-      console.error("Upload failed:", error);
-      toast.error(error?.data?.message || "An error occurred during upload.");
+      console.error("Multi-step upload failed:", error);
+      toast.error(error?.data?.message || error.message || "An error occurred during upload.");
     }
   };
 
@@ -279,11 +304,10 @@ export default function CreateNewMedia() {
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      selectedTags.includes(tag)
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedTags.includes(tag)
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
                   >
                     {tag.replace("_", " ")}
                   </button>
@@ -307,8 +331,8 @@ export default function CreateNewMedia() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-0">
                     {PORTFOLIO_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -353,11 +377,10 @@ export default function CreateNewMedia() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as MediaType)}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-800"
-              }`}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab.id
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-800"
+                }`}
             >
               {tab.label}
             </button>
@@ -409,9 +432,8 @@ export default function CreateNewMedia() {
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
-              isDragActive ? "border-blue-500 bg-blue-100" : "border-gray-300"
-            }`}
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${isDragActive ? "border-blue-500 bg-blue-100" : "border-gray-300"
+              }`}
           >
             <Cloud className="mx-auto h-8 w-8 text-gray-400 mb-2" />
             <p className="text-sm text-gray-600">

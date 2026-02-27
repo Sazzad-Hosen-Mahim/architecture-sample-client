@@ -7,77 +7,42 @@ import preview1 from "@/assets/newsfeed/preview-1.jpg";
 import preview2 from "@/assets/newsfeed/preview-2.jpg";
 import preview3 from "@/assets/newsfeed/preview-3.jpg";
 import article1 from "@/assets/newsfeed/newsfeed-1.jpg";
-import article2 from "@/assets/newsfeed/newsfeed-2.jpg";
-import article3 from "@/assets/newsfeed/newsfeed-3.jpg";
-import article4 from "@/assets/newsfeed/newsfeed-4.jpg";
-import article5 from "@/assets/newsfeed/newsfeed-5.jpg";
 import { Link } from "react-router-dom";
+import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 
 function NewsFeed() {
   const [searchTerm, setSearchTerm] = useState("");
-  const newsItems = [
-    {
-      id: 1,
-      title: "Architecture Simple Wins Design Award",
-      date: "June 15, 2023",
-      summary:
-        "Our eco-friendly office complex project receives recognition for innovative sustainable design.Our eco-friendly office complex project receives recognition for innovative sustainable design.Our eco-friendly office complex project receives recognition for innovative sustainable design.",
-      image: article1,
-      source: "Architectural Digest",
-    },
-    {
-      id: 2,
-      title: "New Urban Planning Initiative Launched",
-      date: "June 10, 2023",
-      summary:
-        "We're partnering with the city to develop a new community-focused urban renewal project.",
-      image: article2,
-      source: "CityLab",
-    },
-    {
-      id: 3,
-      title: "Spotlight on Our Latest Residential Project",
-      date: "June 5, 2023",
-      summary:
-        "Explore our modern approach to home design in our recently completed residential project.",
-      image: article3,
-      source: "Dwell Magazine",
-    },
-    {
-      id: 4,
-      title: "Architecture Simple Expands Team",
-      date: "May 28, 2023",
-      summary:
-        "We're excited to welcome new talent to our growing team of architects and designers.",
-      image: article4,
-      source: "Architect Magazine",
-    },
-    {
-      id: 5,
-      title: "Upcoming Webinar: Future of Sustainable Architecture",
-      date: "May 20, 2023",
-      summary:
-        "Join us for an insightful discussion on the future trends in sustainable architectural design.",
-      image: article5,
-      source: "ArchDaily",
-    },
-  ];
+  const { data: newsData, isLoading, error } = useGetAllMediaQuery({ type: "NEWS" });
+  const { data: featuredData } = useGetAllMediaQuery({ featured: "true", limit: 3 });
 
-  // const { data, error, isLoading } = useGetAllMediaQuery(undefined);
-  // console.log(data);
-
-  // if (isLoading) return <p>Loading...</p>;
-  // if (error) return <p>Error loading media</p>;
+  const newsItems = newsData?.data?.map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    date: item.publishDate ? new Date(item.publishDate).toLocaleDateString() : new Date(item.createdAt).toLocaleDateString(),
+    summary: item.excerpt || item.content?.substring(0, 150) + "...",
+    image: item.coverImage || (item.assets && item.assets[0]?.cdnUrl) || article1,
+    source: item.author || "Architecture Simple",
+  })) || [];
 
   // Filter newsItems based on search term
   const filteredNews = newsItems.filter(
-    (news) =>
+    (news: any) =>
       news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       news.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
       news.source.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const featuredProject = {
+  const featured = featuredData?.data?.[0];
+  const featuredProject = featured ? {
+    id: featured.id,
+    name: featured.title,
+    year: featured.projectYear || 2024,
+    architect: featured.architect || "Architecture Simple",
+    photographer: featured.photographer || "TBA",
+    location: featured.location || (featured.city ? `${featured.city}, ${featured.country}` : "Global"),
+    summary: featured.excerpt || featured.content?.substring(0, 300) + "...",
+    images: featured.assets?.map((a: any) => a.cdnUrl) || [preview1, preview2, preview3],
+  } : {
     id: 0,
     name: "Floating Pavilion",
     year: 2023,
@@ -85,9 +50,10 @@ function NewsFeed() {
     photographer: "Iwan Baan",
     location: "Rotterdam, Netherlands",
     summary:
-      "A stunning waterfront structure that seamlessly blends with its environment, showcasing innovative use of sustainable materials and cutting-edge design techniques. This project of the month exemplifies the future of adaptive architecture, responding to both environmental and social needs of urban spaces.",
+      "A stunning waterfront structure that seamlessly blends with its environment...",
     images: [preview1, preview2, preview3],
   };
+
   const [sliderRef, instanceRef] = useKeenSlider({
     loop: true,
     slides: {
@@ -95,6 +61,13 @@ function NewsFeed() {
       spacing: 15,
     },
   });
+
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-96">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+    </div>
+  );
+  if (error) return <p className="text-center py-20 text-red-500">Error loading news feed. Please try again later.</p>;
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -121,7 +94,7 @@ function NewsFeed() {
                     ref={sliderRef}
                     className="keen-slider rounded-lg overflow-hidden p-1"
                   >
-                    {featuredProject.images.map((image, index) => (
+                    {featuredProject.images.map((image: string, index: number) => (
                       <div key={index} className="keen-slider__slide ">
                         <img
                           src={image || "/placeholder.svg"}
