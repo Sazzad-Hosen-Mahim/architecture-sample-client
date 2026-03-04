@@ -42,7 +42,7 @@ Font.register({
     ]
 });
 
-const pdfStyles = StyleSheet.create({
+export const pdfStyles = StyleSheet.create({
     page: { padding: 50, fontFamily: 'Helvetica', fontSize: 10, color: '#333' },
     header: { marginBottom: 20 },
     title: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', textTransform: 'uppercase' },
@@ -70,7 +70,7 @@ const pdfStyles = StyleSheet.create({
     sigName: { fontWeight: 'bold', borderBottom: '1pt solid #eee', marginBottom: 4 }
 });
 
-const ContractPDF = ({ contract, sections }: { contract: any; sections: ContractSection[] }) => (
+export const ContractPDF = ({ contract, sections }: { contract: any; sections: ContractSection[] }) => (
     <Document>
         <Page size="A4" style={pdfStyles.page}>
             <View style={pdfStyles.header}>
@@ -113,7 +113,7 @@ const ContractPDF = ({ contract, sections }: { contract: any; sections: Contract
 
                 return (
                     <View key={section.articleKey} style={{ marginBottom: 10 }}>
-                        <Text style={pdfStyles.articleTitle}>{section.title}</Text>
+                        <Text style={pdfStyles.articleTitle} wrap={false}>{section.title}</Text>
 
                         {/* Render content - handle bullet points (•) as structured items */}
                         {contentLines.map((line: string, lineIdx: number) => {
@@ -122,27 +122,76 @@ const ContractPDF = ({ contract, sections }: { contract: any; sections: Contract
                             if (isBullet) {
                                 const bulletText = trimmed.replace(/^[•\-]\s*/, '');
                                 return (
-                                    <View key={lineIdx} style={{ flexDirection: 'row', marginBottom: 4, paddingLeft: 15 }}>
+                                    <View key={lineIdx} wrap={false} style={{ flexDirection: 'row', marginBottom: 4, paddingLeft: 15 }}>
                                         <Text style={{ width: 12, fontSize: 10 }}>•</Text>
                                         <Text style={{ flex: 1, lineHeight: 1.5, fontSize: 10 }}>{bulletText}</Text>
                                     </View>
                                 );
                             }
                             return (
-                                <Text key={lineIdx} style={{ ...pdfStyles.content, marginBottom: 6 }}>{trimmed}</Text>
+                                <View key={lineIdx} wrap={false} style={{ marginBottom: 6 }}>
+                                    <Text style={pdfStyles.content}>{trimmed}</Text>
+                                </View>
                             );
                         })}
 
                         {/* Scope of Services - service descriptions */}
                         {isScope && services.length > 0 && (
                             <View style={{ marginTop: 10, marginBottom: 15 }}>
-                                <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 8, textTransform: 'uppercase', color: '#555' }}>
+                                <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 8, textTransform: 'uppercase', color: '#555' }} wrap={false}>
                                     Scope of Professional Services
                                 </Text>
                                 {services.map((s: any) => {
                                     const scopeDesc = getServiceScopeDescription(s.name);
+
+                                    // Parse per-service notes from JSON with resilient matching
+                                    let perServiceNotes: string[] = [];
+                                    try {
+                                        if (contract?.notes) {
+                                            if (contract.notes.trim().startsWith('{')) {
+                                                const allNotes = JSON.parse(contract.notes);
+                                                const sName = (s.name || "").toLowerCase().trim();
+                                                const sTitle = (scopeDesc?.title || "").toLowerCase().trim();
+
+                                                // Try matching against name or title
+                                                const matchingKey = Object.keys(allNotes).find(k => {
+                                                    const key = k.toLowerCase().trim();
+                                                    return key === sName || key === sTitle ||
+                                                        sName.includes(key) || key.includes(sName) ||
+                                                        (sTitle && (sTitle.includes(key) || key.includes(sTitle)));
+                                                });
+
+                                                if (matchingKey) {
+                                                    perServiceNotes = allNotes[matchingKey];
+                                                }
+                                            } else {
+                                                // Legacy fallback: parse bracketed sections like [Design Development] 1. Note...
+                                                const notes = contract.notes;
+                                                const sName = (s.name || "").toLowerCase().trim();
+                                                const sTitle = (scopeDesc?.title || "").toLowerCase().trim();
+
+                                                const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                                const escName = escapeRegex(sName);
+                                                const escTitle = escapeRegex(sTitle);
+
+                                                // Pattern: find [Anything matching service name/title] followed by content until next [ or end
+                                                const pattern = `\\[[^\\]]*?(?:${escName}|${escTitle})[^\\]]*?\\](.*?)(?=\\[|$)`;
+                                                const regex = new RegExp(pattern, 'is');
+                                                const match = notes.match(regex);
+
+                                                if (match && match[1]) {
+                                                    perServiceNotes = match[1].trim().split('\n')
+                                                        .map((line: string) => line.trim())
+                                                        .filter((line: string) => line.length > 0);
+                                                }
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error("Error parsing contract notes", e);
+                                    }
+
                                     return (
-                                        <View key={s.id} style={{ marginBottom: 12 }}>
+                                        <View key={s.id} wrap={false} style={{ marginBottom: 12 }}>
                                             <View style={{ flexDirection: 'row', marginBottom: 4, paddingLeft: 5 }}>
                                                 <Text style={{ width: 12, fontSize: 10 }}>•</Text>
                                                 <Text style={{ flex: 1, fontWeight: 'bold', fontSize: 10 }}>
@@ -150,11 +199,26 @@ const ContractPDF = ({ contract, sections }: { contract: any; sections: Contract
                                                 </Text>
                                             </View>
                                             {scopeDesc && scopeDesc.bullets.map((bullet: string, idx: number) => (
-                                                <View key={idx} style={{ flexDirection: 'row', marginBottom: 3, paddingLeft: 25 }}>
+                                                <View key={idx} wrap={false} style={{ flexDirection: 'row', marginBottom: 3, paddingLeft: 25 }}>
                                                     <Text style={{ width: 12, fontSize: 9 }}>–</Text>
                                                     <Text style={{ flex: 1, lineHeight: 1.5, fontSize: 9 }}>{bullet}</Text>
                                                 </View>
                                             ))}
+
+                                            {/* Render per-service notes directly under the service */}
+                                            {perServiceNotes.length > 0 && (
+                                                <View style={{ marginTop: 6, paddingLeft: 25 }}>
+                                                    <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#666', marginBottom: 3, textTransform: 'uppercase' }}>
+                                                        Additional Notes:
+                                                    </Text>
+                                                    {perServiceNotes.map((note, idx) => (
+                                                        <View key={idx} style={{ flexDirection: 'row', marginBottom: 2 }}>
+                                                            <Text style={{ width: 10, fontSize: 9 }}>•</Text>
+                                                            <Text style={{ flex: 1, fontSize: 9, fontStyle: 'italic', color: '#444' }}>{note}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            )}
                                         </View>
                                     );
                                 })}
@@ -648,8 +712,13 @@ function ArticleRenderer({ section, contract, isForPdf = false }: { section: Con
     const sectionTitle = (section.title || "").toLowerCase();
 
     // Flexible detection for Scope and Payment sections
-    const isScope = sectionKey.includes("scope") || sectionTitle.includes("scope of services") || sectionKey === "article_2_scope";
-    const isPayment = sectionKey.includes("payment") || sectionTitle.includes("payment terms") || sectionKey === "article_3_payment";
+    const isScope = sectionKey.includes("scope") ||
+        sectionTitle.includes("scope") ||
+        sectionKey === "article_2_scope";
+
+    const isPayment = sectionKey.includes("payment") ||
+        sectionTitle.includes("payment") ||
+        sectionKey === "article_3_payment";
 
     const services = contract?.services || [];
 
@@ -667,6 +736,53 @@ function ArticleRenderer({ section, contract, isForPdf = false }: { section: Con
                     <div className="space-y-6">
                         {services.map((service: any) => {
                             const scopeDesc = getServiceScopeDescription(service.name);
+
+                            // Parse per-service notes from JSON with resilient matching
+                            let perServiceNotes: string[] = [];
+                            try {
+                                if (contract?.notes) {
+                                    if (contract.notes.trim().startsWith('{')) {
+                                        const allNotes = JSON.parse(contract.notes);
+                                        const sName = (service.name || "").toLowerCase().trim();
+                                        const sTitle = (scopeDesc?.title || "").toLowerCase().trim();
+
+                                        // Try matching against name or title
+                                        const matchingKey = Object.keys(allNotes).find(k => {
+                                            const key = k.toLowerCase().trim();
+                                            return key === sName || key === sTitle ||
+                                                sName.includes(key) || key.includes(sName) ||
+                                                (sTitle && (sTitle.includes(key) || key.includes(sTitle)));
+                                        });
+
+                                        if (matchingKey) {
+                                            perServiceNotes = allNotes[matchingKey];
+                                        }
+                                    } else {
+                                        // Legacy fallback: parse bracketed sections like [Design Development] 1. Note...
+                                        const notes = contract.notes;
+                                        const sName = (service.name || "").toLowerCase().trim();
+                                        const sTitle = (scopeDesc?.title || "").toLowerCase().trim();
+
+                                        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                        const escName = escapeRegex(sName);
+                                        const escTitle = escapeRegex(sTitle);
+
+                                        // Pattern: find [Anything matching service name/title] followed by content until next [ or end
+                                        const pattern = `\\[[^\\]]*?(?:${escName}|${escTitle})[^\\]]*?\\](.*?)(?=\\[|$)`;
+                                        const regex = new RegExp(pattern, 'is');
+                                        const match = notes.match(regex);
+
+                                        if (match && match[1]) {
+                                            perServiceNotes = match[1].trim().split('\n')
+                                                .map((line: string) => line.trim())
+                                                .filter((line: string) => line.length > 0);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                // Fallback
+                            }
+
                             return (
                                 <div key={service.id} className="space-y-2">
                                     <div className="flex items-start gap-3">
@@ -681,6 +797,21 @@ function ArticleRenderer({ section, contract, isForPdf = false }: { section: Con
                                                 <li key={idx} className="leading-relaxed">{bullet}</li>
                                             ))}
                                         </ul>
+                                    )}
+
+                                    {/* Per-service notes for UI */}
+                                    {perServiceNotes.length > 0 && (
+                                        <div className="ml-11 mt-2 space-y-1">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Additional Notes:</p>
+                                            <ul className="space-y-1">
+                                                {perServiceNotes.map((note, idx) => (
+                                                    <li key={idx} className="text-xs text-gray-600 bg-amber-50/50 border-l-2 border-amber-200 pl-3 py-1 flex items-start gap-2">
+                                                        <span className="text-amber-500">•</span>
+                                                        <span>{note}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
                                     )}
                                 </div>
                             );

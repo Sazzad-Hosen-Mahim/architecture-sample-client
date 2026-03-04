@@ -33,6 +33,7 @@ export interface ProjectRequest {
     appointmentTime: string;
     appointmentType: string;
     additionalNotes: string;
+    driveLink: string | null;
     status: "PENDING" | "REVIEWED" | "SCHEDULED" | "COMPLETED";
     userId: string | null;
     deletedAt: string | null;
@@ -128,6 +129,12 @@ export interface Proposal {
         name: string;
         email: string;
     };
+    proposalType?: "NORMAL" | "AMENDMENT";
+    parentProposalId?: string | null;
+    contractSections?: any[];
+    architectContractSignature?: string | null;
+    clientContractSignature?: string | null;
+    clientContractSignedAt?: string | null;
 }
 
 export interface ProposalService {
@@ -226,11 +233,11 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
-        sendProposalToClient: builder.mutation<ProjectRequest, { id: string; architectSignature?: string }>({
-            query: ({ id, architectSignature }) => ({
+        sendProposalToClient: builder.mutation<ProjectRequest, { id: string; architectSignature?: string; scopeNotes?: string }>({
+            query: ({ id, architectSignature, scopeNotes }) => ({
                 url: `/proposals/${id}/send`,
                 method: "POST",
-                body: { architectSignature },
+                body: { architectSignature, scopeNotes },
             }),
             invalidatesTags: ["Project"],
         }),
@@ -272,7 +279,73 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
+        signProposal: builder.mutation<any, { id: string; signature: string; type: 'owner' | 'architect' }>({
+            query: ({ id, signature, type }) => ({
+                url: `/proposals/${id}/sign`,
+                method: "PATCH",
+                body: { signature, type },
+            }),
+            invalidatesTags: ["Project"],
+        }),
 
+        // Fetch proposals by project request ID
+        getProposalsByProjectRequest: builder.query<{ success: boolean; message: string; data: Proposal[] }, string>({
+            query: (projectRequestId) => `/proposals?projectRequestId=${projectRequestId}`,
+            providesTags: ["Project"],
+        }),
+
+        // Project Stage endpoints
+        getStagesByProposal: builder.query<any, string>({
+            query: (proposalId) => `/project-stages/proposal/${proposalId}`,
+            providesTags: ["Project"],
+        }),
+
+        completeStage: builder.mutation<any, { id: string; notes?: string }>({
+            query: ({ id, notes }) => ({
+                url: `/project-stages/${id}/complete`,
+                method: "POST",
+                body: { notes },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+
+        updateStage: builder.mutation<any, { id: string; driveLink?: string; notes?: string }>({
+            query: ({ id, ...body }) => ({
+                url: `/project-stages/${id}`,
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        getMyProjectRequests: builder.query<ProjectRequestsResponse, void>({
+            query: () => ({
+                url: "/project-requests-admin/my-requests",
+                method: "GET",
+            }),
+            providesTags: ["Project"],
+        }),
+        updateProjectDriveLink: builder.mutation<any, { id: string; driveLink: string }>({
+            query: ({ id, driveLink }) => ({
+                url: `/project-requests-admin/${id}/drive-link`,
+                method: "PATCH",
+                body: { driveLink },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        deleteProjectDriveLink: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-requests-admin/${id}/drive-link`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        deleteProposal: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/proposals/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Project"],
+        }),
     }),
 });
 
@@ -289,4 +362,13 @@ export const {
     useChangeProposalStatusMutation,
     useGetAdminViewAllProposalsQuery,
     useApproveRejectServiceMutation,
+    useSignProposalMutation,
+    useGetProposalsByProjectRequestQuery,
+    useGetStagesByProposalQuery,
+    useCompleteStageMutation,
+    useUpdateStageMutation,
+    useGetMyProjectRequestsQuery,
+    useUpdateProjectDriveLinkMutation,
+    useDeleteProjectDriveLinkMutation,
+    useDeleteProposalMutation,
 } = proposalApi;

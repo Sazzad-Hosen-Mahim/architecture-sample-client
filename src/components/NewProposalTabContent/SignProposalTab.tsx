@@ -1,20 +1,14 @@
-// import React from 'react'
-
-// export default function SignProposalTab() {
-//   return (
-//     <div>SignProposalTab</div>
-//   )
-// }
-
 import { Button } from "@/components/ui/button";
 import SignatureCanvas from "react-signature-canvas";
-import React from "react";
+import React, { useState } from "react";
 import Cookies from "js-cookie";
 import { useSendProposalToClientMutation } from "@/redux/api/adminDashboard/proposalApi";
 import { useGetMasterContractArticlesQuery } from "@/redux/api/adminDashboard/masterContractApi";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
+import { pdf } from '@react-pdf/renderer';
+import { ContractPDF } from "@/components/Deshboard/ContractReviewModal";
+import { toast } from "sonner";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 interface ProposalSignProps {
   clientInfo: any;
@@ -51,7 +45,6 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   architectSignatureRef,
   clearSignature,
   handleBack,
-  downloadPDF,
 }) => {
   // inside SignProposalTab
 
@@ -63,6 +56,41 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   const [sendProposalToClient, { isLoading: isSending }] = useSendProposalToClientMutation();
   const { data: masterContractArticles } = useGetMasterContractArticlesQuery();
   const articles = masterContractArticles?.data || [];
+
+  // Per-service scope notes state - each service gets its own notes
+  const [perServiceNotes, setPerServiceNotes] = useState<Record<string, string[]>>({});
+  const [perServiceNewNote, setPerServiceNewNote] = useState<Record<string, string>>({});
+
+  const handleAddServiceNote = (serviceId: string) => {
+    const trimmed = (perServiceNewNote[serviceId] || "").trim();
+    if (!trimmed) return;
+    setPerServiceNotes((prev) => ({
+      ...prev,
+      [serviceId]: [...(prev[serviceId] || []), trimmed],
+    }));
+    setPerServiceNewNote((prev) => ({ ...prev, [serviceId]: "" }));
+  };
+
+  const handleRemoveServiceNote = (serviceId: string, index: number) => {
+    setPerServiceNotes((prev) => ({
+      ...prev,
+      [serviceId]: (prev[serviceId] || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Serialize all per-service notes into JSON for backend storage
+  // Format: { "Service Label": ["note1", "note2"], ... }
+  const serializeScopeNotes = (): string | undefined => {
+    const entries = Object.entries(perServiceNotes).filter(([, notes]) => notes.length > 0);
+    if (entries.length === 0) return undefined;
+    const notesByLabel: Record<string, string[]> = {};
+    for (const [serviceId, notes] of entries) {
+      const objective = objectives.find((o) => o.id === serviceId);
+      const label = objective?.label || serviceId;
+      notesByLabel[label] = notes;
+    }
+    return JSON.stringify(notesByLabel);
+  };
 
   const handleSendProposalToClient = async () => {
     if (!id) {
@@ -76,18 +104,56 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
     }
 
     try {
-      await sendProposalToClient({ id, architectSignature }).unwrap();
+      // Include per-service scope notes in the payload
+      const scopeNotesText = serializeScopeNotes();
+      await sendProposalToClient({ id, architectSignature, scopeNotes: scopeNotesText }).unwrap();
       toast.success("Proposal sent to client successfully!");
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to send proposal");
     }
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      const scopeNotesText = serializeScopeNotes() || "";
+
+      // Construct a mock contract object for the PDF generator
+      const mockContract = {
+        clientName: `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() || "Client Name",
+        projectLocation: projectInfo?.streetAddress || projectInfo?.location || "Project Location",
+        serviceType: projectInfo?.serviceType || "Design Services",
+        projectName: projectInfo?.projectName || "New Project",
+        notes: scopeNotesText, // Pass the per-service scope notes
+        services: selectedObjectives.map((id) => ({
+          id,
+          name: objectives.find((o) => o.id === id)?.label || id,
+          amount: objectiveCosts[id] || 0
+        })),
+        architectContractSignature: architectSignatureRef.current?.isEmpty() ? null : architectSignatureRef.current?.toDataURL(),
+        architectSignedAt: new Date().toISOString()
+      };
+
+      const doc = <ContractPDF contract={mockContract} sections={articles} />;
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Proposal_${mockContract.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-white rounded-lg shadow-sm p-6" id="proposal-content">
       <div className="max-w-4xl mx-auto">
         {/* Header Section */}
-        <div className="mb-8" id="proposal-content">
+        <div className="mb-8">
           <h2 className="text-sm font-semibold mb-2">Architecture Simple</h2>
           <div className="flex justify-between mt-4">
             <div>
@@ -191,8 +257,11 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                   const objective = objectives.find((o) => o.id === id);
                   if (!objective) return null;
                   const scopeDesc = getServiceScopeDescription(objective.label);
+                  const serviceNotes = perServiceNotes[id] || [];
+                  const serviceNewNote = perServiceNewNote[id] || "";
+
                   return (
-                    <div key={id} className="space-y-2">
+                    <div key={id} className="space-y-2 border border-gray-100 rounded-lg p-4">
                       <p className="text-sm font-bold text-gray-900">
                         {scopeDesc ? `${scopeDesc.sectionNumber} ${scopeDesc.title}` : objective.label}
                       </p>
@@ -203,6 +272,54 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                           ))}
                         </ul>
                       )}
+
+                      {/* Per-service notes */}
+                      {serviceNotes.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          <p className="text-xs font-semibold text-gray-600">Additional Notes:</p>
+                          {serviceNotes.map((note, idx) => (
+                            <div key={idx} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+                              <span className="text-xs text-gray-700 flex-1">{idx + 1}. {note}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveServiceNote(id, idx)}
+                                className="text-red-400 hover:text-red-600 mt-0.5 flex-shrink-0"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add note input for this service */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={serviceNewNote}
+                          onChange={(e) =>
+                            setPerServiceNewNote((prev) => ({ ...prev, [id]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddServiceNote(id);
+                            }
+                          }}
+                          placeholder={`Add a note for ${objective.label}...`}
+                          className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleAddServiceNote(id)}
+                          disabled={!serviceNewNote.trim()}
+                          className="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-1.5 h-auto"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -318,7 +435,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-4 mt-8">
-          <Button variant="outline" onClick={downloadPDF}>
+          <Button variant="outline" onClick={handleDownloadPDF}>
             Download PDF
           </Button>
           <Button

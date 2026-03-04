@@ -66,6 +66,24 @@ const UserDashboard = () => {
         </div>
       </div>
 
+      {/* stat cards  */}
+      <div className="mt-8 mb-5 pt-6 border-t border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-sm text-blue-600 font-medium">Total Projects</div>
+            <div className="text-2xl font-semibold mt-1">12</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-sm text-green-600 font-medium">Active Proposals</div>
+            <div className="text-2xl font-semibold mt-1">5</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-sm text-purple-600 font-medium">Completion Rate</div>
+            <div className="text-2xl font-semibold mt-1">85%</div>
+          </div>
+        </div>
+      </div>
+
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex space-x-1">
@@ -106,22 +124,7 @@ const UserDashboard = () => {
       </Suspense>
 
       {/* Stats Footer */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm text-blue-600 font-medium">Total Projects</div>
-            <div className="text-2xl font-semibold mt-1">12</div>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm text-green-600 font-medium">Active Proposals</div>
-            <div className="text-2xl font-semibold mt-1">5</div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="text-sm text-purple-600 font-medium">Completion Rate</div>
-            <div className="text-2xl font-semibold mt-1">85%</div>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 };

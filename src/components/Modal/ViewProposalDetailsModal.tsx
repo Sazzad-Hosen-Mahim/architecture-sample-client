@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useApproveRejectServiceMutation, ProposalService } from "@/redux/api/adminDashboard/proposalApi";
+import { ProposalService } from "@/redux/api/adminDashboard/proposalApi";
 import {
     useGetAmendmentsQuery,
     useGetAllProposalsForProposalQuery,
@@ -12,11 +11,6 @@ interface ViewProposalDetailsModalProps {
 }
 
 const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModalProps) => {
-    const [approveRejectService, { isLoading: isApproving }] = useApproveRejectServiceMutation();
-    const [rejectModal, setRejectModal] = useState(false);
-    const [rejectingService, setRejectingService] = useState<ProposalService | null>(null);
-    const [rejectionReason, setRejectionReason] = useState("");
-
     // Amendment queries
     const { data: amendmentsData, isLoading: isLoadingAmendments } = useGetAmendmentsQuery({ proposalId: proposal.id });
     const { data: allProposalsData, isLoading: isLoadingAllProposals } = useGetAllProposalsForProposalQuery(proposal.id);
@@ -40,40 +34,6 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
         });
     };
 
-    const handleAcceptService = async (serviceId: string) => {
-        try {
-            await approveRejectService({
-                proposalId: proposal.id,
-                serviceId,
-                action: "approve",
-            }).unwrap();
-        } catch (error) {
-            console.error("Failed to approve service:", error);
-        }
-    };
-
-    const handleOpenRejectModal = (service: ProposalService) => {
-        setRejectingService(service);
-        setRejectionReason("");
-        setRejectModal(true);
-    };
-
-    const handleConfirmReject = async () => {
-        if (!rejectingService || !rejectionReason.trim()) return;
-        try {
-            await approveRejectService({
-                proposalId: proposal.id,
-                serviceId: rejectingService.id,
-                action: "reject",
-                rejectionReason: rejectionReason.trim(),
-            }).unwrap();
-            setRejectModal(false);
-            setRejectingService(null);
-            setRejectionReason("");
-        } catch (error) {
-            console.error("Failed to reject service:", error);
-        }
-    };
 
     const getApprovalStatusBadge = (status: string) => {
         const config: Record<string, { bg: string; text: string; label: string }> = {
@@ -213,7 +173,6 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                                                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">Quantity</th>
                                                 <th className="px-4 py-2 text-right text-xs font-medium text-gray-700">Amount</th>
                                                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">Status</th>
-                                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-700">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -236,28 +195,6 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                                                             <div className="text-xs text-red-500 mt-1 max-w-[200px]" title={service.rejectionReason}>
                                                                 {service.rejectionReason}
                                                             </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm text-right font-medium">
-                                                        {service.approvalStatus === "PENDING_APPROVAL" ? (
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                <button
-                                                                    onClick={() => handleAcceptService(service.id)}
-                                                                    disabled={isApproving}
-                                                                    className="bg-blue-600 px-2 py-1 rounded-md text-white border border-blue-600 hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                >
-                                                                    Accept
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleOpenRejectModal(service)}
-                                                                    disabled={isApproving}
-                                                                    className="text-red-600 px-2 py-1 rounded-md border border-red-600 hover:text-red-800 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                >
-                                                                    Reject
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-gray-400 text-xs">—</span>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -337,8 +274,8 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                                                     <span className="font-medium text-blue-800">Amendment Proposal:</span>{" "}
                                                     <span className="text-blue-700">{amendment.amendmentProposal.proposalNumber}</span>
                                                     <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${amendment.amendmentProposal.status === "ACCEPTED" ? "bg-green-100 text-green-800" :
-                                                            amendment.amendmentProposal.status === "SENT" ? "bg-blue-100 text-blue-800" :
-                                                                "bg-gray-100 text-gray-800"
+                                                        amendment.amendmentProposal.status === "SENT" ? "bg-blue-100 text-blue-800" :
+                                                            "bg-gray-100 text-gray-800"
                                                         }`}>
                                                         {amendment.amendmentProposal.status}
                                                     </span>
@@ -413,21 +350,6 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                 </div>
             </div>
 
-            {/* Rejection Reason Modal */}
-            {rejectModal && rejectingService && (
-                <RejectServiceModal
-                    serviceName={rejectingService.name}
-                    rejectionReason={rejectionReason}
-                    onReasonChange={setRejectionReason}
-                    onConfirm={handleConfirmReject}
-                    onCancel={() => {
-                        setRejectModal(false);
-                        setRejectingService(null);
-                        setRejectionReason("");
-                    }}
-                    isLoading={isApproving}
-                />
-            )}
         </>
     );
 };
@@ -435,66 +357,6 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
 export default ViewProposalDetailsModal;
 
 
-/* ─── Rejection Reason Modal ─── */
-
-interface RejectServiceModalProps {
-    serviceName: string;
-    rejectionReason: string;
-    onReasonChange: (reason: string) => void;
-    onConfirm: () => void;
-    onCancel: () => void;
-    isLoading: boolean;
-}
-
-const RejectServiceModal = ({
-    serviceName,
-    rejectionReason,
-    onReasonChange,
-    onConfirm,
-    onCancel,
-    isLoading,
-}: RejectServiceModalProps) => {
-    return (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black bg-opacity-40 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
-                <div className="px-6 py-4 border-b">
-                    <h3 className="text-lg font-semibold text-gray-800">Reject Service</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                        You are rejecting: <span className="font-medium text-gray-700">{serviceName}</span>
-                    </p>
-                </div>
-                <div className="px-6 py-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Rejection Reason <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        value={rejectionReason}
-                        onChange={(e) => onReasonChange(e.target.value)}
-                        placeholder="Please provide a reason for rejecting this service..."
-                        rows={4}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                    />
-                </div>
-                <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-lg">
-                    <button
-                        onClick={onCancel}
-                        disabled={isLoading}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        disabled={isLoading || !rejectionReason.trim()}
-                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-red-600 rounded-md hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isLoading ? "Rejecting..." : "Confirm Reject"}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 
 /* ─── Shared Sub-components ─── */

@@ -38,6 +38,7 @@ export interface ProposalContract {
     state: string;
     status: string;
     userId: string;
+    notes: string | null;
     services: { id: string; name: string; amount: number }[];
 }
 

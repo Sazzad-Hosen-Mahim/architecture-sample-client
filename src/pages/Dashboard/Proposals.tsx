@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     useGetAdminViewAllProposalsQuery,
     Proposal,
     useSendProposalToClientMutation,
     useAddServiceMutation,
+    // useSignProposalMutation,
 } from "@/redux/api/adminDashboard/proposalApi";
 import {
     useGetAmendmentsQuery,
@@ -15,6 +16,8 @@ import {
 } from "@/redux/api/amendmentApi";
 import ContractReviewModal from '@/components/Deshboard/ContractReviewModal';
 import { FileTextIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import SignatureCanvas from 'react-signature-canvas';
 
 const Proposals = () => {
     const { data: proposalsData, isLoading, isError } = useGetAdminViewAllProposalsQuery();
@@ -210,6 +213,11 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
 
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
 
+    // Signature Modal State
+    const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+    const [signingProposalId, setSigningProposalId] = useState<string | null>(null);
+    const architectSigCanvas = useRef<SignatureCanvas>(null);
+
     const amendmentsRaw = amendmentsData?.data;
     const amendments = Array.isArray(amendmentsRaw) ? amendmentsRaw : [];
 
@@ -326,22 +334,41 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
             }).unwrap();
             setIsCreateProposalModalOpen(false);
             setCreatingForAmendment(null);
-            alert("Proposal created successfully from amendment!");
+            toast.success("Proposal created successfully from amendment!");
         } catch (error) {
             console.error("Failed to create proposal:", error);
-            alert("Failed to create proposal.");
+            toast.error("Failed to create proposal.");
         }
     };
 
-    // Send amendment proposal to client
-    const handleSendProposal = async (proposalId: string) => {
-        if (!confirm("Send this amendment proposal to the client?")) return;
+    // Send amendment proposal to client (requires signature first)
+    const handleOpenSignatureModal = (proposalId: string) => {
+        setSigningProposalId(proposalId);
+        setIsSignatureModalOpen(true);
+    };
+
+    const handleConfirmSendWithSignature = async () => {
+        if (!signingProposalId || !architectSigCanvas.current) return;
+
+        if (architectSigCanvas.current.isEmpty()) {
+            toast.error("Please provide your signature.");
+            return;
+        }
+
+        const signature = architectSigCanvas.current.toDataURL("image/png");
+
         try {
-            await sendProposalToClient({ id: proposalId }).unwrap();
-            alert("Amendment proposal sent to client!");
+            await sendProposalToClient({
+                id: signingProposalId,
+                architectSignature: signature
+            }).unwrap();
+
+            toast.success("Amendment proposal signed and sent to client!");
+            setIsSignatureModalOpen(false);
+            setSigningProposalId(null);
         } catch (error) {
-            console.error("Failed to send proposal:", error);
-            alert("Failed to send proposal.");
+            console.error("Failed to sign/send proposal:", error);
+            toast.error("Failed to sign/send proposal.");
         }
     };
 
@@ -350,11 +377,11 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
         if (!confirm("Are you sure you want to mark this amendment as completed?")) return;
         try {
             await completeAmendment(amendmentId).unwrap();
-            alert("Amendment marked as completed!");
+            toast.success("Amendment marked as completed!");
         } catch (error: any) {
             console.error("Failed to complete amendment:", error);
             const msg = error?.data?.message || "Failed to complete amendment.";
-            alert(msg);
+            toast.error(msg);
         }
     };
 
@@ -381,10 +408,10 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
             }).unwrap();
             setIsAddServiceModalOpen(false);
             setTargetProposalId(null);
-            alert("Service added successfully!");
+            toast.success("Service added successfully!");
         } catch (error) {
             console.error("Failed to add service:", error);
-            alert("Failed to add service.");
+            toast.error("Failed to add service.");
         }
     };
 
@@ -710,7 +737,7 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                                                     {amendment.status === "UNDER_REVIEW" && amdProposal && amdProposalStatus === "DRAFT" && (
                                                         <div className="flex flex-col gap-1">
                                                             <button
-                                                                onClick={() => handleSendProposal(amdProposal.id)}
+                                                                onClick={() => handleOpenSignatureModal(amdProposal.id)}
                                                                 disabled={isSending || (allProposalsData?.data?.amendmentProposals?.find((p: any) => p.id === amdProposal.id)?.services?.length || 0) === 0}
                                                                 className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                                             >
@@ -1048,6 +1075,61 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                 onClose={() => setIsContractModalOpen(false)}
                 proposalId={proposal.id}
             />
+
+            {/* Architect Signature Modal */}
+            {isSignatureModalOpen && (
+                <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full">
+                        <div className="px-6 py-4 border-b">
+                            <h3 className="text-lg font-semibold text-gray-800">Sign Amendment Proposal</h3>
+                            <p className="text-sm text-gray-500 mt-1">Please provide your architect signature to confirm this proposal.</p>
+                        </div>
+                        <div className="p-6">
+                            <div className="border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
+                                <SignatureCanvas
+                                    ref={architectSigCanvas}
+                                    canvasProps={{
+                                        className: "w-full h-48 bg-white cursor-crosshair",
+                                        width: 500,
+                                        height: 200
+                                    }}
+                                />
+                            </div>
+                            <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
+                                <span>Sign above using your mouse or touch screen</span>
+                                <button
+                                    onClick={() => architectSigCanvas.current?.clear()}
+                                    className="text-blue-600 hover:underline cursor-pointer"
+                                >
+                                    Clear Signature
+                                </button>
+                            </div>
+                            <div className="mt-6 pt-4 border-t border-gray-100 italic text-sm text-gray-600">
+                                "I, Eric Rivera, AIA, hereby sign this amendment proposal as the architect of record."
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-lg">
+                            <button
+                                onClick={() => {
+                                    setIsSignatureModalOpen(false);
+                                    setSigningProposalId(null);
+                                }}
+                                disabled={isSending}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmSendWithSignature}
+                                disabled={isSending}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isSending ? "Processing..." : "Sign & Send Proposal"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

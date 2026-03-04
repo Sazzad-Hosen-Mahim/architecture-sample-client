@@ -8,6 +8,7 @@ import {
   LogOut,
   Shield,
   ClipboardPenLine,
+  FilePenLine,
   User,
   UserCog,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { OwnerControlsTab } from "@/components/ProfileSetting/OwnerControlsTab";
 import { NotificationSettingsTab } from "@/components/ProfileSetting/NotificationSettingsTab";
 import { SecuritySettingsCard } from "@/components/ProfileSetting/SecuritySettingsCard";
 import MasterContractTab from "@/components/ProfileSetting/MasterContractTab";
+import AmendmentContractTab from "@/components/ProfileSetting/AmendmentContractTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -296,6 +298,13 @@ export function ProfileSettings() {
               >
                 Master Contract
               </TabButton>
+              <TabButton
+                value="amendmentContract"
+                icon={FilePenLine}
+                isActive={activeTab === "amendmentContract"}
+              >
+                Amendment Contract
+              </TabButton>
               {isOwner && (
                 <TabButton
                   value="owner-controls"
@@ -411,6 +420,9 @@ export function ProfileSettings() {
 
           {/* Master Contract Tab */}
           {activeTab === "masterContract" && <MasterContractTab />}
+
+          {/* Amendment Contract Tab */}
+          {activeTab === "amendmentContract" && <AmendmentContractTab />}
 
           {/* Owner Controls Tab - Only visible to owners */}
           {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}
