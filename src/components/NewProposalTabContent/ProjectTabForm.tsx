@@ -10,8 +10,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useGetProposalInfoQuery, useSubmitNewProposalMutation } from "@/redux/api/adminDashboard/proposalApi";
-import { useEffect } from "react";
+import { useSubmitNewProposalMutation } from "@/redux/api/adminDashboard/proposalApi";
 import Cookies from "js-cookie";
 
 interface ProjectFormProps {
@@ -44,10 +43,6 @@ export default function ProjectTabForm({
   handleBack,
   id,
 }: ProjectFormProps) {
-
-  const { data: projectInformation } = useGetProposalInfoQuery(id || "", {
-    skip: !id, // Skip the query if there's no id
-  });
 
   const [submitNewProposal, { isLoading }] = useSubmitNewProposalMutation();
 
@@ -142,48 +137,6 @@ export default function ProjectTabForm({
       }
     }
   };
-
-  // Populate form when project information is loaded
-  useEffect(() => {
-    if (projectInformation) {
-      // Helper function to convert API enum values to display values
-      const formatServiceType = (type: string) => {
-        const mapping: Record<string, string> = {
-          'NEW_CONSTRUCTION': 'New Construction',
-          'RENOVATION': 'Renovation',
-          'ADDITION': 'Addition',
-          'INTERIOR_DESIGN': 'Interior Design',
-        };
-        return mapping[type] || type;
-      };
-
-      const formatProjectCategory = (category: string) => {
-        const mapping: Record<string, string> = {
-          'RESIDENTIAL': 'Residential',
-          'COMMERCIAL': 'Commercial',
-          'MIXED_USE': 'Mixed-Use',
-          'INSTITUTIONAL': 'Institutional',
-        };
-        return mapping[category] || category;
-      };
-
-      // Map the API response to the form fields
-      handleProjectInfoChange("projectName", projectInformation.projectName || "");
-      handleProjectInfoChange("projectDescription", ""); // Not in API response
-      handleProjectInfoChange("additionalContext", projectInformation.additionalNotes || "");
-      handleProjectInfoChange("streetAddress", projectInformation.projectStreetAddress || "");
-      handleProjectInfoChange("city", projectInformation.projectCity || "");
-      handleProjectInfoChange("state", projectInformation.projectState || "");
-      handleProjectInfoChange("country", projectInformation.projectCountry || "");
-      handleProjectInfoChange("zip", projectInformation.projectZipCode || "");
-      handleProjectInfoChange("sameAsMailingAddress", projectInformation.projectLocationSameAsClient || false);
-      handleProjectInfoChange("serviceType", formatServiceType(projectInformation.serviceType || ""));
-      handleProjectInfoChange("projectType", formatProjectCategory(projectInformation.projectCategory || ""));
-      handleProjectInfoChange("squareFootage", projectInformation.projectSize || "");
-      handleProjectInfoChange("budgetRange", projectInformation.budgetRange || "");
-      handleProjectInfoChange("timeline", ""); // Not in API response
-    }
-  }, [projectInformation]);
 
   return (
     <div className="bg-white  ">
@@ -423,7 +376,7 @@ export default function ProjectTabForm({
       </div>
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={handleBack}>
+        <Button variant="outline" onClick={handleBack} className="cursor-pointer hover:bg-gray-200 hover:border-gray-200">
           Back
         </Button>
         <Button

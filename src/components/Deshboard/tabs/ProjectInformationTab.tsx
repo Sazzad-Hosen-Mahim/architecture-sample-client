@@ -10,12 +10,11 @@ import {
     Building2Icon,
     HomeIcon,
     Loader2,
-    VideoIcon,
-    SendIcon,
     LinkIcon,
     ExternalLink,
     Pencil,
     Trash2,
+    UserCog,
 } from "lucide-react";
 import {
     Select,
@@ -30,8 +29,11 @@ import {
     useUpdateProjectRequestStatusMutation,
     useUpdateProjectDriveLinkMutation,
     useDeleteProjectDriveLinkMutation,
+    useGetProjectManagersQuery,
+    useAssignProjectManagerMutation,
 } from "@/redux/api/adminDashboard/proposalApi";
-import { useSendMeetingLinkMutation } from "@/redux/api/meetingApi";
+import { useAppSelector } from "@/hooks/useRedux";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 
 type ProjectInformationTabProps = {
     project: ProjectRequest;
@@ -46,18 +48,17 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export default function ProjectInformationTab({ project }: ProjectInformationTabProps) {
+    const currentUser = useAppSelector(selectCurrentUser);
+    const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+
     const [selectedStatus, setSelectedStatus] = useState<ProjectRequest["status"] | null>(null);
     const [updateStatus, { isLoading: isUpdating }] = useUpdateProjectRequestStatusMutation();
-    const [sendMeetingLink, { isLoading: isSendingMeeting }] = useSendMeetingLinkMutation();
     const [updateDriveLink, { isLoading: isUpdatingDriveLink }] = useUpdateProjectDriveLinkMutation();
     const [deleteDriveLink, { isLoading: isDeletingDriveLink }] = useDeleteProjectDriveLinkMutation();
+    const [assignPM, { isLoading: isAssigning }] = useAssignProjectManagerMutation();
+    const { data: pmData } = useGetProjectManagersQuery(undefined, { skip: !isSuperAdmin });
 
-    const [meetingForm, setMeetingForm] = useState({
-        meetingUrl: "",
-        title: "",
-        scheduledAt: "",
-        notes: "",
-    });
+    const projectManagers = pmData?.data || [];
 
     // Drive link state
     const [showDriveLinkInput, setShowDriveLinkInput] = useState(false);
@@ -67,12 +68,6 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
     useEffect(() => {
         if (project) {
             setSelectedStatus(project.status);
-            setMeetingForm({
-                meetingUrl: "",
-                title: "",
-                scheduledAt: "",
-                notes: "",
-            });
             setShowDriveLinkInput(false);
             setIsEditingDriveLink(false);
             setDriveLinkValue("");
@@ -112,28 +107,17 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
         }
     };
 
-    const handleSendMeetingLink = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!meetingForm.meetingUrl || !meetingForm.title || !meetingForm.scheduledAt) {
-            toast.error("Please fill in all required fields");
-            return;
-        }
+    const handleAssignPM = async (managerId: string) => {
         try {
-            await sendMeetingLink({
-                projectRequestId: project.id,
-                ...meetingForm,
-            }).unwrap();
-            toast.success("Meeting link sent successfully!");
-            setMeetingForm({ meetingUrl: "", title: "", scheduledAt: "", notes: "" });
-        } catch (error) {
-            console.error("Failed to send meeting link:", error);
-            toast.error("Failed to send meeting link. Please try again.");
+            await assignPM({ projectId: project.id, managerId }).unwrap();
+            toast.success("Project Manager assigned successfully!");
+        } catch (error: any) {
+            console.error("Failed to assign PM:", error);
+            toast.error(error?.data?.message || "Failed to assign Project Manager.");
         }
     };
 
-    const handleMeetingFormChange = (field: string, value: string) => {
-        setMeetingForm((prev) => ({ ...prev, [field]: value }));
-    };
+
 
     const handleSaveDriveLink = async () => {
         const link = driveLinkValue.trim();
@@ -194,13 +178,59 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - Project Details */}
             <div className="lg:col-span-2 space-y-6">
-                <div className="border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold mb-2">Project Details</h3>
-                    <p className="text-sm text-blue-600 font-medium mb-6">
-                        Information about the project inquiry
-                    </p>
 
-                    <div className="space-y-6">
+                <div className="border border-gray-200 rounded-xl p-6">
+                    <div className="flex items-start justify-between mb-2">
+                        <div>
+                            <h3 className="text-lg font-semibold">Project Details</h3>
+                            <p className="text-sm text-blue-600 font-medium">
+                                Information about the project inquiry
+                            </p>
+                        </div>
+
+                        {/* Assign Project Manager - Top Right */}
+                        <div className="flex-shrink-0">
+                            {isSuperAdmin ? (
+                                <div className="flex items-center gap-2">
+                                    <UserCog className="w-4 h-4 text-gray-500" />
+                                    <Select
+                                        value={project.assignedManagerId || "unassigned"}
+                                        onValueChange={(value) => handleAssignPM(value === "unassigned" ? "" : value)}
+                                        disabled={isAssigning}
+                                    >
+                                        <SelectTrigger className="w-[200px] h-8 text-xs border-blue-200 bg-blue-50 text-blue-800 font-medium">
+                                            <SelectValue placeholder="Assign PM" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-gray-200">
+                                            <SelectItem value="unassigned" className="cursor-pointer text-xs text-gray-400">
+                                                Unassigned
+                                            </SelectItem>
+                                            {projectManagers.map((pm) => (
+                                                <SelectItem key={pm.id} value={pm.id} className="cursor-pointer text-xs">
+                                                    {pm.name || pm.email}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {isAssigning && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+                                </div>
+                            ) : project.assignedManager ? (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                                    <UserCog className="w-3.5 h-3.5 text-green-600" />
+                                    <span className="text-xs font-medium text-green-700">
+                                        PM: {project.assignedManager.name || project.assignedManager.email}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                                    No PM assigned
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-6 mt-4">
+
                         <div className="grid grid-cols-2 gap-6">
                             <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-1">Project Category</h4>
@@ -215,7 +245,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                             </div>
                             <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-1">Service Type</h4>
-                                <p className="text-sm text-gray-600">{project.serviceType.replace(/_/g, " ")}</p>
+                                <p className="text-sm text-gray-600">{(project.serviceType || "").replace(/_/g, " ")}</p>
                             </div>
                         </div>
 
@@ -361,6 +391,8 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                         </div>
                     )}
                 </div>
+
+
             </div>
 
             {/* Right Column */}
@@ -471,7 +503,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                         >
                             {isUpdating ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                                     Saving...
                                 </>
                             ) : (
@@ -481,125 +513,6 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 </>
                             )}
                         </button>
-                    </div>
-                </div>
-
-                {/* Meeting Link Form - Only for Video Consultation */}
-                {project.appointmentType === "Video Consultation" && (
-                    <div className="border border-blue-200 bg-blue-50 rounded-xl p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <VideoIcon className="w-5 h-5 text-blue-600" />
-                            <h3 className="text-lg font-semibold text-gray-900">Send Meeting Link</h3>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Schedule and send a video consultation link to the client
-                        </p>
-                        <form onSubmit={handleSendMeetingLink} className="space-y-4">
-                            <div>
-                                <label htmlFor="meetingUrl" className="block text-sm font-semibold text-gray-900 mb-1">
-                                    Meeting URL <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="url"
-                                    id="meetingUrl"
-                                    value={meetingForm.meetingUrl}
-                                    onChange={(e) => handleMeetingFormChange("meetingUrl", e.target.value)}
-                                    placeholder="https://meet.google.com/abc-def-ghi"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
-                                    disabled={isSendingMeeting}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="title" className="block text-sm font-semibold text-gray-900 mb-1">
-                                    Meeting Title <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    id="title"
-                                    value={meetingForm.title}
-                                    onChange={(e) => handleMeetingFormChange("title", e.target.value)}
-                                    placeholder="Meeting for Architecture Design"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
-                                    disabled={isSendingMeeting}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="scheduledAt" className="block text-sm font-semibold text-gray-900 mb-1">
-                                    Scheduled Date & Time <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    id="scheduledAt"
-                                    value={meetingForm.scheduledAt}
-                                    onChange={(e) => handleMeetingFormChange("scheduledAt", e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
-                                    disabled={isSendingMeeting}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="notes" className="block text-sm font-semibold text-gray-900 mb-1">Notes</label>
-                                <textarea
-                                    id="notes"
-                                    value={meetingForm.notes}
-                                    onChange={(e) => handleMeetingFormChange("notes", e.target.value)}
-                                    placeholder="Please have your project documents ready."
-                                    rows={3}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                    disabled={isSendingMeeting}
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={isSendingMeeting}
-                                className="w-full bg-blue-600 cursor-pointer hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-md flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSendingMeeting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Sending...
-                                    </>
-                                ) : (
-                                    <>
-                                        <SendIcon className="w-4 h-4 mr-2" />
-                                        Send Meeting Link
-                                    </>
-                                )}
-                            </button>
-                        </form>
-                    </div>
-                )}
-
-                {/* Timeline */}
-                <div className="border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold mb-4">Timeline</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <p className="text-xs text-gray-500">Created</p>
-                            <p className="text-sm text-gray-900">
-                                {new Date(project.createdAt).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Last Updated</p>
-                            <p className="text-sm text-gray-900">
-                                {new Date(project.updatedAt).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>

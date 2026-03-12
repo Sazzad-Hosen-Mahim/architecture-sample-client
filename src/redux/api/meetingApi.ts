@@ -104,28 +104,27 @@ export const meetingApi = baseApi.injectEndpoints({
             invalidatesTags: ["Project"],
         }),
 
-        getMeetings: builder.query<GetMeetingsResponse, string | void>({
-            query: (projectRequestId) => ({
-                url: projectRequestId
-                    ? `/project-requests-admin/meetings?projectRequestId=${projectRequestId}`
-                    : "/project-requests-admin/meetings",
+        getMyMeetings: builder.query<GetUserMeetingsResponse, string | void>({
+            query: () => ({
+                url: `/project-requests-admin/my-meetings`,
                 method: "GET",
             }),
             providesTags: ["Project"],
         }),
 
-        getMyMeetings: builder.query<GetUserMeetingsResponse, string>({
-            query: () => ({
-                url: `/project-requests-admin/my-meetings`,  // ✅ No ID needed
-                method: "GET",
+        requestMeeting: builder.mutation<{ success: boolean; message: string }, { projectRequestId: string; scheduledAt: string; notes?: string }>({
+            query: (body) => ({
+                url: "/project-requests-admin/request-meeting",
+                method: "POST",
+                body,
             }),
-            providesTags: ["Project"],
+            invalidatesTags: ["Project"],
         }),
     }),
 });
 
 export const {
     useSendMeetingLinkMutation,
-    useGetMeetingsQuery,
     useGetMyMeetingsQuery,
+    useRequestMeetingMutation,
 } = meetingApi;

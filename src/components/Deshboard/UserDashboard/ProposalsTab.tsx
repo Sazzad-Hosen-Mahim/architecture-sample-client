@@ -544,7 +544,7 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModa
         const c = config[status] || { bg: "bg-gray-100", text: "text-gray-800" };
         return (
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}>
-                {status.replace("_", " ")}
+                {(status || "").replace("_", " ")}
             </span>
         );
     };

@@ -11,17 +11,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
-import { ProjectRequest, useGetProjectRequestsQuery } from "@/redux/api/adminDashboard/proposalApi";
+import { ProjectRequest, useGetProjectRequestsQuery, useArchiveProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
 import ProjectDetailsModal from "./ProjectDetailesModal";
+import { BsFillClipboard2PlusFill } from "react-icons/bs";
+import { toast } from "sonner";
+import { Archive, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function ProjectManagementTab() {
   const [activeTab, setActiveTab] = useState("all");
   const [selectedProject, setSelectedProject] = useState<ProjectRequest | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [projectToArchive, setProjectToArchive] = useState<ProjectRequest | null>(null);
   const navigate = useNavigate();
 
   // Fetch project requests from API
   const { data, isLoading, isError } = useGetProjectRequestsQuery();
+  const [archiveProject] = useArchiveProjectMutation();
+
+  const handleArchive = async () => {
+    if (!projectToArchive) return;
+    try {
+      await archiveProject(projectToArchive.id).unwrap();
+      toast.success("Project archived successfully");
+      setArchiveModalOpen(false);
+      setProjectToArchive(null);
+    } catch (error) {
+      console.error("Failed to archive project:", error);
+      toast.error("Failed to archive project");
+    }
+  };
 
   const openModal = (project: ProjectRequest) => {
     setSelectedProject(project);
@@ -87,15 +114,15 @@ export function ProjectManagementTab() {
 
   const getFilteredProjects = (stage: string) => {
     if (!data?.data) return [];
-    if (stage === "all") return data.data;
+    if (stage === "all") return data.data.filter((p: ProjectRequest) => !p.isArchived);
     // Inquiry tab shows both PENDING and REVIEWED
     if (stage === "inquiry") {
       return data.data.filter(
-        (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
+        (p: ProjectRequest) => !p.isArchived && (p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed")
       );
     }
     return data.data.filter(
-      (p) => p.status.toLowerCase() === stage.toLowerCase()
+      (p: ProjectRequest) => !p.isArchived && p.status.toLowerCase() === stage.toLowerCase()
     );
   };
 
@@ -157,7 +184,7 @@ export function ProjectManagementTab() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs">{project.serviceType.replace(/_/g, ' ')}</span>
+                    <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-xs">
@@ -186,14 +213,31 @@ export function ProjectManagementTab() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
-                    onClick={() => openModal(project)}
-                  >
-                    View Details
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
+                      onClick={() => openModal(project)}
+                    >
+                      View Details
+                    </Button>
+                    {project.status === "COMPLETED" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-transparent text-xs text-amber-600 border-amber-200 hover:bg-amber-600 hover:text-white cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToArchive(project);
+                          setArchiveModalOpen(true);
+                        }}
+                        title="Archive Project"
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -206,6 +250,30 @@ export function ProjectManagementTab() {
         onClose={closeModal}
         project={selectedProject}
       />
+
+      {/* Archive Confirmation Modal */}
+      <Dialog open={archiveModalOpen} onOpenChange={setArchiveModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+              Archive Project
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to archive <strong>{projectToArchive?.projectName}</strong>?
+              It will be moved to the <strong>Archived Projects</strong> section in Settings.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="default" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleArchive}>
+              Confirm Archive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
@@ -261,10 +329,10 @@ export function ProjectManagementTab() {
             </TabsTrigger>
           </TabsList>
           <Button
-            onClick={() => navigate("/dashboard/new-proposal")}
-            className="bg-black text-white hover:bg-black/90 shrink-0 font-medium"
+            onClick={() => navigate("/dashboard/new-inquiries")}
+            className="bg-black cursor-pointer text-white hover:bg-gray-800 shrink-0 font-medium"
           >
-            ✨ New Proposal
+            <span className="text-white"><BsFillClipboard2PlusFill /></span> New Inquiry
           </Button>
         </div>
 

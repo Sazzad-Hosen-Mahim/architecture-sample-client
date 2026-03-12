@@ -4,25 +4,17 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// import { Checkbox } from "@/components/ui/checkbox";
-// import { useRouter } from "next/navigation";
 import SignatureCanvas from "react-signature-canvas";
-import { useRef } from "react";
-
 import { Link, useParams } from "react-router-dom";
 
 import ClientTabFrom from "@/components/NewProposalTabContent/ClientTabFrom";
 import ProjectTabForm from "@/components/NewProposalTabContent/ProjectTabForm";
 import ServicesTabForm from "@/components/NewProposalTabContent/ServicesTabForm";
 import SignProposalTab from "@/components/NewProposalTabContent/SignProposalTab";
-
-// Add this function to check for holidays (you can expand this list as needed)
-
-// Modify the getWorkingDays function
+import { useGetProposalInfoQuery } from "@/redux/api/adminDashboard/proposalApi";
 
 export interface NewDynamicProposalPageProps {
     projectData?: any;
@@ -32,7 +24,6 @@ export interface NewDynamicProposalPageProps {
 export default function NewDynamicProposalPage({
     onProposalCreated,
 }: NewDynamicProposalPageProps) {
-    // const router = useRouter();
     const [activeStep, setActiveStep] = useState<
         "client" | "project" | "services" | "sign"
     >("client");
@@ -41,8 +32,6 @@ export default function NewDynamicProposalPage({
     const clientSignatureRef = useRef<SignatureCanvas | null>(null);
     const architectSignatureRef = useRef<SignatureCanvas | null>(null);
     const { id } = useParams();
-
-    console.log(id, "id in new proposal:::")
 
     // Form state
     const [clientInfo, setClientInfo] = useState({
@@ -123,8 +112,72 @@ export default function NewDynamicProposalPage({
         description: string;
     }
 
-    // Add this to the component state declarations
     const [credits, setCredits] = useState<Credit[]>([]);
+
+    // Fetch project data for auto-fill
+    const { data: projectRequest } = useGetProposalInfoQuery(id || "", {
+        skip: !id,
+    });
+
+    useEffect(() => {
+        if (projectRequest) {
+            console.log("AUTO-FILLING FROM PARENT:", projectRequest);
+            
+            // Helper function to convert API enum values to display values
+            const formatServiceType = (type: string) => {
+                const mapping: Record<string, string> = {
+                    'NEW_CONSTRUCTION': 'New Construction',
+                    'RENOVATION': 'Renovation',
+                    'ADDITION': 'Addition',
+                    'INTERIOR_DESIGN': 'Interior Design',
+                };
+                return mapping[type] || type;
+            };
+
+            const formatProjectCategory = (category: string) => {
+                const mapping: Record<string, string> = {
+                    'RESIDENTIAL': 'Residential',
+                    'COMMERCIAL': 'Commercial',
+                    'MIXED_USE': 'Mixed-Use',
+                    'INSTITUTIONAL': 'Institutional',
+                };
+                return mapping[category] || category;
+            };
+
+            setClientInfo({
+                firstName: projectRequest.clientFirstName || "",
+                lastName: projectRequest.clientLastName || "",
+                companyName: projectRequest.companyName || "",
+                email: projectRequest.email || "",
+                phone: projectRequest.phone || "",
+                address: projectRequest.streetAddress || "",
+                city: projectRequest.city || "",
+                state: projectRequest.state || "",
+                zip: "",
+                country: projectRequest.country || "United States",
+                additionalNotes: projectRequest.additionalComments || "",
+            });
+
+            setProjectInfo({
+                projectName: projectRequest.projectName || "",
+                projectDescription: "",
+                additionalContext: projectRequest.additionalNotes || "",
+                streetAddress: projectRequest.projectStreetAddress || "",
+                city: projectRequest.projectCity || "",
+                state: projectRequest.projectState || "",
+                zip: projectRequest.projectZipCode || "",
+                country: projectRequest.projectCountry || "United States",
+                sameAsMailingAddress: projectRequest.projectLocationSameAsClient || false,
+                serviceType: formatServiceType(projectRequest.serviceType || "New Construction"),
+                projectType: formatProjectCategory(projectRequest.projectCategory || ""),
+                squareFootage: projectRequest.projectSize || "",
+                budgetRange: projectRequest.budgetRange || "",
+                timeline: "",
+                googleDriveLink: projectRequest.driveLink || "",
+            });
+        }
+    }, [projectRequest]);
+
     const handleClientInfoChange = (field: string, value: string) => {
         setClientInfo((prev) => ({ ...prev, [field]: value }));
     };
@@ -546,7 +599,6 @@ export default function NewDynamicProposalPage({
                 {/* Client Information Step */}
                 {activeStep === "client" && (
                     <ClientTabFrom
-                        id={id}
                         clientInfo={clientInfo}
                         handleClientInfoChange={handleClientInfoChange}
                         handleNext={handleNext}

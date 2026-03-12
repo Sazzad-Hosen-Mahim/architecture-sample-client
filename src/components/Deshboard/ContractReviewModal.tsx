@@ -9,7 +9,6 @@ import {
     Eye,
     FileText,
     Loader2,
-    X,
     PenLine,
     Download,
 } from "lucide-react";
@@ -275,6 +274,11 @@ export const ContractPDF = ({ contract, sections }: { contract: any; sections: C
     </Document>
 );
 
+import {
+    Dialog,
+    DialogContent,
+} from "@/components/ui/dialog";
+
 interface ContractReviewModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -423,9 +427,14 @@ export default function ContractReviewModal({
         }
     };
 
-    const allSectionsRead = readSections.size === sections.length;
+    const allSectionsRead = sections.length > 0 && readSections.size === sections.length;
 
     const handleSign = async () => {
+        if (!allSectionsRead && !isAlreadySigned) {
+            toast.error("Please read and mark all sections as complete before signing.");
+            return;
+        }
+
         if (signatureRef.current?.isEmpty()) {
             toast.error("Please provide your signature");
             return;
@@ -450,11 +459,9 @@ export default function ContractReviewModal({
         signatureRef.current?.clear();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden">
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-7xl max-h-[95vh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-3">
@@ -470,12 +477,6 @@ export default function ContractReviewModal({
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                        <X className="w-5 h-5 text-gray-400" />
-                    </button>
                 </div>
 
                 {/* Content */}
@@ -702,8 +703,8 @@ export default function ContractReviewModal({
                         </Button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 

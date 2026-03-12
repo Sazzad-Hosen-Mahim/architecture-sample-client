@@ -34,7 +34,11 @@ export interface ProjectRequest {
     appointmentType: string;
     additionalNotes: string;
     driveLink: string | null;
-    status: "PENDING" | "REVIEWED" | "SCHEDULED" | "COMPLETED";
+    isNewInquiry: boolean;
+    isArchived: boolean;
+    archiverId: string | null;
+    archivedAt: string | null;
+    status: "PENDING" | "REVIEWED" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
     userId: string | null;
     deletedAt: string | null;
     createdAt: string;
@@ -42,6 +46,9 @@ export interface ProjectRequest {
     user: any | null;
     assets: any[];
     proposals?: Proposal[];
+    meetingLinks?: any[];
+    assignedManagerId?: string | null;
+    assignedManager?: { id: string; name: string; email: string; avatar: string | null } | null;
 }
 
 export interface ProjectRequestsResponse {
@@ -183,7 +190,7 @@ export const proposalApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         getProjectRequests: builder.query<ProjectRequestsResponse, void>({
             query: () => ({
-                url: "/project-requests",
+                url: "/project-requests-admin",
                 method: "GET",
             }),
             providesTags: ["Project"],
@@ -191,9 +198,10 @@ export const proposalApi = baseApi.injectEndpoints({
 
         getProjectRequestById: builder.query<ProjectRequest, string>({
             query: (id) => ({
-                url: `/project-requests/${id}`,
+                url: `/project-requests-admin/${id}`,
                 method: "GET",
             }),
+            transformResponse: (response: any) => response.data || response,
             providesTags: ["Project"],
         }),
         updateProjectRequestStatus: builder.mutation<
@@ -215,6 +223,7 @@ export const proposalApi = baseApi.injectEndpoints({
                 url: `/project-requests-admin/${id}`,
                 method: "GET",
             }),
+            transformResponse: (response: any) => response.data || response,
             providesTags: ["Project"],
         }),
         submitNewProposal: builder.mutation<ProjectRequest, SendProposalRequest>({
@@ -317,6 +326,14 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
+        addStageNote: builder.mutation<any, { id: string; notes: string }>({
+            query: ({ id, notes }) => ({
+                url: `/project-stages/${id}/notes`,
+                method: "POST",
+                body: { notes },
+            }),
+            invalidatesTags: ["Project"],
+        }),
         getMyProjectRequests: builder.query<ProjectRequestsResponse, void>({
             query: () => ({
                 url: "/project-requests-admin/my-requests",
@@ -346,6 +363,55 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
+        archiveProject: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-requests-admin/${id}/archive`,
+                method: "PATCH",
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        unarchiveProject: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-requests-admin/${id}/unarchive`,
+                method: "PATCH",
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        deleteProject: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-requests-admin/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        getArchivedProjects: builder.query<ProjectRequest[], void>({
+            query: () => ({
+                url: "/project-requests-admin/archived",
+                method: "GET",
+            }),
+            providesTags: ["Project"],
+        }),
+        getProjectManagers: builder.query<{ success: boolean; data: { id: string; name: string; email: string; avatar: string | null }[] }, void>({
+            query: () => ({
+                url: "/users/project-managers",
+                method: "GET",
+            }),
+        }),
+        assignProjectManager: builder.mutation<any, { projectId: string; managerId: string }>({
+            query: ({ projectId, managerId }) => ({
+                url: `/project-requests-admin/${projectId}/assign-manager`,
+                method: "PATCH",
+                body: { managerId },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        getProjectStats: builder.query<any, void>({
+            query: () => ({
+                url: "/project-requests-admin/stats",
+                method: "GET",
+            }),
+            providesTags: ["Project"],
+        }),
     }),
 });
 
@@ -367,8 +433,16 @@ export const {
     useGetStagesByProposalQuery,
     useCompleteStageMutation,
     useUpdateStageMutation,
+    useAddStageNoteMutation,
     useGetMyProjectRequestsQuery,
     useUpdateProjectDriveLinkMutation,
     useDeleteProjectDriveLinkMutation,
     useDeleteProposalMutation,
+    useArchiveProjectMutation,
+    useUnarchiveProjectMutation,
+    useDeleteProjectMutation,
+    useGetArchivedProjectsQuery,
+    useGetProjectManagersQuery,
+    useAssignProjectManagerMutation,
+    useGetProjectStatsQuery,
 } = proposalApi;

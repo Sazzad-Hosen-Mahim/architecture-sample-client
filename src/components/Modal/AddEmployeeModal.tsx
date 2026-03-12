@@ -53,6 +53,7 @@ const AddEmployeeModal = ({ onClose }: { onClose: () => void }) => {
             <option value="ADMIN">ADMIN</option>
             <option value="MEDIA_MANAGER">MEDIA_MANAGER</option>
             <option value="FINANCE_MANAGER">FINANCE_MANAGER</option>
+            <option value="PROJECT_MANAGER">PROJECT_MANAGER</option>
           </select>
 
           <div className="flex justify-end gap-2 pt-3">

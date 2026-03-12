@@ -4,20 +4,18 @@ import { Suspense, lazy, useState, useCallback, useMemo } from "react";
 
 // Lazy load tab components for code splitting
 const ProjectDataTable = lazy(() => import("@/components/Deshboard/UserDashboard/ProjectDataTable"));
-const ProposalsTab = lazy(() => import("@/components/Deshboard/UserDashboard/ProposalsTab"));
-const MeetingsTab = lazy(() => import("@/components/Deshboard/UserDashboard/MeetingsTab"));
+const NewInquiriesClientTab = lazy(() => import("@/components/Deshboard/UserDashboard/NewInquiriesClientTab"));
 
-type TabType = "projects" | "proposals" | "meetings";
+type TabType = "projects" | "new-inquiries";
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState<TabType>("projects");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Memoize tab configuration
+  // Memoize tab configuration - meetings merged into projects
   const tabs = useMemo(() => [
-    { id: "projects", label: "Projects", count: 12 },
-    { id: "proposals", label: "Proposals", count: 5 },
-    { id: "meetings", label: "Meetings", count: 0 },
+    { id: "projects", label: "Projects" },
+    { id: "new-inquiries", label: "New Inquiries" },
   ], []);
 
   // Handle tab change
@@ -26,16 +24,14 @@ const UserDashboard = () => {
     setSearchQuery("");
   }, []);
 
-  // Debounced search handler (optional)
+  // Search handler
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, []);
 
   // Active tab component
   const ActiveTabComponent =
-    activeTab === "projects" ? ProjectDataTable :
-      activeTab === "proposals" ? ProposalsTab :
-        MeetingsTab;
+    activeTab === "projects" ? ProjectDataTable : NewInquiriesClientTab;
 
   return (
     <div className="p-6">
@@ -43,7 +39,7 @@ const UserDashboard = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage your projects and proposals</p>
+          <p className="text-gray-600 mt-1">Manage your projects, meetings, and proposals</p>
         </div>
 
         {/* Search Bar */}
@@ -66,7 +62,7 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {/* stat cards  */}
+      {/* stat cards */}
       <div className="mt-8 mb-5 pt-6 border-t border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
@@ -100,15 +96,6 @@ const UserDashboard = () => {
               `}
             >
               {tab.label}
-              <span className={`
-                ml-2 px-1.5 py-0.5 text-xs rounded-full
-                ${activeTab === tab.id
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-gray-100 text-gray-600"
-                }
-              `}>
-                {tab?.count}
-              </span>
             </button>
           ))}
         </nav>

@@ -94,7 +94,7 @@ export default function NavbarDashboard() {
             >
               Employees
             </NavLink>
-            <NavLink
+            {/* <NavLink
               to="/dashboard/proposals"
               className={({ isActive }) =>
                 `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
@@ -102,7 +102,16 @@ export default function NavbarDashboard() {
               }
             >
               Proposals
-            </NavLink>
+            </NavLink> */}
+            {/* <NavLink
+              to="/dashboard/new-inquiries-list"
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                }`
+              }
+            >
+              New Inquiries
+            </NavLink> */}
           </div>
 
           {/* Logo */}
@@ -308,6 +317,15 @@ export default function NavbarDashboard() {
               }
             >
               Financials
+            </NavLink>
+            <NavLink
+              to="/dashboard/new-inquiries-list"
+              className={({ isActive }) =>
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                }`
+              }
+            >
+              New Inquiries
             </NavLink>
           </div>
         </div>

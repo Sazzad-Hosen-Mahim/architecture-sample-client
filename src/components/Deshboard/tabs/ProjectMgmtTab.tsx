@@ -6,6 +6,7 @@ import {
     useGetStagesByProposalQuery,
     useCompleteStageMutation,
     useUpdateStageMutation,
+    useAddStageNoteMutation,
 } from "@/redux/api/adminDashboard/proposalApi";
 import {
     Loader2,
@@ -18,6 +19,7 @@ import {
     FolderOpen,
     Pencil,
     Trash2,
+    MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,11 +33,31 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
     const { data: stagesData, isLoading: stagesLoading } = useGetStagesByProposalQuery(proposal.id);
     const [completeStage, { isLoading: isCompleting }] = useCompleteStageMutation();
     const [updateStage, { isLoading: isUpdating }] = useUpdateStageMutation();
+    const [addStageNote, { isLoading: isAddingNote }] = useAddStageNoteMutation();
 
     const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
     const [driveLinkInputs, setDriveLinkInputs] = useState<Record<string, string>>({});
     const [showDriveLinkInput, setShowDriveLinkInput] = useState<Record<string, boolean>>({});
     const [editingDriveLink, setEditingDriveLink] = useState<Record<string, boolean>>({});
+    const [showNotesInput, setShowNotesInput] = useState<Record<string, boolean>>({});
+    const [newNoteInputs, setNewNoteInputs] = useState<Record<string, string>>({});
+
+    const handleAddInternalNote = async (stageId: string) => {
+        const note = newNoteInputs[stageId]?.trim();
+        if (!note) {
+            toast.error("Please enter a note");
+            return;
+        }
+
+        try {
+            await addStageNote({ id: stageId, notes: note }).unwrap();
+            toast.success("Internal note added!");
+            setNewNoteInputs((prev) => ({ ...prev, [stageId]: "" }));
+            setShowNotesInput((prev) => ({ ...prev, [stageId]: false }));
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to add internal note");
+        }
+    };
 
     const stages: any[] = stagesData || [];
 
@@ -59,7 +81,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
 
         try {
             const promises = Array.from(selectedStages).map((stageId) =>
-                completeStage({ id: stageId, notes: "Phase completed by project manager" }).unwrap()
+                completeStage({ id: stageId, notes: "Phase marked as completed." }).unwrap()
             );
             await Promise.all(promises);
             toast.success(`${selectedStages.size} phase(s) marked as completed!`);
@@ -168,6 +190,60 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
 
                                     {stage.description && (
                                         <p className="text-xs text-gray-500 mt-1">{stage.description}</p>
+                                    )}
+
+                                    {/* Show existing notes (visible to all PMs at any stage) */}
+                                    {stage.notes && (
+                                        <div className="mt-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                                            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                <MessageSquare className="w-3 h-3" />
+                                                Internal PM Feedback
+                                            </p>
+                                            <p className="text-xs text-amber-800 whitespace-pre-wrap">{stage.notes}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Add Internal Note capability */}
+                                    {!readOnly && (
+                                        <div className="mt-2">
+                                            {showNotesInput[stage.id] ? (
+                                                <div className="space-y-2 bg-blue-50/30 p-2 rounded-md border border-blue-100">
+                                                    <textarea
+                                                        value={newNoteInputs[stage.id] || ""}
+                                                        onChange={(e) =>
+                                                            setNewNoteInputs((prev) => ({ ...prev, [stage.id]: e.target.value }))
+                                                        }
+                                                        placeholder="Type additional notes here..."
+                                                        className="w-full px-2.5 py-2 text-xs border border-blue-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white resize-none"
+                                                        rows={3}
+                                                    />
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleAddInternalNote(stage.id)}
+                                                            disabled={isAddingNote}
+                                                            className="px-3 py-1.5 text-[10px] font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1"
+                                                        >
+                                                            {isAddingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+                                                            Post Internal Note
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShowNotesInput(prev => ({ ...prev, [stage.id]: false }))}
+                                                            className="px-3 py-1.5 text-[10px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setShowNotesInput(prev => ({ ...prev, [stage.id]: true }))}
+                                                    className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-all"
+                                                >
+                                                    <MessageSquare className="w-3.5 h-3.5" />
+                                                    {stage.notes ? "Add Another Note" : "Add Internal Note"}
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
 
                                     {/* Progress bar */}

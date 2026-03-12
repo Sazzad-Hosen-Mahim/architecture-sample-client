@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import SignatureCanvas from "react-signature-canvas";
 import { useRef } from "react";
 
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import ClientTabFrom from "@/components/NewProposalTabContent/ClientTabFrom";
 import ProjectTabForm from "@/components/NewProposalTabContent/ProjectTabForm";
@@ -32,6 +32,8 @@ export interface NewProposalPageProps {
 export default function NewProposalPage({
   onProposalCreated,
 }: NewProposalPageProps) {
+  const [searchParams] = useSearchParams();
+  const projectRequestId = searchParams.get("projectRequestId") || undefined;
   // const router = useRouter();
   const [activeStep, setActiveStep] = useState<
     "client" | "project" | "services" | "sign"
@@ -543,7 +545,6 @@ export default function NewProposalPage({
         {/* Client Information Step */}
         {activeStep === "client" && (
           <ClientTabFrom
-            id={undefined}
             clientInfo={clientInfo}
             handleClientInfoChange={handleClientInfoChange}
             handleNext={handleNext}
@@ -553,7 +554,7 @@ export default function NewProposalPage({
         {/* Project Information Step */}
         {activeStep === "project" && (
           <ProjectTabForm
-            id={undefined}
+            id={projectRequestId}
             projectInfo={projectInfo}
             handleProjectInfoChange={handleProjectInfoChange}
             handleNext={handleNext}

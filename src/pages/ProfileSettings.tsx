@@ -11,8 +11,10 @@ import {
   FilePenLine,
   User,
   UserCog,
+  Archive,
 } from "lucide-react";
 import { OwnerControlsTab } from "@/components/ProfileSetting/OwnerControlsTab";
+import { ArchivedProjectsTab } from "@/components/ProfileSetting/ArchivedProjectsTab";
 import { NotificationSettingsTab } from "@/components/ProfileSetting/NotificationSettingsTab";
 import { SecuritySettingsCard } from "@/components/ProfileSetting/SecuritySettingsCard";
 import MasterContractTab from "@/components/ProfileSetting/MasterContractTab";
@@ -77,6 +79,7 @@ export function ProfileSettings() {
   }, [user]);
 
   const isOwner = user?.role === "Owner";
+  const isStaff = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER";
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -314,6 +317,15 @@ export function ProfileSettings() {
                   Owner Controls
                 </TabButton>
               )}
+              {isStaff && (
+                <TabButton
+                  value="archives"
+                  icon={Archive}
+                  isActive={activeTab === "archives"}
+                >
+                  Archives
+                </TabButton>
+              )}
             </div>
           </div>
 
@@ -426,6 +438,9 @@ export function ProfileSettings() {
 
           {/* Owner Controls Tab - Only visible to owners */}
           {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}
+
+          {/* Archived Projects Tab - Only visible to staff */}
+          {isStaff && activeTab === "archives" && <ArchivedProjectsTab />}
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ export default function DashboardLayout() {
   const location = useLocation();
 
   // List of routes where Navbar should NOT appear
-  const hideNavbarOn = ["/dashboard/new-proposal"];
+  const hideNavbarOn = ["/dashboard/new-proposal", "/dashboard/new-inquiries"];
 
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
   return (

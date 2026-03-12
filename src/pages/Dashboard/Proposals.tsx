@@ -486,7 +486,7 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                             <div className="grid grid-cols-2 gap-4">
                                 <InfoField label="Project Name" value={proposal.projectName} />
                                 <InfoField label="Location" value={proposal.projectLocation} />
-                                <InfoField label="Service Type" value={proposal.serviceType?.replace(/_/g, ' ')} />
+                                <InfoField label="Service Type" value={(proposal.serviceType || "").replace(/_/g, ' ')} />
                                 <InfoField label="Category" value={proposal.projectCategory} />
                                 <InfoField label="Square Footage" value={proposal.squareFootage} />
                                 <InfoField label="Budget Range" value={proposal.budgetRange} />
@@ -578,7 +578,7 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                                 {proposal.paymentMethod && (
                                     <div className="flex justify-between pt-2 border-t border-gray-200">
                                         <span className="text-gray-600">Payment Method:</span>
-                                        <span className="font-medium">{proposal.paymentMethod.replace(/_/g, ' ')}</span>
+                                        <span className="font-medium">{(proposal.paymentMethod || "").replace(/_/g, ' ')}</span>
                                     </div>
                                 )}
                             </div>

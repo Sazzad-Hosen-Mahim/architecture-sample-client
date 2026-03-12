@@ -2,8 +2,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useGetProposalInfoQuery } from "@/redux/api/adminDashboard/proposalApi";
-import { useEffect } from "react";
 
 interface ClientFormProps {
   clientInfo: {
@@ -21,40 +19,13 @@ interface ClientFormProps {
   };
   handleClientInfoChange: (field: string, value: string) => void;
   handleNext: () => void;
-  id: string | undefined;
 }
 
 export default function ClientTabFrom({
   clientInfo,
   handleClientInfoChange,
   handleNext,
-  id,
 }: ClientFormProps) {
-
-  console.log(id, "id in client tab from:::")
-
-  const { data: clientInformation } = useGetProposalInfoQuery(id || "", {
-    skip: !id, // Skip the query if there's no id
-  });
-  console.log(clientInformation, "clientInformation:::")
-
-  // Populate form when client information is loaded
-  useEffect(() => {
-    if (clientInformation) {
-      // Map the API response to the form fields
-      handleClientInfoChange("firstName", clientInformation.clientFirstName || "");
-      handleClientInfoChange("lastName", clientInformation.clientLastName || "");
-      handleClientInfoChange("companyName", clientInformation.companyName || "");
-      handleClientInfoChange("email", clientInformation.email || "");
-      handleClientInfoChange("phone", clientInformation.phone || "");
-      handleClientInfoChange("address", clientInformation.streetAddress || "");
-      handleClientInfoChange("city", clientInformation.city || "");
-      handleClientInfoChange("state", clientInformation.state || "");
-      handleClientInfoChange("country", clientInformation.country || "");
-      handleClientInfoChange("zip", ""); // ZIP is not in the response
-      handleClientInfoChange("additionalNotes", clientInformation.additionalComments || "");
-    }
-  }, [clientInformation]);
 
   return (
     <div className="bg-white  ">

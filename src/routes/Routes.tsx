@@ -31,6 +31,8 @@ import UserDashboard from "@/pages/UserDashboard";
 import Employees from "@/pages/Dashboard/Employees";
 import NewDynamicProposalPage from "@/pages/Dashboard/NewDynamicProposal";
 import Proposals from "@/pages/Dashboard/Proposals";
+import NewInquiryPage from "@/pages/Dashboard/NewInquiries";
+import NewInquiriesListPage from "@/pages/Dashboard/NewInquiriesList";
 // import ProfileSettings from "@/pages/ProfileSettings";
 
 const routes = createBrowserRouter([
@@ -134,6 +136,8 @@ const routes = createBrowserRouter([
     children: [
       { path: "", element: <Dashboard /> },
       { path: "new-proposal", element: <NewProposal /> },
+      { path: "new-inquiries", element: <NewInquiryPage /> },
+      { path: "new-inquiries-list", element: <NewInquiriesListPage /> },
       { path: "new-proposal/:id", element: <NewDynamicProposalPage /> },
       { path: "media", element: <Media /> },
       { path: "financials", element: <Financials /> },
