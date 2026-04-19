@@ -10,13 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
 import logo from "@/assets/logo.png";
-import { Bell } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import TimeCardDialog from "@/components/Deshboard/TimeCardDialog/TimeCardDialog";
+import NotificationPopover from "@/components/Deshboard/NotificationPopover";
 import { logout, selectCurrentUser } from "@/redux/features/auth/authSlice";
 
 export default function NavbarDashboard() {
@@ -127,42 +122,7 @@ export default function NavbarDashboard() {
           {/* Right: Desktop User Avatar */}
           <div className="hidden md:flex items-center gap-4">
             {/* Notification Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="relative cursor-pointer ">
-                  <Bell className="w-5 h-5" />
-                  {/* Optional notification badge */}
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    3
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent
-                align="end"
-                className="w-64 bg-white border border-gray-200 rounded-lg shadow-lg"
-              >
-                <div className="p-2">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                    Notifications
-                  </h3>
-                  <div className="space-y-2 text-sm text-gray-600 max-h-60 overflow-y-auto">
-                    <div className="hover:bg-gray-100 p-2 rounded-md cursor-pointer">
-                      📨 New message from client
-                    </div>
-                    <div className="hover:bg-gray-100 p-2 rounded-md cursor-pointer">
-                      ✅ Project “Modern Villa” approved
-                    </div>
-                    <div className="hover:bg-gray-100 p-2 rounded-md cursor-pointer">
-                      💰 Payment received – $1200
-                    </div>
-                  </div>
-                  <button className="mt-2 w-full text-center text-blue-500 text-sm font-medium hover:underline">
-                    Mark all as read
-                  </button>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <NotificationPopover />
 
             {/* User Avatar Dropdown */}
             <Popover>

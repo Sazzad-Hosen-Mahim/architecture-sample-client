@@ -10,12 +10,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { ProjectRequest, useGetProjectRequestsQuery, useArchiveProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
+import { ProjectRequest, useGetProjectRequestsQuery, useGetMyProjectRequestsQuery, useArchiveProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
 import ProjectDetailsModal from "./ProjectDetailesModal";
 import { BsFillClipboard2PlusFill } from "react-icons/bs";
 import { toast } from "sonner";
-import { Archive, AlertCircle } from "lucide-react";
+import { Archive, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,17 +32,28 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+const PROJECTS_PER_PAGE = 10;
+
 export function ProjectManagementTab() {
   const [activeTab, setActiveTab] = useState("all");
+  const [assignedFilter, setAssignedFilter] = useState("all");
   const [selectedProject, setSelectedProject] = useState<ProjectRequest | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [projectToArchive, setProjectToArchive] = useState<ProjectRequest | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
-  // Fetch project requests from API
-  const { data, isLoading, isError } = useGetProjectRequestsQuery();
+  // Fetch ALL project requests (for "All Projects" filter)
+  const { data: allProjectsData, isLoading: isLoadingAll, isError: isErrorAll } = useGetProjectRequestsQuery();
+  // Fetch only assigned project requests (for "Assigned Projects" filter)
+  const { data: myProjectsData, isLoading: isLoadingMy, isError: isErrorMy } = useGetMyProjectRequestsQuery();
   const [archiveProject] = useArchiveProjectMutation();
+
+  // Select the correct data source based on filter
+  const data = assignedFilter === "assigned" ? myProjectsData : allProjectsData;
+  const isLoading = assignedFilter === "assigned" ? isLoadingMy : isLoadingAll;
+  const isError = assignedFilter === "assigned" ? isErrorMy : isErrorAll;
 
   const handleArchive = async () => {
     if (!projectToArchive) return;
@@ -114,136 +132,194 @@ export function ProjectManagementTab() {
 
   const getFilteredProjects = (stage: string) => {
     if (!data?.data) return [];
-    if (stage === "all") return data.data.filter((p: ProjectRequest) => !p.isArchived);
+
+    let filtered = data.data.filter((p: ProjectRequest) => !p.isArchived);
+
+    if (stage === "all") return filtered;
+
     // Inquiry tab shows both PENDING and REVIEWED
     if (stage === "inquiry") {
-      return data.data.filter(
-        (p: ProjectRequest) => !p.isArchived && (p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed")
+      return filtered.filter(
+        (p: ProjectRequest) => (p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed")
       );
     }
-    return data.data.filter(
-      (p: ProjectRequest) => !p.isArchived && p.status.toLowerCase() === stage.toLowerCase()
+
+    return filtered.filter(
+      (p: ProjectRequest) => p.status.toLowerCase() === stage.toLowerCase()
     );
   };
 
   const getStageCount = (stage: string) => {
     if (!data?.data) return 0;
-    if (stage === "all") return data.data.length;
+    const nonArchived = data.data.filter((p: ProjectRequest) => !p.isArchived);
+    if (stage === "all") return nonArchived.length;
     // Inquiry tab shows both PENDING and REVIEWED
     if (stage === "inquiry") {
-      return data.data.filter(
+      return nonArchived.filter(
         (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
       ).length;
     }
-    return data.data.filter((p) => p.status.toLowerCase() === stage.toLowerCase()).length;
+    return nonArchived.filter((p) => p.status.toLowerCase() === stage.toLowerCase()).length;
   };
 
-  const renderProjectTable = (filteredProjects: ProjectRequest[]) => (
-    <div className="rounded-lg border bg-card border-gray-200">
-      <div className="p-4 border-b border-gray-200">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Project Workflow: Projects progress through stages from Pending to Completed.
-          Once a consultation is scheduled, the project moves to Scheduled stage.
-        </p>
-      </div>
+  const renderProjectTable = (filteredProjects: ProjectRequest[]) => {
+    const totalPages = Math.ceil(filteredProjects.length / PROJECTS_PER_PAGE);
+    const paginatedProjects = filteredProjects.slice(
+      (currentPage - 1) * PROJECTS_PER_PAGE,
+      currentPage * PROJECTS_PER_PAGE
+    );
 
-      {isLoading ? (
-        <div className="p-8 text-center text-gray-500">Loading projects...</div>
-      ) : isError ? (
-        <div className="p-8 text-center text-red-500">Error loading projects. Please try again.</div>
-      ) : filteredProjects.length === 0 ? (
-        <div className="p-8 text-center text-gray-500">No projects found.</div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Location</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Client</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Appointment Date</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Progress</TableHead>
-              <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProjects.map((project) => (
-              <TableRow
-                key={project.id}
-                className="hover:bg-gray-100 cursor-pointer"
-              >
-                <TableCell>
-                  <div>
-                    <div className="text-xs font-semibold">{project.projectName}</div>
-                    <div className="text-xs text-gray-400">{project.companyName}</div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs">
-                  {project.projectCity}, {project.projectState}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs">
-                  {project.clientFirstName} {project.clientLastName}
-                </TableCell>
-                <TableCell className="text-xs">
-                  {formatDate(project.appointmentDate)}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className={getStageBadgeClass(project.status)}
+    return (
+      <div className="rounded-lg border bg-card border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Project Workflow: Projects progress through stages from Pending to Completed.
+            Once a consultation is scheduled, the project moves to Scheduled stage.
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">Filter:</span>
+            <Select value={assignedFilter} onValueChange={(val) => { setAssignedFilter(val); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[160px] h-8 text-xs bg-white">
+                <SelectValue placeholder="Filter projects" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="all">All Projects</SelectItem>
+                <SelectItem value="assigned">Assigned Projects</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="p-8 text-center text-gray-500">Loading projects...</div>
+        ) : isError ? (
+          <div className="p-8 text-center text-red-500">Error loading projects. Please try again.</div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">No projects found.</div>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Location</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Client</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Assigned Manager</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Appointment Date</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Progress</TableHead>
+                  <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedProjects.map((project) => (
+                  <TableRow
+                    key={project.id}
+                    className="hover:bg-gray-100 cursor-pointer"
                   >
-                    {getStatusLabel(project.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-2 bg-green-500 rounded-full"
-                        style={{ width: `${getProgress(project.status)}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs">{getProgress(project.status)}%</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
-                      onClick={() => openModal(project)}
-                    >
-                      View Details
-                    </Button>
-                    {project.status === "COMPLETED" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-transparent text-xs text-amber-600 border-amber-200 hover:bg-amber-600 hover:text-white cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProjectToArchive(project);
-                          setArchiveModalOpen(true);
-                        }}
-                        title="Archive Project"
+                    <TableCell>
+                      <div>
+                        <div className="text-xs font-semibold">{project.projectName}</div>
+                        <div className="text-xs text-gray-400">{project.companyName}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {project.projectCity}, {project.projectState}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {project.clientFirstName} {project.clientLastName}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {project.assignedManager?.name || "Unassigned"}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {formatDate(project.appointmentDate)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={getStageBadgeClass(project.status)}
                       >
-                        <Archive className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+                        {getStatusLabel(project.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-2 bg-green-500 rounded-full"
+                            style={{ width: `${getProgress(project.status)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs">{getProgress(project.status)}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
+                          onClick={() => openModal(project)}
+                        >
+                          View Details
+                        </Button>
+                        {project.status === "COMPLETED" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent text-xs text-amber-600 border-amber-200 hover:bg-amber-600 hover:text-white cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProjectToArchive(project);
+                              setArchiveModalOpen(true);
+                            }}
+                            title="Archive Project"
+                          >
+                            <Archive className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* Pagination UI */}
+            <div className="p-4 border-t flex justify-between items-center bg-gray-50/50">
+               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                  Page {currentPage} of {totalPages} ({filteredProjects.length} total)
+               </div>
+               <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft size={16} />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
+               </div>
+            </div>
+          </>
+        )}
 
       <ProjectDetailsModal
         isOpen={isModalOpen}
@@ -276,6 +352,7 @@ export function ProjectManagementTab() {
       </Dialog>
     </div>
   );
+};
 
   return (
     <div className="p-4">

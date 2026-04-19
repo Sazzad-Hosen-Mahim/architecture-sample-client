@@ -43,6 +43,23 @@ export default function ClientProjectDetailsModal({ isOpen, onClose, project: in
         });
     };
 
+    const getDaysUntil = (dateStr: string) => {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const deadline = new Date(dateStr);
+        deadline.setHours(0, 0, 0, 0);
+        const diff = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return diff;
+    };
+
+    const getDeadlineColor = (dateStr: string) => {
+        const days = getDaysUntil(dateStr);
+        if (days < 0) return "text-red-600 bg-red-50 border-red-200";
+        if (days <= 3) return "text-red-700 bg-red-50 border-red-100";
+        if (days <= 7) return "text-amber-700 bg-amber-50 border-amber-100";
+        return "text-gray-500 bg-gray-50 border-gray-100";
+    };
+
     const fullClientName = `${project.clientFirstName || ''} ${project.clientMiddleName || ''} ${project.clientLastName || ''}`.trim();
     const projectAddress = [project.projectStreetAddress, project.projectCity, project.projectState, project.projectCountry].filter(Boolean).join(", ");
     const clientAddress = [project.streetAddress, project.city, project.state, project.country].filter(Boolean).join(", ");
@@ -260,6 +277,13 @@ export default function ClientProjectDetailsModal({ isOpen, onClose, project: in
                                                             }`}>
                                                             {stage.status}
                                                         </span>
+                                                        {stage.externalDeadline && !isCompleted && (
+                                                            <span className={`inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest ${getDeadlineColor(stage.externalDeadline)}`}>
+                                                                <Calendar className="w-2.5 h-2.5" />
+                                                                Deadline: {new Date(stage.externalDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                                {getDaysUntil(stage.externalDeadline) < 0 && " (OVERDUE)"}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <h5 className={`font-bold text-base leading-tight ${isCompleted ? 'text-green-900' : 'text-gray-900'}`}>
                                                         {stage.name}

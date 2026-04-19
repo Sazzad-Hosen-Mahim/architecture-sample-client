@@ -318,7 +318,7 @@ export const proposalApi = baseApi.injectEndpoints({
             invalidatesTags: ["Project"],
         }),
 
-        updateStage: builder.mutation<any, { id: string; driveLink?: string; notes?: string }>({
+        updateStage: builder.mutation<any, { id: string; driveLink?: string; notes?: string; internalDeadline?: string | null; externalDeadline?: string | null }>({
             query: ({ id, ...body }) => ({
                 url: `/project-stages/${id}`,
                 method: "PATCH",
@@ -331,6 +331,20 @@ export const proposalApi = baseApi.injectEndpoints({
                 url: `/project-stages/${id}/notes`,
                 method: "POST",
                 body: { notes },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        startPhaseTimer: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-stages/${id}/start-timer`,
+                method: "POST",
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        stopPhaseTimer: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-stages/${id}/stop-timer`,
+                method: "POST",
             }),
             invalidatesTags: ["Project"],
         }),
@@ -434,6 +448,8 @@ export const {
     useCompleteStageMutation,
     useUpdateStageMutation,
     useAddStageNoteMutation,
+    useStartPhaseTimerMutation,
+    useStopPhaseTimerMutation,
     useGetMyProjectRequestsQuery,
     useUpdateProjectDriveLinkMutation,
     useDeleteProjectDriveLinkMutation,

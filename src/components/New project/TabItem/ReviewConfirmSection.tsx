@@ -11,12 +11,13 @@ import { useCreateProjectRequestMutation } from "@/redux/api/newProjectAPi";
 import { buildProjectPayload } from "@/utils/projectPayload";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function ReviewConfirmSection({
   formData,
   updateFormData,
 }: // onPaymentSuccess,
-any) {
+  any) {
   const [createProject, { isLoading }] = useCreateProjectRequestMutation();
   const [, setError] = useState<string | null>(null);
   console.log("formData in ReviewConfirmSection:", formData);
@@ -45,8 +46,10 @@ any) {
     try {
       const payload = buildProjectPayload(formData);
       await createProject(payload).unwrap();
+      toast.success("Project request submitted successfully");
     } catch (err: any) {
       setError(err?.data?.message || "Failed to submit project request");
+      toast.error(err?.data?.message || "Failed to submit project request");
       console.error(err);
     }
   };
@@ -218,11 +221,10 @@ any) {
               >
                 <SelectTrigger
                   id="paymentMethod"
-                  className={`mt-2 w-full border rounded-md ${
-                    getErrorMessage("paymentMethod")
-                      ? "border-red-500"
-                      : "border-gray-200"
-                  }`}
+                  className={`mt-2 w-full border rounded-md ${getErrorMessage("paymentMethod")
+                    ? "border-red-500"
+                    : "border-gray-200"
+                    }`}
                 >
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
@@ -261,11 +263,10 @@ any) {
                     id="cardNumber"
                     name="cardNumber"
                     placeholder="1234 5678 9012 3456"
-                    className={`mt-2 w-full border rounded-md ${
-                      getErrorMessage("cardNumber")
-                        ? "border-red-500"
-                        : "border-gray-200"
-                    }`}
+                    className={`mt-2 w-full border rounded-md ${getErrorMessage("cardNumber")
+                      ? "border-red-500"
+                      : "border-gray-200"
+                      }`}
                     // value={paymentDetails.cardNumber || ""}
                     // onChange={handleInputChange}
                     maxLength={19}
@@ -285,11 +286,10 @@ any) {
                       id="expiryDate"
                       name="expiryDate"
                       placeholder="MM/YY"
-                      className={`mt-2 w-full border rounded-md ${
-                        getErrorMessage("expiryDate")
-                          ? "border-red-500"
-                          : "border-gray-200"
-                      }`}
+                      className={`mt-2 w-full border rounded-md ${getErrorMessage("expiryDate")
+                        ? "border-red-500"
+                        : "border-gray-200"
+                        }`}
                       //   value={paymentDetails.expiryDate || ""}
                       //   onChange={handleInputChange}
                       maxLength={5}
@@ -310,13 +310,12 @@ any) {
                       placeholder="123"
                       type="password"
                       maxLength={4}
-                      className={`mt-2 w-full border rounded-md ${
-                        getErrorMessage("cvv")
-                          ? "border-red-500"
-                          : "border-gray-200"
-                      }`}
-                      //   value={paymentDetails.cvv || ""}
-                      //   onChange={handleInputChange}
+                      className={`mt-2 w-full border rounded-md ${getErrorMessage("cvv")
+                        ? "border-red-500"
+                        : "border-gray-200"
+                        }`}
+                    //   value={paymentDetails.cvv || ""}
+                    //   onChange={handleInputChange}
                     />
                     {getErrorMessage("cvv") && (
                       <p className="text-xs text-red-500 mt-1">
@@ -338,13 +337,12 @@ any) {
                   name="paypalEmail"
                   type="email"
                   placeholder="name@example.com"
-                  className={`mt-2 w-full border rounded-md ${
-                    getErrorMessage("paypalEmail")
-                      ? "border-red-500"
-                      : "border-gray-200"
-                  }`}
+                  className={`mt-2 w-full border rounded-md ${getErrorMessage("paypalEmail")
+                    ? "border-red-500"
+                    : "border-gray-200"
+                    }`}
                   value={paymentDetails.paypalEmail || ""}
-                  // onChange={handleInputChange}
+                // onChange={handleInputChange}
                 />
                 {getErrorMessage("paypalEmail") && (
                   <p className="text-xs text-red-500 mt-1">
@@ -363,13 +361,12 @@ any) {
                   id="zellePhone"
                   name="zellePhone"
                   placeholder="(555) 123-4567"
-                  className={`mt-2 w-full border rounded-md ${
-                    getErrorMessage("zellePhone")
-                      ? "border-red-500"
-                      : "border-gray-200"
-                  }`}
+                  className={`mt-2 w-full border rounded-md ${getErrorMessage("zellePhone")
+                    ? "border-red-500"
+                    : "border-gray-200"
+                    }`}
                   value={paymentDetails.zellePhone || ""}
-                  // onChange={handleInputChange}
+                // onChange={handleInputChange}
                 />
                 {getErrorMessage("zellePhone") && (
                   <p className="text-xs text-red-500 mt-1">
@@ -388,13 +385,12 @@ any) {
                   id="bitcoinAddress"
                   name="bitcoinAddress"
                   placeholder="Enter Bitcoin wallet address"
-                  className={`mt-2 w-full border rounded-md ${
-                    getErrorMessage("bitcoinAddress")
-                      ? "border-red-500"
-                      : "border-gray-200"
-                  }`}
+                  className={`mt-2 w-full border rounded-md ${getErrorMessage("bitcoinAddress")
+                    ? "border-red-500"
+                    : "border-gray-200"
+                    }`}
                   value={paymentDetails.bitcoinAddress || ""}
-                  // onChange={handleInputChange}
+                // onChange={handleInputChange}
                 />
                 {getErrorMessage("bitcoinAddress") && (
                   <p className="text-xs text-red-500 mt-1">
