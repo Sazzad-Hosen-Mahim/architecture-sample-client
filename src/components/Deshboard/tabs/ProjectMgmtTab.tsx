@@ -31,8 +31,11 @@ import {
     X,
     Play,
     Square,
+    TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import { FinancialChart } from "@/components/Deshboard/Finacials/FinancialChart";
 
 type ProjectMgmtTabProps = {
     project: ProjectRequest;
@@ -804,6 +807,20 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                     </div>
                 );
             })}
+
+            {/* Project Financial Performance Chart */}
+            <div className="mt-12 pt-8 border-t border-gray-100">
+                <div className="mb-6 px-2">
+                    <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                        Project Financial Analytics
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium">Real-time revenue, labor costs, and profit trends for this project</p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <FinancialChart projectId={project.id} />
+                </div>
+            </div>
         </div>
     );
 }

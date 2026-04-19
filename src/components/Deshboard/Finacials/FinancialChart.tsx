@@ -10,6 +10,8 @@ import {
   Legend,
   type ChartOptions,
 } from "chart.js";
+import { useGetFinancialHistoryQuery } from "@/redux/api/financialApi";
+import { Loader2 } from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -21,50 +23,31 @@ ChartJS.register(
   Legend
 );
 
-const months = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+export function FinancialChart({ projectId }: { projectId?: string }) {
+  const { data: history, isLoading } = useGetFinancialHistoryQuery(projectId);
 
-// ✅ Fake data added
-const data = {
-  activeProjects: [
-    12000, 14000, 16000, 18000, 15000, 17000, 19000, 21000, 22000, 20000, 23000,
-    25000,
-  ],
-  completedProjects: [
-    8000, 9000, 10000, 11000, 9000, 9500, 10500, 12000, 11500, 13000, 13500,
-    14500,
-  ],
-  laborCost: [
-    7000, 8000, 7500, 8500, 8000, 8200, 8800, 9000, 9500, 9700, 9900, 10200,
-  ],
-  overhead: [
-    2000, 2200, 2100, 2300, 2500, 2400, 2600, 2700, 2800, 3000, 3100, 3200,
-  ],
-  utilization: [65, 70, 68, 72, 74, 75, 77, 80, 78, 82, 83, 85],
-};
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[400px] bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-2" />
+        <p className="text-sm text-gray-500 font-medium">Loading financial history...</p>
+      </div>
+    );
+  }
 
-export function FinancialChart() {
-  const totalRevenue = data.activeProjects.map(
-    (active, index) => active + data.completedProjects[index]
-  );
-  const totalCost = data.laborCost.map(
-    (labor, index) => labor + (data.overhead[index] || 0)
-  );
-  const profit = totalRevenue.map(
-    (revenue, index) => revenue - totalCost[index]
-  );
+  if (!history || history.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[400px] bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+        <p className="text-sm text-gray-500 font-medium">No financial data available for the chart.</p>
+      </div>
+    );
+  }
+
+  const months = history.map((h) => h.month);
+  const totalRevenue = history.map((h) => h.revenue);
+  const totalCost = history.map((h) => h.totalCost);
+  const profit = history.map((h) => h.profit);
+  const utilization = history.map((h) => h.utilization);
 
   const chartData = {
     labels: months,
@@ -92,7 +75,7 @@ export function FinancialChart() {
       },
       {
         label: "Utilization (%)",
-        data: data.utilization,
+        data: utilization,
         borderColor: "rgb(249, 115, 22)",
         backgroundColor: "rgba(249, 115, 22, 0.5)",
         yAxisID: "y1",
@@ -102,6 +85,7 @@ export function FinancialChart() {
 
   const options: ChartOptions<"line"> = {
     responsive: true,
+    maintainAspectRatio: false,
     interaction: {
       mode: "index" as const,
       intersect: false,
@@ -109,10 +93,48 @@ export function FinancialChart() {
     plugins: {
       title: {
         display: true,
-        text: "Financial Performance Overview",
+        text: projectId ? "Project Financial Performance" : "Firm-wide Financial Performance Overview",
+        font: {
+          size: 16,
+          weight: 'bold'
+        },
+        padding: { bottom: 20 }
       },
       legend: {
         position: "top" as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: { size: 12 }
+        }
+      },
+      tooltip: {
+        mode: "index",
+        intersect: false,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        titleColor: '#111827',
+        bodyColor: '#4b5563',
+        borderColor: '#e5e7eb',
+        borderWidth: 1,
+        padding: 12,
+        boxPadding: 6,
+        usePointStyle: true,
+        callbacks: {
+          label: (context) => {
+            let label = context.dataset.label || "";
+            if (label) {
+              label += ": ";
+            }
+            if (context.parsed.y !== null) {
+              if (label.includes("Utilization")) {
+                label += context.parsed.y + "%";
+              } else {
+                label += "$" + context.parsed.y.toLocaleString();
+              }
+            }
+            return label;
+          },
+        },
       },
     },
     scales: {
@@ -124,10 +146,14 @@ export function FinancialChart() {
         title: {
           display: true,
           text: "Amount ($)",
+          font: { weight: 'bold' }
         },
         grid: {
-          drawOnChartArea: false,
+          color: '#f3f4f6',
         },
+        ticks: {
+          callback: (value) => '$' + value.toLocaleString()
+        }
       },
       y1: {
         type: "linear" as const,
@@ -136,121 +162,92 @@ export function FinancialChart() {
         title: {
           display: true,
           text: "Utilization (%)",
+          font: { weight: 'bold' }
         },
         grid: {
           drawOnChartArea: false,
         },
+        min: 0,
+        max: 100,
+        ticks: {
+          callback: (value) => value + '%'
+        }
       },
+      x: {
+        grid: {
+          display: false
+        }
+      }
     },
   };
 
+  const avgRevenue = totalRevenue.reduce((a, b) => a + b, 0) / (totalRevenue.length || 1);
+  const avgCost = totalCost.reduce((a, b) => a + b, 0) / (totalCost.length || 1);
+  const avgProfit = profit.reduce((a, b) => a + b, 0) / (profit.length || 1);
+  const avgUtil = utilization.reduce((a, b) => a + b, 0) / (utilization.length || 1);
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4 mb-4">
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-6 justify-center bg-gray-50/50 p-4 rounded-xl border border-gray-100">
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-          <span className="text-sm">Total Revenue</span>
+          <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></div>
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Revenue</span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <span className="text-sm">Total Cost</span>
+          <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm shadow-red-200"></div>
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Cost</span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          <span className="text-sm">Profit</span>
+          <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm shadow-green-200"></div>
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Profit</span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-          <span className="text-sm">Utilization (%)</span>
+          <div className="w-3 h-3 rounded-full bg-orange-500 shadow-sm shadow-orange-200"></div>
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Utilization</span>
         </div>
       </div>
 
-      <div className="h-[400px]">
+      <div className="h-[400px] w-full bg-white p-2">
         <Line
-          options={{
-            ...options,
-            maintainAspectRatio: false,
-            plugins: {
-              ...options.plugins,
-              tooltip: {
-                mode: "index",
-                intersect: false,
-                callbacks: {
-                  label: (context) => {
-                    let label = context.dataset.label || "";
-                    if (label) {
-                      label += ": ";
-                    }
-                    if (context.parsed.y !== null) {
-                      if (label.includes("Utilization")) {
-                        label += context.parsed.y + "%";
-                      } else {
-                        label += "$" + context.parsed.y.toLocaleString();
-                      }
-                    }
-                    return label;
-                  },
-                },
-              },
-            },
-          }}
+          options={options}
           data={{
             ...chartData,
             datasets: chartData.datasets.map((dataset) => ({
               ...dataset,
-              tension: 0.3,
-              pointRadius: 3,
-              pointHoverRadius: 5,
+              tension: 0.4,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: dataset.borderColor,
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
               borderWidth: 3,
               fill: dataset.label === "Profit" ? "origin" : false,
               backgroundColor:
                 dataset.label === "Profit"
-                  ? "rgba(34, 197, 94, 0.1)"
+                  ? "rgba(34, 197, 94, 0.08)"
                   : dataset.backgroundColor,
             })),
           }}
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-        <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
-          <p className="text-sm text-blue-700 font-medium">
-            Avg. Monthly Revenue
-          </p>
-          <p className="text-xl font-bold">
-            ${(totalRevenue[totalRevenue.length - 1] / 12).toLocaleString()}{" "}
-            <span className="text-xs font-normal">Total revenue/ 12</span>
-          </p>
-        </div>
-        <div className="bg-red-50 p-3 rounded-md border border-red-100">
-          <p className="text-sm text-red-700 font-medium">Avg. Monthly Cost</p>
-          <p className="text-xl font-bold">
-            ${(totalCost[totalCost.length - 1] / 12).toLocaleString()}{" "}
-            <span className="text-xs font-normal">
-              Total Overhead + Labor / 12
-            </span>
-          </p>
-        </div>
-        <div className="bg-green-50 p-3 rounded-md border border-green-100">
-          <p className="text-sm text-green-700 font-medium">
-            Avg. Monthly Profit
-          </p>
-          <p className="text-xl font-bold">
-            ${(profit[profit.length - 1] / 12).toLocaleString()}{" "}
-            <span className="text-xs font-normal">Total Profit / 12</span>
-          </p>
-        </div>
-        <div className="bg-orange-50 p-3 rounded-md border border-orange-100">
-          <p className="text-sm text-orange-700 font-medium">
-            Avg. Utilization
-          </p>
-          <p className="text-xl font-bold">
-            {data.utilization.reduce((a, b) => a + b, 0) /
-              data.utilization.length}
-            %
-          </p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Avg Monthly Revenue', value: avgRevenue, color: 'blue', sub: 'Total revenue / 12' },
+          { label: 'Avg Monthly Cost', value: avgCost, color: 'red', sub: 'Total costs / 12' },
+          { label: 'Avg Monthly Profit', value: avgProfit, color: 'green', sub: 'Total profit / 12' },
+          { label: 'Avg Utilization', value: avgUtil, color: 'orange', sub: 'Last 12 months avg', isPct: true },
+        ].map((stat, i) => (
+          <div key={i} className={`bg-${stat.color}-50/50 p-4 rounded-xl border border-${stat.color}-100 transition-all hover:shadow-md hover:shadow-${stat.color}-100/20`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest text-${stat.color}-600 mb-1`}>{stat.label}</p>
+            <p className="text-2xl font-black text-gray-900 leading-none">
+              {stat.isPct ? `${stat.value.toFixed(1)}%` : `$${Math.round(stat.value).toLocaleString()}`}
+            </p>
+            <p className="text-[10px] text-gray-400 mt-2 font-medium italic">{stat.sub}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
+

@@ -10,8 +10,10 @@ import { BarChart, DollarSign, Plus, TrendingUp, Users } from "lucide-react";
 import { useState } from "react";
 import { OverheadExpensesModal } from "./overheadModal/OverHeadModal";
 import { useGetFinancialOverviewQuery } from "@/redux/api/financialApi";
+import { useNavigate } from "react-router-dom";
 
 export default function FinancialOverviewTab() {
+  const navigate = useNavigate()
   const [overheadModalOpen, setOverheadModalOpen] = useState(false);
   const { data: overview, isLoading } = useGetFinancialOverviewQuery();
 
@@ -178,6 +180,15 @@ export default function FinancialOverviewTab() {
                     <Users className="h-5 w-5 mr-2 text-blue-600" />
                     Labor
                   </h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigate("/dashboard/employees")}
+                      className="flex items-center gap-1 border border-black text-black hover:bg-gray-900 hover:text-white cursor-pointer text-xs font-medium px-2 py-1 rounded-md shadow-sm transition-all duration-200"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Update Labor
+                    </button>
+                  </div>
                   <span className="text-sm font-bold text-blue-600">
                     ${labor.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>

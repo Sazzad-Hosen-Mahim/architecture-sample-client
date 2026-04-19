@@ -28,6 +28,8 @@ const formatDuration = (seconds: number) => {
     return `${hrs}h ${mins}m`;
 };
 
+import { FinancialChart } from "../FinancialChart";
+
 export default function ProjectFinancialDetailsModal({
     open,
     onOpenChange,
@@ -213,6 +215,16 @@ export default function ProjectFinancialDetailsModal({
                                     {formatCurrency(details.profit)}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    
+                    {/* Project Performance Chart */}
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+                            Financial Performance History
+                        </h4>
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                            <FinancialChart projectId={projectId} />
                         </div>
                     </div>
 

@@ -80,7 +80,7 @@ export default function NavbarDashboard() {
             >
               Financials
             </NavLink>
-            <NavLink
+            {/* <NavLink
               to="/dashboard/employees"
               className={({ isActive }) =>
                 `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
@@ -88,7 +88,7 @@ export default function NavbarDashboard() {
               }
             >
               Employees
-            </NavLink>
+            </NavLink> */}
             {/* <NavLink
               to="/dashboard/proposals"
               className={({ isActive }) =>

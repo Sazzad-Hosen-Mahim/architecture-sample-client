@@ -158,6 +158,16 @@ export const financialApi = baseApi.injectEndpoints({
       transformResponse: (response: any) => response.data,
       providesTags: ["Timecard"],
     }),
+
+    getFinancialHistory: builder.query<any[], string | void>({
+      query: (projectId) => ({
+        url: "/financial/history",
+        method: "GET",
+        params: projectId ? { projectId } : undefined,
+      }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["FinancialOverview"],
+    }),
   }),
 });
 
@@ -181,4 +191,5 @@ export const {
   useRejectTimecardMutation,
   useDeleteTimecardMutation,
   useGetAllTimecardsQuery,
+  useGetFinancialHistoryQuery,
 } = financialApi;
