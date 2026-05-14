@@ -15,6 +15,7 @@ import ProjectTabForm from "@/components/NewProposalTabContent/ProjectTabForm";
 import ServicesTabForm from "@/components/NewProposalTabContent/ServicesTabForm";
 import SignProposalTab from "@/components/NewProposalTabContent/SignProposalTab";
 import { useGetProposalInfoQuery } from "@/redux/api/adminDashboard/proposalApi";
+import { toast } from "sonner";
 
 export interface NewDynamicProposalPageProps {
     projectData?: any;
@@ -122,7 +123,7 @@ export default function NewDynamicProposalPage({
     useEffect(() => {
         if (projectRequest) {
             console.log("AUTO-FILLING FROM PARENT:", projectRequest);
-            
+
             // Helper function to convert API enum values to display values
             const formatServiceType = (type: string) => {
                 const mapping: Record<string, string> = {
@@ -473,7 +474,7 @@ export default function NewDynamicProposalPage({
             console.log("PDF generated successfully ✅");
         } catch (error) {
             console.error("Error generating PDF:", error);
-            alert("Error generating PDF. Please try again.");
+            toast.error("Error generating PDF. Please try again.");
 
             const downloadBtn = document.querySelector("[data-download-btn]");
             if (downloadBtn) {

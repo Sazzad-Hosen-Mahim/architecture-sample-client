@@ -294,65 +294,65 @@ export function ProjectManagementTab() {
 
             {/* Pagination UI */}
             <div className="p-4 border-t flex justify-between items-center bg-gray-50/50">
-               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
-                  Page {currentPage} of {totalPages} ({filteredProjects.length} total)
-               </div>
-               <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft size={16} />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight size={16} />
-                  </Button>
-               </div>
+              <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                Page {currentPage} of {totalPages} ({filteredProjects.length} total)
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
             </div>
           </>
         )}
 
-      <ProjectDetailsModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        project={selectedProject}
-      />
+        <ProjectDetailsModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          project={selectedProject}
+        />
 
-      {/* Archive Confirmation Modal */}
-      <Dialog open={archiveModalOpen} onOpenChange={setArchiveModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
-              <AlertCircle className="h-5 w-5" />
-              Archive Project
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to archive <strong>{projectToArchive?.projectName}</strong>?
-              It will be moved to the <strong>Archived Projects</strong> section in Settings.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setArchiveModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="default" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleArchive}>
-              Confirm Archive
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
+        {/* Archive Confirmation Modal */}
+        <Dialog open={archiveModalOpen} onOpenChange={setArchiveModalOpen}>
+          <DialogContent className="bg-white border-gray-300">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600">
+                <AlertCircle className="h-5 w-5" />
+                Archive Project
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to archive <strong>{projectToArchive?.projectName}</strong>?
+                It will be moved to the <strong>Archived Projects</strong> section in Settings.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" className="cursor-pointer hover:bg-gray-300 hover:border-gray-300 hover:text-gray-900" onClick={() => setArchiveModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="default" className="bg-amber-600 hover:bg-amber-700 cursor-pointer text-white" onClick={handleArchive}>
+                Confirm Archive
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  };
 
   return (
     <div className="p-4">

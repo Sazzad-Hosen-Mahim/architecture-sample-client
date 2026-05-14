@@ -113,5 +113,6 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
       formData.propertyBoundarySurveyMap,
       formData.geotechnicalReport,
     ].filter(Boolean) as File[],
+    paymentIntentId: formData.paymentIntentId,
   };
 }

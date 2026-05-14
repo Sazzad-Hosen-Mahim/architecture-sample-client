@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye } from "lucide-react";
+import { Search, Eye } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useGetActiveProjectsQuery } from "@/redux/api/financialApi";
 import ProjectFinancialDetailsModal from "./ProjectFinancialDetailsModal";
@@ -11,15 +11,36 @@ export default function ProjectFinancialTracking() {
   const { data: projects = [], isLoading } = useGetActiveProjectsQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"ALL" | "ACTIVE" | "IMPLEMENTED">("ALL");
 
   const filteredProjects = useMemo(() => {
-    if (!searchQuery) return projects;
-    const query = searchQuery.toLowerCase();
-    return projects.filter((p: any) =>
-      p.projectName.toLowerCase().includes(query) ||
-      p.clientName.toLowerCase().includes(query)
-    );
-  }, [projects, searchQuery]);
+    let result = projects;
+    
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((p: any) =>
+        p.projectName.toLowerCase().includes(query) ||
+        p.clientName.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply status filter
+    if (activeFilter === "ACTIVE") {
+      // Active: Projects that have stages but not all are completed
+      result = result.filter((p: any) => 
+        p.phases && p.phases.length > 0 && p.phases.some((ph: any) => ph.status !== "COMPLETED")
+      );
+    } else if (activeFilter === "IMPLEMENTED") {
+      // Implemented: Projects where at least one stage is IN_PROGRESS or COMPLETED
+      // (This distinguishes from projects that haven't started any work yet)
+      result = result.filter((p: any) => 
+        p.phases && p.phases.some((ph: any) => ph.status === "IN_PROGRESS" || ph.status === "COMPLETED")
+      );
+    }
+    
+    return result;
+  }, [projects, searchQuery, activeFilter]);
 
   const handleClear = () => {
     setSearchQuery("");
@@ -28,10 +49,10 @@ export default function ProjectFinancialTracking() {
   return (
     <div className="px-6 pb-12 font-semibold">
       {/* Project Financial Details Modal */}
-      <ProjectFinancialDetailsModal 
-        open={!!selectedProjectId} 
-        onOpenChange={(open) => !open && setSelectedProjectId(null)} 
-        projectId={selectedProjectId || ""} 
+      <ProjectFinancialDetailsModal
+        open={!!selectedProjectId}
+        onOpenChange={(open) => !open && setSelectedProjectId(null)}
+        projectId={selectedProjectId || ""}
       />
 
       {/* Project Search Section */}
@@ -39,10 +60,26 @@ export default function ProjectFinancialTracking() {
         <h1 className="text-sm font-bold text-gray-600">
           Project Financial Tracking
         </h1>
-        <Button className="bg-black hover:bg-gray-800 text-white py-1">
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Project
-        </Button>
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveFilter("ALL")}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ALL" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            All Projects
+          </button>
+          <button
+            onClick={() => setActiveFilter("ACTIVE")}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ACTIVE" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Active Projects
+          </button>
+          <button
+            onClick={() => setActiveFilter("IMPLEMENTED")}
+            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "IMPLEMENTED" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Implemented
+          </button>
+        </div>
       </div>
 
       <div className=" border p-6 rounded-xl border-gray-200 py-8 mb-8 bg-white shadow-sm">
@@ -52,7 +89,7 @@ export default function ProjectFinancialTracking() {
             Project Search
           </h2>
           <p className="text-sm text-gray-500 mb-4 font-medium">
-            Find active projects by name or client to review their financial status
+            Find {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects by name or client to review their financial status
           </p>
           <div className="flex gap-3">
             <div className="flex-1 relative">
@@ -79,8 +116,8 @@ export default function ProjectFinancialTracking() {
         {/* Active Projects */}
         <div className="mb-4">
           <h2 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            Active Projects Summary
+            <span className={`w-2 h-2 rounded-full animate-pulse ${activeFilter === "ALL" ? "bg-blue-500" : activeFilter === "ACTIVE" ? "bg-green-500" : "bg-amber-500"}`}></span>
+            {activeFilter === "ALL" ? "All" : activeFilter === "ACTIVE" ? "Active" : "Implemented"} Projects Summary
           </h2>
           <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
             <table className="w-full text-sm">
@@ -113,7 +150,7 @@ export default function ProjectFinancialTracking() {
                 ) : filteredProjects.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500 font-medium">
-                      No active projects found.
+                      No {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects found.
                     </td>
                   </tr>
                 ) : (
@@ -138,8 +175,8 @@ export default function ProjectFinancialTracking() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             className="text-black hover:text-gray-600 font-bold flex items-center gap-1 ml-auto"
                             onClick={() => setSelectedProjectId(project.id)}

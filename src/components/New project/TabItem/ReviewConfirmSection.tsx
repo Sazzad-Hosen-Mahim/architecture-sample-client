@@ -9,30 +9,51 @@ import {
 } from "@/components/ui/select";
 import { useCreateProjectRequestMutation } from "@/redux/api/newProjectAPi";
 import { buildProjectPayload } from "@/utils/projectPayload";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import StripeConsultationForm from "../StripeConsultationForm";
+import { useCreateConsultationIntentMutation } from "@/redux/api/paymentApi";
+
+const stripePromise = loadStripe("pk_test_51SN4wpBw3rui1r0jfIlc5pU40gbKDEqp1EopPzfhZJWn8XptM48CmZmlNbBWffFErxAtalw8SqAnFIku3qwSoH5G000dmI9qmj");
 
 export default function ReviewConfirmSection({
   formData,
   updateFormData,
-}: // onPaymentSuccess,
-  any) {
+  onPaymentSuccess,
+}: any) {
   const [createProject, { isLoading }] = useCreateProjectRequestMutation();
+  const [createIntent, { isLoading: isCreatingIntent }] = useCreateConsultationIntentMutation();
   const [, setError] = useState<string | null>(null);
   console.log("formData in ReviewConfirmSection:", formData);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [paymentIntentId, setPaymentIntentId] = useState("");
   const [paymentDetails, setPaymentDetails] = useState<any>({
     paymentMethod: "",
     amount: 250,
   });
-  // const [isProcessing] = useState(false);
-  //   const { toast } = useToast();
 
-  const handlePaymentMethodChange = (value: string) => {
+  const handlePaymentMethodChange = async (value: string) => {
     setPaymentMethod(value);
     setPaymentDetails((prev: any) => ({ ...prev, paymentMethod: value }));
     updateFormData({ paymentMethod: value });
+
+    if (value === "stripe" && !paymentIntentId) {
+      try {
+        const result = await createIntent({}).unwrap();
+        setClientSecret(result.data.clientSecret);
+      } catch (err) {
+        toast.error("Failed to initialize payment. Please try again.");
+      }
+    }
+  };
+
+  const handlePaymentSuccess = (id: string) => {
+    setPaymentIntentId(id);
+    updateFormData({ paymentIntentId: id });
   };
 
   const [errors] = useState<any[]>([]);
@@ -43,10 +64,23 @@ export default function ReviewConfirmSection({
   };
 
   const handleSubmit = async () => {
+    if (!paymentIntentId) {
+      toast.error("Please pay the consultation fee before submitting.");
+      return;
+    }
+
     try {
-      const payload = buildProjectPayload(formData);
+      const basePayload = buildProjectPayload(formData);
+      const payload = {
+        ...basePayload,
+        paymentIntentId: paymentIntentId,
+      };
+      
       await createProject(payload).unwrap();
       toast.success("Project request submitted successfully");
+      if (onPaymentSuccess) {
+        onPaymentSuccess();
+      }
     } catch (err: any) {
       setError(err?.data?.message || "Failed to submit project request");
       toast.error(err?.data?.message || "Failed to submit project request");
@@ -229,11 +263,8 @@ export default function ReviewConfirmSection({
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  <SelectItem value="credit" className="hover:bg-gray-100">
-                    Credit Card
-                  </SelectItem>
-                  <SelectItem value="debit" className="hover:bg-gray-100">
-                    Debit Card
+                  <SelectItem value="stripe" className="hover:bg-gray-100">
+                    Stripe (Credit/Debit Card)
                   </SelectItem>
                   <SelectItem value="paypal" className="hover:bg-gray-100">
                     PayPal
@@ -253,77 +284,36 @@ export default function ReviewConfirmSection({
               )}
             </div>
 
-            {(paymentMethod === "credit" || paymentMethod === "debit") && (
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="cardNumber" className="text-xs">
-                    Card Number
-                  </Label>
-                  <Input
-                    id="cardNumber"
-                    name="cardNumber"
-                    placeholder="1234 5678 9012 3456"
-                    className={`mt-2 w-full border rounded-md ${getErrorMessage("cardNumber")
-                      ? "border-red-500"
-                      : "border-gray-200"
-                      }`}
-                    // value={paymentDetails.cardNumber || ""}
-                    // onChange={handleInputChange}
-                    maxLength={19}
-                  />
-                  {getErrorMessage("cardNumber") && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {getErrorMessage("cardNumber")}
+            {paymentMethod === "stripe" && (
+              <div className="mt-4">
+                {paymentIntentId ? (
+                  <div className="p-6 bg-green-50 border border-green-200 rounded-xl flex flex-col items-center text-center">
+                    <CheckCircle2 className="w-12 h-12 text-green-500 mb-2" />
+                    <h4 className="text-lg font-semibold text-green-800">Payment Successful</h4>
+                    <p className="text-sm text-green-600 mt-1">
+                      Consultation fee of $250 has been paid. You can now submit your project request.
                     </p>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="expiryDate" className="text-xs">
-                      Expiry Date
-                    </Label>
-                    <Input
-                      id="expiryDate"
-                      name="expiryDate"
-                      placeholder="MM/YY"
-                      className={`mt-2 w-full border rounded-md ${getErrorMessage("expiryDate")
-                        ? "border-red-500"
-                        : "border-gray-200"
-                        }`}
-                      //   value={paymentDetails.expiryDate || ""}
-                      //   onChange={handleInputChange}
-                      maxLength={5}
-                    />
-                    {getErrorMessage("expiryDate") && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {getErrorMessage("expiryDate")}
-                      </p>
-                    )}
+                    <div className="mt-4 text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-mono">
+                      Ref: {paymentIntentId}
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="cvv" className="text-xs">
-                      CVV
-                    </Label>
-                    <Input
-                      id="cvv"
-                      name="cvv"
-                      placeholder="123"
-                      type="password"
-                      maxLength={4}
-                      className={`mt-2 w-full border rounded-md ${getErrorMessage("cvv")
-                        ? "border-red-500"
-                        : "border-gray-200"
-                        }`}
-                    //   value={paymentDetails.cvv || ""}
-                    //   onChange={handleInputChange}
+                ) : clientSecret ? (
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <StripeConsultationForm
+                      onSuccess={handlePaymentSuccess}
+                      clientEmail={formData.email}
                     />
-                    {getErrorMessage("cvv") && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {getErrorMessage("cvv")}
-                      </p>
-                    )}
+                  </Elements>
+                ) : isCreatingIntent ? (
+                  <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-slate-50">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
+                    <p className="text-sm text-slate-600">Initializing secure payment...</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 bg-blue-50 text-blue-700 rounded-lg text-sm border border-blue-100">
+                    Please wait, initializing payment gateway...
+                  </div>
+                )}
               </div>
             )}
 

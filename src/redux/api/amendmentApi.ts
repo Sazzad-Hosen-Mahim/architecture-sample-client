@@ -110,6 +110,16 @@ export const amendmentApi = baseApi.injectEndpoints({
             providesTags: ["Amendment"],
         }),
 
+        // Get all amendments for a project request (admin/PM)
+        getAmendmentsByProject: builder.query<AmendmentsListResponse, { projectId: string; status?: string }>({
+            query: ({ projectId, status }) => ({
+                url: `/proposals/project/${projectId}`,
+                method: "GET",
+                params: status ? { status } : undefined,
+            }),
+            providesTags: ["Amendment"],
+        }),
+
         // Admin/PM reviews (approve/reject) an amendment
         reviewAmendment: builder.mutation<AmendmentResponse, ReviewAmendmentRequest>({
             query: ({ amendmentId, action, reviewNotes }) => ({
@@ -153,6 +163,7 @@ export const amendmentApi = baseApi.injectEndpoints({
 export const {
     useCreateAmendmentMutation,
     useGetAmendmentsQuery,
+    useGetAmendmentsByProjectQuery,
     useReviewAmendmentMutation,
     useCreateProposalFromAmendmentMutation,
     useGetAllProposalsForProposalQuery,

@@ -62,7 +62,7 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
   const [newExpense, setNewExpense] = useState({
     name: "",
     amount: 0,
-    frequency: "monthly" as "monthly" | "semi-annually" | "yearly",
+    frequency: "monthly" as "monthly" | "semi-annually" | "yearly" | "one-time",
     category: "Rent & Facilities",
   });
 
@@ -70,7 +70,8 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
     return (
       expenses.filter((e) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount), 0) +
       expenses.filter((e) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount) / 6, 0) +
-      expenses.filter((e) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0)
+      expenses.filter((e) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0) +
+      expenses.filter((e) => e.frequency === "one-time").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0)
     );
   };
 
@@ -78,7 +79,8 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
     return (
       expenses.filter((e) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount) * 12, 0) +
       expenses.filter((e) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount) * 2, 0) +
-      expenses.filter((e) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount), 0)
+      expenses.filter((e) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount), 0) +
+      expenses.filter((e) => e.frequency === "one-time").reduce((sum: number, e: any) => sum + Number(e.amount), 0)
     );
   };
 
@@ -229,9 +231,9 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Yearly Expenses:</span>
+                        <span className="text-muted-foreground">Yearly/One-Time:</span>
                         <span className="font-medium">
-                          ${overheadExpenses.filter((e: any) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount), 0).toLocaleString()}
+                          ${overheadExpenses.filter((e: any) => ["yearly", "one-time"].includes(e.frequency)).reduce((sum: number, e: any) => sum + Number(e.amount), 0).toLocaleString()}
                         </span>
                       </div>
                       <Separator className="my-2" />
@@ -258,7 +260,8 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                       const monthlyTotal =
                         categoryExpenses.filter((e: any) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount), 0) +
                         categoryExpenses.filter((e: any) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount) / 6, 0) +
-                        categoryExpenses.filter((e: any) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0);
+                        categoryExpenses.filter((e: any) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0) +
+                        categoryExpenses.filter((e: any) => e.frequency === "one-time").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0);
                       const percentage = monthlyEquivalent > 0 ? (monthlyTotal / monthlyEquivalent) * 100 : 0;
 
                       return (
@@ -323,6 +326,7 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                     <SelectItem value="monthly">Monthly</SelectItem>
                     <SelectItem value="semi-annually">Semi-Annually</SelectItem>
                     <SelectItem value="yearly">Yearly</SelectItem>
+                    <SelectItem value="one-time">One-Time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

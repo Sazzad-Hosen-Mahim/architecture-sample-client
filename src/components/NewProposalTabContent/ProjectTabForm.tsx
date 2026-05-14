@@ -114,7 +114,7 @@ export default function ProjectTabForm({
       if (error?.status === 400 || error?.data?.statusCode === 400) {
         console.log("RTK FAILED WITH 400. ATTEMPTING DIRECT FETCH FOR DEBUGGING...");
         try {
-          const fetchResponse = await fetch("http://localhost:3000/v1/proposals", {
+          const fetchResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/proposals`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

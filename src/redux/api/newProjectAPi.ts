@@ -49,6 +49,7 @@ export interface ProjectRequestPayload {
   appointmentType: string;
   additionalNotes?: string;
   files?: File[];
+  paymentIntentId?: string;
 }
 
 export interface ProjectResponse {
@@ -150,6 +151,8 @@ export const projectApi = baseApi.injectEndpoints({
         formData.append("appointmentType", data.appointmentType);
         if (data.additionalNotes)
           formData.append("additionalNotes", data.additionalNotes);
+
+        formData.append("paymentIntentId", data.paymentIntentId || "");
 
         // Append files
         if (data.files && data.files.length > 0) {

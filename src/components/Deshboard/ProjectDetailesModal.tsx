@@ -13,6 +13,8 @@ import ProjectInformationTab from "./tabs/ProjectInformationTab";
 import ContractsTab from "./tabs/ContractsTab";
 import ProjectMgmtTab from "./tabs/ProjectMgmtTab";
 import MeetingRequestTab from "./tabs/MeetingRequestTab";
+import { useAppSelector } from "@/hooks/useRedux";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 
 type ProjectModalProps = {
   isOpen: boolean;
@@ -23,6 +25,18 @@ type ProjectModalProps = {
 
 type ModalTab = "information" | "contracts" | "management" | "meeting";
 
+const STATUS_OPTIONS = [
+  { value: "PENDING", label: "Initial" },
+  { value: "REVIEWED", label: "Inquiry" },
+  { value: "SCHEDULED", label: "Bidding" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "COMPLETED", label: "Completed" },
+] as const;
+
+const getStatusLabel = (status: string) => {
+  return STATUS_OPTIONS.find((opt) => opt.value === status)?.label || status;
+};
+
 export default function ProjectDetailsModal({
   isOpen,
   onClose,
@@ -31,6 +45,7 @@ export default function ProjectDetailsModal({
 }: ProjectModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<ModalTab>("information");
+  const user = useAppSelector(selectCurrentUser);
 
   // Fetch fresh project details including meeting links
   const { data: refreshedProject, isLoading } = useGetProposalInfoQuery(initialProject?.id as string, {
@@ -82,21 +97,7 @@ export default function ProjectDetailsModal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !project) return null;
-
-  const STATUS_OPTIONS = [
-    { value: "PENDING", label: "Initial" },
-    { value: "REVIEWED", label: "Inquiry" },
-    { value: "SCHEDULED", label: "Bidding" },
-    { value: "ACTIVE", label: "Active" },
-    { value: "COMPLETED", label: "Completed" },
-  ] as const;
-
-  const getStatusLabel = (status: string) => {
-    return STATUS_OPTIONS.find((opt) => opt.value === status)?.label || status;
-  };
-
-  const tabs = [
+  const allTabs = [
     {
       key: "information" as ModalTab,
       label: "Project Information",
@@ -118,6 +119,11 @@ export default function ProjectDetailsModal({
       icon: <FolderKanban className="w-4 h-4" />,
     },
   ];
+
+  const isStaff = user?.role === "DRAFTER" || user?.role === "EMPLOYEE";
+  const tabs = isStaff ? allTabs.filter(t => t.key === "information" || t.key === "management") : allTabs;
+
+  if (!isOpen || !project) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -49,6 +49,19 @@ export interface ProjectRequest {
     meetingLinks?: any[];
     assignedManagerId?: string | null;
     assignedManager?: { id: string; name: string; email: string; avatar: string | null } | null;
+    teams?: Team[];
+    isProjectStarted?: boolean;
+    projectStartedAt?: string | null;
+}
+
+export interface Team {
+    id: string;
+    name: string;
+    createdById: string;
+    members: { id: string; name: string; email: string; avatar: string | null; role: string }[];
+    _count?: {
+        projects: number;
+    };
 }
 
 export interface ProjectRequestsResponse {
@@ -426,6 +439,64 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             providesTags: ["Project"],
         }),
+        getTeams: builder.query<Team[], void>({
+            query: () => ({
+                url: "/teams",
+                method: "GET",
+            }),
+            providesTags: ["Team"],
+        }),
+        getTeamById: builder.query<Team, string>({
+            query: (id) => ({
+                url: `/teams/${id}`,
+                method: "GET",
+            }),
+            providesTags: ["Team"],
+        }),
+        createTeam: builder.mutation<Team, { name: string; memberIds?: string[] }>({
+            query: (body) => ({
+                url: "/teams",
+                method: "POST",
+                body,
+            }),
+            invalidatesTags: ["Team"],
+        }),
+        updateTeam: builder.mutation<Team, { id: string; name?: string; memberIds?: string[] }>({
+            query: ({ id, ...body }) => ({
+                url: `/teams/${id}`,
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["Team"],
+        }),
+        deleteTeam: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/teams/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Team"],
+        }),
+        getAssignableMembers: builder.query<{ id: string; name: string; email: string; avatar: string | null; role: string }[], void>({
+            query: () => ({
+                url: "/teams/assignable-members",
+                method: "GET",
+            }),
+        }),
+        assignProjectTeams: builder.mutation<any, { projectId: string; teamIds: string[] }>({
+            query: ({ projectId, teamIds }) => ({
+                url: `/project-requests-admin/${projectId}/assign-teams`,
+                method: "PATCH",
+                body: { teamIds },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        startProject: builder.mutation<any, string>({
+            query: (id) => ({
+                url: `/project-requests-admin/${id}/start`,
+                method: "POST",
+            }),
+            invalidatesTags: ["Project"],
+        }),
     }),
 });
 
@@ -461,4 +532,12 @@ export const {
     useGetProjectManagersQuery,
     useAssignProjectManagerMutation,
     useGetProjectStatsQuery,
+    useGetTeamsQuery,
+    useGetTeamByIdQuery,
+    useCreateTeamMutation,
+    useUpdateTeamMutation,
+    useDeleteTeamMutation,
+    useGetAssignableMembersQuery,
+    useAssignProjectTeamsMutation,
+    useStartProjectMutation,
 } = proposalApi;

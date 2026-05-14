@@ -10,6 +10,7 @@ import {
 } from "@/redux/api/financialApi";
 import { toast } from "sonner";
 import TimesheetEntryFormDialog from "../../../TimeCardDialog/TimesheetEntryFormDialog";
+import { Link } from "react-router-dom";
 
 export function PendingApprovalsPayroll() {
   const [employeesModalOpen, setEmployeesModalOpen] = useState(false);
@@ -147,6 +148,15 @@ export function PendingApprovalsPayroll() {
           <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
           <span>Manage Team Registry</span>
         </button>
+      </div>
+
+      <div className="mt-20">
+        <Link to="/dashboard/timecards">
+          <button className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]">
+            <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
+            <span>Timecards</span>
+          </button>
+        </Link>
       </div>
 
       <TeamManagementModa

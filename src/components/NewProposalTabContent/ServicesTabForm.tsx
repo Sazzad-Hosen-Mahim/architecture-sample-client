@@ -14,6 +14,7 @@ import { FileText } from "lucide-react";
 // import { useParams } from "react-router-dom";
 import { useAddServiceMutation } from "@/redux/api/adminDashboard/proposalApi";
 import Cookies from "js-cookie";
+import { toast } from "sonner";
 
 interface Credit {
   id: string;
@@ -160,7 +161,7 @@ export default function ServicesTabForm({
                       className="bg-teal-700 cursor-pointer hover:bg-teal-800 text-white px-4 py-2 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={async () => {
                         if (!id) {
-                          alert("Project ID is missing");
+                          toast.error("Project ID is missing");
                           return;
                         }
 
@@ -168,7 +169,7 @@ export default function ServicesTabForm({
                         const timelineWeeks = Number(objectiveTimelines[objective.id]) || 0;
 
                         if (cost === 0 || timelineWeeks === 0) {
-                          alert("Please enter both cost and timeline before adding the service");
+                          toast.error("Please enter both cost and timeline before adding the service");
                           return;
                         }
 
@@ -190,10 +191,10 @@ export default function ServicesTabForm({
                         try {
                           const result = await addService(payload).unwrap();
                           console.log("Service added successfully:", result);
-                          alert(`Service "${objective.label}" added successfully!`);
+                          toast.success(`Service "${objective.label}" added successfully!`);
                         } catch (error) {
                           console.error("Failed to add service:", error);
-                          alert("Failed to add service. Please try again.");
+                          toast.error("Failed to add service. Please try again.");
                         }
                       }}
                       disabled={!id || (objectiveCosts[objective.id] || 0) === 0 || (objectiveTimelines[objective.id] || 0) === 0}

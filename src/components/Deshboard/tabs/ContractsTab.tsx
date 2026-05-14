@@ -19,6 +19,10 @@ import {
     Trash2,
 } from "lucide-react";
 import ContractReviewModal from "../ContractReviewModal";
+import {
+    Amendment,
+    useGetAmendmentsByProjectQuery,
+} from "@/redux/api/amendmentApi";
 import { toast } from "sonner";
 
 type ContractsTabProps = {
@@ -41,6 +45,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
 
     // Fetch proposals related to this project
     const { data: proposalsData, isLoading } = useGetProposalsByProjectRequestQuery(project.id);
+    const { data: amendmentsData } = useGetAmendmentsByProjectQuery({ projectId: project.id });
 
     const allProposals: Proposal[] = proposalsData?.data || [];
 
@@ -136,6 +141,52 @@ export default function ContractsTab({ project }: ContractsTabProps) {
         setDeleteTarget(proposal);
         setDeleteConfirmText("");
         setDeleteConfirmOpen(true);
+    };
+
+    const getAmendmentStatusBadge = (status: string) => {
+        switch (status) {
+            case "PENDING":
+                return (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">
+                        <Clock className="w-3 h-3" />
+                        Pending
+                    </span>
+                );
+            case "APPROVED":
+                return (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Approved
+                    </span>
+                );
+            case "REJECTED":
+                return (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                        <AlertCircle className="w-3 h-3" />
+                        Rejected
+                    </span>
+                );
+            case "UNDER_REVIEW":
+                return (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                        <Clock className="w-3 h-3" />
+                        Under Review
+                    </span>
+                );
+            case "COMPLETED":
+                return (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 border border-teal-200">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Completed
+                    </span>
+                );
+            default:
+                return (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                        {status}
+                    </span>
+                );
+        }
     };
 
     const handleConfirmDelete = async () => {
@@ -298,6 +349,94 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Amendment Requests Section */}
+            {!isLoading && (amendmentsData?.data?.length || 0) > 0 && (
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500" />
+                        <h3 className="text-lg font-bold text-gray-900">Amendment Requests</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {amendmentsData?.data?.map((amendment: Amendment) => (
+                            <div
+                                key={amendment.id}
+                                className="border border-amber-100 rounded-xl p-5 bg-amber-50/30 hover:bg-amber-50/50 transition-all"
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                                                Request
+                                            </span>
+                                            {getAmendmentStatusBadge(amendment.status)}
+                                            <span className="text-[10px] font-medium text-gray-400">
+                                                ID: {amendment.id.slice(0, 8)}
+                                            </span>
+                                        </div>
+
+                                        <h4 className="text-sm font-bold text-gray-900 mb-1">
+                                            {amendment.projectName}
+                                        </h4>
+                                        <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+                                            {amendment.description}
+                                        </p>
+
+                                        <div className="flex flex-col gap-2 bg-white/60 p-3 rounded-lg border border-amber-100/50">
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-20 flex-shrink-0 pt-0.5">
+                                                    Services:
+                                                </span>
+                                                <p className="text-xs text-gray-700">{amendment.services}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-20 flex-shrink-0">
+                                                    Urgency:
+                                                </span>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${amendment.urgency === 'URGENT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                    {amendment.urgency}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 flex items-center gap-4 text-[10px] text-gray-400">
+                                            <span>Requested: {formatDate(amendment.createdAt)}</span>
+                                            <span>Original Contract: {amendment.proposal?.proposalNumber || "N/A"}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex flex-col gap-2 flex-shrink-0">
+                                        {amendment.status === "PENDING" && (
+                                            <button
+                                                onClick={() => navigate(`/dashboard/proposals`)} // Redirect to main proposals for full review flow
+                                                className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
+                                            >
+                                                Review Request
+                                            </button>
+                                        )}
+                                        {amendment.status === "APPROVED" && !amendment.amendmentProposalId && (
+                                            <button
+                                                onClick={() => navigate(`/dashboard/proposals`)} // Redirect to main proposals for full review flow
+                                                className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 shadow-sm"
+                                            >
+                                                Create Proposal
+                                            </button>
+                                        )}
+                                        {amendment.amendmentProposalId && (
+                                            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-green-200 bg-green-50 text-green-700">
+                                                <FileCheck className="w-3.5 h-3.5" />
+                                                Proposal Linked
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

@@ -7,7 +7,11 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useGetProjectFinancialDetailsQuery } from "@/redux/api/financialApi";
-import { Loader2, DollarSign, Clock, Users, BarChart3, TrendingUp, Info } from "lucide-react";
+import { Loader2, Clock, Users, BarChart3, Info, Download } from "lucide-react";
+import { useState } from "react";
+import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
+import { toast } from "sonner";
 
 interface ProjectFinancialDetailsModalProps {
     open: boolean;
@@ -36,6 +40,72 @@ export default function ProjectFinancialDetailsModal({
     projectId,
 }: ProjectFinancialDetailsModalProps) {
     const { data: details, isLoading } = useGetProjectFinancialDetailsQuery(projectId, { skip: !open });
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+    const handleDownloadPDF = async () => {
+        const element = document.getElementById('project-financial-content');
+        if (!element) return;
+
+        setIsGeneratingPDF(true);
+
+        // Temporarily hide no-pdf elements
+        const noPdfElements = element.querySelectorAll<HTMLElement>('.no-pdf, [data-html2canvas-ignore]');
+        noPdfElements.forEach(el => { el.style.display = 'none'; });
+
+        // Expand scroll-clipped containers so full content renders
+        const clipped = element.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"]');
+        const savedStyles: { el: HTMLElement; overflow: string; maxHeight: string; height: string }[] = [];
+        clipped.forEach(el => {
+            savedStyles.push({ el, overflow: el.style.overflow, maxHeight: el.style.maxHeight, height: el.style.height });
+            el.style.overflow = 'visible';
+            el.style.maxHeight = 'none';
+            el.style.height = 'auto';
+        });
+
+        try {
+            // html-to-image uses SVG foreignObject — browser handles oklab() natively, no parse errors
+            const dataUrl = await toPng(element, {
+                pixelRatio: 2,
+                backgroundColor: '#ffffff',
+                width: element.scrollWidth,
+                height: element.scrollHeight,
+            });
+
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise(res => { img.onload = res; });
+
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfW = pdf.internal.pageSize.getWidth();
+            const pdfH = pdf.internal.pageSize.getHeight();
+            const ratio = pdfW / img.width;
+            const scaledH = img.height * ratio;
+
+            let remaining = scaledH;
+            let page = 0;
+            while (remaining > 0) {
+                pdf.addImage(dataUrl, 'PNG', 0, page === 0 ? 0 : -(scaledH - remaining), pdfW, scaledH);
+                remaining -= pdfH;
+                if (remaining > 0) pdf.addPage();
+                page++;
+            }
+
+            const fileName = `Project-Financial-${details?.projectName?.replace(/\s+/g, '-') || 'Report'}-${new Date().toISOString().split('T')[0]}.pdf`;
+            pdf.save(fileName);
+        } catch (err: any) {
+            const msg = err?.message || String(err) || 'Unknown error';
+            console.error('PDF generation failed:', err);
+            toast.error(`PDF Error: ${msg}`);
+        } finally {
+            noPdfElements.forEach(el => { el.style.display = ''; });
+            savedStyles.forEach(({ el, overflow, maxHeight, height }) => {
+                el.style.overflow = overflow;
+                el.style.maxHeight = maxHeight;
+                el.style.height = height;
+            });
+            setIsGeneratingPDF(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -54,190 +124,331 @@ export default function ProjectFinancialDetailsModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[900px] bg-white text-black p-0 overflow-hidden font-semibold">
-                <DialogHeader className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                    <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                            <DialogTitle className="text-2xl font-black tracking-tight text-gray-900">
-                                {details.projectName}
-                            </DialogTitle>
-                            <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">
-                                Client: {details.clientName}
-                            </p>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-1">Contract Value</div>
-                            <div className="text-3xl font-black text-blue-600">{formatCurrency(details.projectCost)}</div>
-                        </div>
-                    </div>
-                </DialogHeader>
-
-                <div className="p-8 max-h-[75vh] overflow-y-auto space-y-10">
-                    
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
-                            <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
-                                <Users size={14} className="group-hover:text-blue-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Labor Cost</span>
-                            </div>
-                            <div className="text-xl font-black">{formatCurrency(details.totalEmployeeCost)}</div>
-                        </div>
-                        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
-                            <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
-                                <BarChart3 size={14} className="group-hover:text-amber-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Avg Overhead</span>
-                            </div>
-                            <div className="text-xl font-black">{formatCurrency(details.averageOverhead)}</div>
-                        </div>
-                        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
-                            <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
-                                <DollarSign size={14} className="group-hover:text-red-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Total cost</span>
-                            </div>
-                            <div className="text-xl font-black">{formatCurrency(details.totalProjectCost)}</div>
-                        </div>
-                        <div className={`p-4 rounded-2xl border space-y-2 transition-all duration-300 shadow-lg ${details.profit >= 0 ? "bg-green-50 border-green-200 text-green-900" : "bg-red-50 border-red-200 text-red-900"}`}>
-                            <div className="flex items-center gap-2 opacity-60">
-                                <TrendingUp size={14} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Total Profit</span>
-                            </div>
-                            <div className="text-xl font-black">{formatCurrency(details.profit)}</div>
-                        </div>
-                    </div>
-
-                    {/* Phases Section */}
-                    <div className="space-y-4">
-                        <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-                            Project Phases & Progress
-                        </h4>
-                        <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                            <table className="w-full text-xs text-left">
-                                <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[10px]">
-                                    <tr>
-                                        <th className="px-6 py-4">Phase Name</th>
-                                        <th className="px-6 py-4">Allocated Price</th>
-                                        <th className="px-6 py-4">Tracked Time</th>
-                                        <th className="px-6 py-4">Assigned Manager</th>
-                                        <th className="px-6 py-4">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {details.phases.map((phase: any) => (
-                                        <tr key={phase.id} className="hover:bg-gray-50/50">
-                                            <td className="px-6 py-4 font-bold text-gray-900">{phase.name}</td>
-                                            <td className="px-6 py-4 text-blue-600 font-black">{formatCurrency(phase.price)}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Clock size={12} className="text-gray-400" />
-                                                    {formatDuration(phase.accumulatedTime)}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">
-                                                {phase.assignedTo?.name || "Unassigned"}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight ${
-                                                    phase.status === "COMPLETED" ? "bg-green-100 text-green-700" :
-                                                    phase.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                                                }`}>
-                                                    {phase.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Employee Labor Breakdown */}
-                    <div className="space-y-4">
-                        <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-black pl-3">
-                            Direct Labor Breakdown
-                        </h4>
-                        <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                            <table className="w-full text-xs text-left">
-                                <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[10px]">
-                                    <tr>
-                                        <th className="px-6 py-4">Employee</th>
-                                        <th className="px-6 py-4">Hourly Rate</th>
-                                        <th className="px-6 py-4">Billable Hours</th>
-                                        <th className="px-6 py-4 text-right">Cost Incurred</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {details.employees.map((emp: any) => (
-                                        <tr key={emp.id} className="hover:bg-gray-50/50">
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-gray-900">{emp.name}</div>
-                                                <div className="text-[10px] text-gray-400 lowercase">{emp.email}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600 font-bold">{formatCurrency(emp.hourlyRate)}/hr</td>
-                                            <td className="px-6 py-4 font-black">{emp.totalBillableHours.toFixed(1)} hrs</td>
-                                            <td className="px-6 py-4 text-right font-black text-red-600">{formatCurrency(emp.cost)}</td>
-                                        </tr>
-                                    ))}
-                                    {details.employees.length === 0 && (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-8 text-center text-gray-400 italic font-medium">
-                                                No billable labor recorded for this project yet.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Bottom Profitability Analysis */}
-                    <div className="bg-black text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl transition-all duration-700 group-hover:bg-blue-500/20"></div>
-                        <div className="relative z-10 flex justify-between items-center">
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] flex items-center gap-2">
-                                    <BarChart3 size={14} className="text-blue-500" />
-                                    Profitability Analysis
-                                </h4>
-                                <div className="space-y-1">
-                                    <div className="text-4xl font-black tracking-tight flex items-baseline gap-3">
-                                        {profitMargin.toFixed(1)}%
-                                        <span className="text-sm text-gray-500 font-bold uppercase tracking-widest">Profit Margin</span>
-                                    </div>
-                                    <p className="text-xs text-gray-400 max-w-sm leading-relaxed">
-                                        Calculated based on contract value vs. total labor and overhead allocation. 
-                                        {profitMargin > 20 ? " Exceptional project performance." : " Monitor labor efficiency carefully."}
-                                    </p>
-                                </div>
+                <div id="project-financial-content">
+                    <DialogHeader className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
+                        <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                                <DialogTitle className="text-2xl font-black tracking-tight text-gray-900">
+                                    {details.projectName}
+                                </DialogTitle>
+                                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">
+                                    Client: {details.clientName}
+                                </p>
                             </div>
                             <div className="text-right space-y-1">
-                                <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Net Gain</div>
-                                <div className={`text-4xl font-black ${details.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                    {formatCurrency(details.profit)}
+                                <div className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-1">Project Valuation</div>
+                                <div className="space-y-0.5">
+                                    <div className="text-xs font-bold text-gray-500">
+                                        Original: {formatCurrency(details.grossOriginalCost || details.grossProjectCost || details.projectCost)}
+                                    </div>
+                                    {(details.totalAmendmentAmount || 0) > 0 && (
+                                        <div className="text-xs font-bold text-amber-600">
+                                            Amendments: +{formatCurrency(details.totalAmendmentAmount)}
+                                        </div>
+                                    )}
+                                    {details.totalProjectRefunds > 0 && (
+                                        <div className="text-xs font-bold text-red-500">
+                                            Refunds: -{formatCurrency(details.totalProjectRefunds)}
+                                        </div>
+                                    )}
+                                    <div className="text-3xl font-black text-blue-600 pt-1 border-t border-gray-100">
+                                        {formatCurrency(details.projectCost)}
+                                        <span className="text-[10px] ml-1 text-gray-400 uppercase font-black tracking-tighter">Net</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    {/* Project Performance Chart */}
-                    <div className="space-y-4">
-                        <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-                            Financial Performance History
-                        </h4>
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                            <FinancialChart projectId={projectId} />
+                    </DialogHeader>
+
+                    <div className="p-8 max-h-[75vh] overflow-y-auto space-y-10">
+                        
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-4 gap-4">
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
+                                <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
+                                    <Clock size={14} className="group-hover:text-blue-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Amount Burned</span>
+                                </div>
+                                <div className="text-xl font-black">{formatCurrency(details.burnedFee)}</div>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">At ${details.firmBillingRate}/hr rate</p>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
+                                <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
+                                    <BarChart3 size={14} className="group-hover:text-amber-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Remaining Budget</span>
+                                </div>
+                                <div className={`text-xl font-black ${details.remainingBudget < 0 ? "text-red-500" : ""}`}>{formatCurrency(details.remainingBudget)}</div>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">Target vs Actuals</p>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
+                                <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
+                                    <Users size={14} className="group-hover:text-blue-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Labor Cost</span>
+                                </div>
+                                <div className="text-xl font-black">{formatCurrency(details.totalLaborCost)}</div>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">Actual Employee Pay</p>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
+                                <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
+                                    <BarChart3 size={14} className="group-hover:text-amber-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Project Overhead</span>
+                                </div>
+                                <div className="text-xl font-black">{formatCurrency(details.projectOverheadAllocation)}</div>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">Non-Billable × ${details.firmBillingRate}/hr</p>
+                            </div>
+                            {(details.totalAmendmentAmount || 0) > 0 && (
+                                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 space-y-2 group hover:bg-amber-900 hover:text-white transition-all duration-300 shadow-sm">
+                                    <div className="flex items-center gap-2 text-amber-500 group-hover:text-amber-300">
+                                        <BarChart3 size={14} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Amendment Revenue</span>
+                                    </div>
+                                    <div className="text-xl font-black text-amber-700 group-hover:text-white">{formatCurrency(details.totalAmendmentAmount)}</div>
+                                    <p className="text-[9px] text-amber-500 group-hover:text-amber-300 font-bold uppercase tracking-tight">
+                                        {details.amendments?.length || 0} Amendment{(details.amendments?.length || 0) !== 1 ? 's' : ''} • {formatCurrency(details.totalAmendmentPaid || 0)} Collected
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Phases Section */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+                                Real-Time Project Phase Profit Tracking
+                            </h4>
+                            <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                <table className="w-full text-[11px] text-left">
+                                    <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[9px]">
+                                        <tr>
+                                            <th className="px-4 py-4">Phase Name</th>
+                                            <th className="px-4 py-4">Contract Fee</th>
+                                            <th className="px-4 py-4">Amt Burned</th>
+                                            <th className="px-4 py-4">Labor Cost</th>
+                                            <th className="px-4 py-4">Overhead</th>
+                                            <th className="px-4 py-4 text-right">Profit / Margin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {details.phases.map((phase: any) => (
+                                            <tr key={phase.id} className="hover:bg-gray-50/50">
+                                                <td className="px-4 py-4">
+                                                    <div className="font-bold text-gray-900">{phase.name}</div>
+                                                    <div className="flex items-center gap-1 text-[9px] text-gray-400 mt-0.5">
+                                                        <Clock size={10} /> {formatDuration(phase.accumulatedTime)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-4 text-blue-600 font-black">{formatCurrency(phase.price)}</td>
+                                                <td className="px-4 py-4 font-bold text-gray-700">{formatCurrency(phase.burned)}</td>
+                                                <td className="px-4 py-4 text-gray-600">{formatCurrency(phase.laborCost)}</td>
+                                                <td className="px-4 py-4 text-gray-600">{formatCurrency(phase.overhead)}</td>
+                                                <td className="px-4 py-4 text-right">
+                                                    <div className={`font-black ${phase.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                                        {formatCurrency(phase.profit)}
+                                                    </div>
+                                                    <div className="text-[9px] font-bold text-gray-400 uppercase">
+                                                        {phase.profitMargin.toFixed(1)}% Margin
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    {details.grandTotals && (
+                                        <tfoot className="bg-gray-900 text-white">
+                                            <tr>
+                                                <td className="px-4 py-4">
+                                                    <div className="font-black text-sm uppercase tracking-wider">Grand Total</div>
+                                                    <div className="text-[9px] text-gray-400 font-bold mt-0.5">
+                                                        {details.grandTotals.actualHours?.toFixed(1) || 0} billable hrs / {details.grandTotals.nonBillableHours?.toFixed(1) || 0} non-billable hrs
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-4 font-black text-blue-300">{formatCurrency(details.grandTotals.price)}</td>
+                                                <td className="px-4 py-4 font-black text-amber-300">{formatCurrency(details.grandTotals.burned)}</td>
+                                                <td className="px-4 py-4 font-black text-gray-300">{formatCurrency(details.grandTotals.laborCost)}</td>
+                                                <td className="px-4 py-4 font-black text-orange-300">{formatCurrency(details.grandTotals.overhead)}</td>
+                                                <td className="px-4 py-4 text-right">
+                                                    <div className={`font-black text-sm ${details.grandTotals.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                                        {formatCurrency(details.grandTotals.profit)}
+                                                    </div>
+                                                    <div className="text-[9px] font-bold text-gray-400 uppercase">
+                                                        {(details.grandTotals.profitMargin || 0).toFixed(1)}% Margin
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Employee Labor Breakdown */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-black pl-3">
+                                Direct Labor Breakdown
+                            </h4>
+                            <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                <table className="w-full text-xs text-left">
+                                    <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[10px]">
+                                        <tr>
+                                            <th className="px-6 py-4">Employee</th>
+                                            <th className="px-6 py-4">Hourly Rate</th>
+                                            <th className="px-6 py-4">Billable Hours</th>
+                                            <th className="px-6 py-4 text-right">Cost Incurred</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {details.employees.map((emp: any) => (
+                                            <tr key={emp.id} className="hover:bg-gray-50/50">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-bold text-gray-900">{emp.name}</div>
+                                                        {emp.role && (
+                                                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${
+                                                                emp.role === 'PROJECT_MANAGER' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                                emp.role === 'DRAFTER' ? 'bg-purple-50 text-purple-600 border-purple-200' :
+                                                                emp.role === 'SUPER_ADMIN' || emp.role === 'ADMIN' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                                'bg-gray-50 text-gray-600 border-gray-200'
+                                                            }`}>
+                                                                {emp.role.replace('_', ' ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 lowercase">{emp.email}</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-600 font-bold">{formatCurrency(emp.hourlyRate)}/hr</td>
+                                                <td className="px-6 py-4 font-black">{emp.totalBillableHours.toFixed(1)} hrs</td>
+                                                <td className="px-6 py-4 text-right font-black text-red-600">{formatCurrency(emp.cost)}</td>
+                                            </tr>
+                                        ))}
+                                        {details.employees.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="px-6 py-8 text-center text-gray-400 italic font-medium">
+                                                    No billable labor recorded for this project yet.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Amendment Proposals Breakdown */}
+                        {details.amendments && details.amendments.length > 0 && (
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-amber-500 pl-3">
+                                    Amendment Proposals
+                                </h4>
+                                <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                    <table className="w-full text-[11px] text-left">
+                                        <thead className="bg-amber-50 text-gray-400 uppercase tracking-wider font-black text-[9px]">
+                                            <tr>
+                                                <th className="px-4 py-4">Amendment</th>
+                                                <th className="px-4 py-4">Services</th>
+                                                <th className="px-4 py-4">Amount</th>
+                                                <th className="px-4 py-4 text-right">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {details.amendments.map((amendment: any) => (
+                                                <tr key={amendment.id} className="hover:bg-gray-50/50">
+                                                    <td className="px-4 py-4">
+                                                        <div className="font-bold text-gray-900">{amendment.title}</div>
+                                                        <div className="text-[9px] text-gray-400 mt-0.5">{amendment.proposalNumber}</div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="space-y-1">
+                                                            {amendment.services.map((s: any) => (
+                                                                <div key={s.id} className="flex items-center justify-between gap-4">
+                                                                    <span className="text-gray-600 truncate max-w-[140px]">{s.name}</span>
+                                                                    <span className="text-gray-900 font-bold whitespace-nowrap">{formatCurrency(s.amount)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-amber-600 font-black">{formatCurrency(amendment.amount)}</td>
+                                                    <td className="px-4 py-4 text-right">
+                                                        {amendment.paid ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-[9px] font-black rounded-full border border-green-200 uppercase tracking-wider">
+                                                                ✓ Paid
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-[9px] font-black rounded-full border border-red-200 uppercase tracking-wider">
+                                                                Unpaid
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="bg-amber-900 text-white">
+                                            <tr>
+                                                <td className="px-4 py-3 font-black uppercase tracking-wider" colSpan={2}>Total Amendments</td>
+                                                <td className="px-4 py-3 font-black text-amber-200">{formatCurrency(details.totalAmendmentAmount)}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-amber-200">
+                                                    {formatCurrency(details.totalAmendmentPaid || 0)} Collected
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Bottom Profitability Analysis */}
+                        <div className="bg-black text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl transition-all duration-700 group-hover:bg-blue-500/20"></div>
+                            <div className="relative z-10 flex justify-between items-center">
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] flex items-center gap-2">
+                                        <BarChart3 size={14} className="text-blue-500" />
+                                        Profitability Analysis
+                                    </h4>
+                                    <div className="space-y-1">
+                                        <div className="text-4xl font-black tracking-tight flex items-baseline gap-3">
+                                            {profitMargin.toFixed(1)}%
+                                            <span className="text-sm text-gray-500 font-bold uppercase tracking-widest">Profit Margin</span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 max-w-sm leading-relaxed">
+                                            Calculated based on contract value vs. total labor and overhead allocation. 
+                                            {profitMargin > 20 ? " Exceptional project performance." : " Monitor labor efficiency carefully."}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right space-y-1">
+                                    <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Net Gain</div>
+                                    <div className={`text-4xl font-black ${details.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                        {formatCurrency(details.profit)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Project Performance Chart */}
+                        <div className="space-y-4 no-pdf" data-html2canvas-ignore="true">
+                            <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+                                Financial Performance History
+                            </h4>
+                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                <FinancialChart projectId={projectId} />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-900">
+                            <Info size={16} className="text-blue-500" />
+                            <p className="text-[10px] font-black uppercase tracking-wider leading-none">
+                                Overhead is calculated as Firm Billing Rate (${details.firmBillingRate}/hr) × Non-Billable Hours ({details.totalProjectNonBillableHours?.toFixed(1) || 0} hrs) from timecards.
+                            </p>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-900">
-                        <Info size={16} className="text-blue-500" />
-                        <p className="text-[10px] font-black uppercase tracking-wider leading-none">
-                            Overhead is allocated based on an even split across all {details.activeProjectCount || "active"} projects.
-                        </p>
-                    </div>
-
                 </div>
 
-                <div className="px-8 py-4 bg-white border-t border-gray-100 flex justify-end">
+                <div className="px-8 py-4 bg-white border-t border-gray-100 flex justify-end gap-3 no-pdf" data-html2canvas-ignore="true">
+                    <button
+                        onClick={handleDownloadPDF}
+                        disabled={isGeneratingPDF}
+                        className="bg-gray-100 text-black px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        {isGeneratingPDF ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                        {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+                    </button>
                     <button
                         onClick={() => onOpenChange(false)}
                         className="bg-black text-white px-10 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10"

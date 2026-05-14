@@ -159,6 +159,17 @@ export const financialApi = baseApi.injectEndpoints({
       providesTags: ["Timecard"],
     }),
 
+    // Pay-period timecards (bi-weekly, 26 periods per year)
+    getTimecardsByPayPeriod: builder.query<any[], { year: number; period: number }>({
+      query: ({ year, period }) => ({
+        url: "/financial/timecards/pay-period",
+        method: "GET",
+        params: { year, period },
+      }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["Timecard"],
+    }),
+
     getFinancialHistory: builder.query<any[], string | void>({
       query: (projectId) => ({
         url: "/financial/history",
@@ -167,6 +178,60 @@ export const financialApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: any) => response.data,
       providesTags: ["FinancialOverview"],
+    }),
+
+    // ═══════════════════════════════════════
+    // BILLING RATE
+    // ═══════════════════════════════════════
+    getBillingRate: builder.query<{ billingRate: number }, void>({
+      query: () => ({ url: "/financial/billing-rate", method: "GET" }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["BillingRate" as any],
+    }),
+
+    setBillingRate: builder.mutation({
+      query: (billingRate: number) => ({
+        url: "/financial/billing-rate",
+        method: "PATCH",
+        body: { billingRate },
+      }),
+      invalidatesTags: ["BillingRate" as any, "FinancialOverview"],
+    }),
+
+    // ═══════════════════════════════════════
+    // MERCURY BANKING
+    // ═══════════════════════════════════════
+    getMercuryAccounts: builder.query<any, void>({
+      query: () => ({ url: "/financial/mercury/accounts", method: "GET" }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["MercuryAccount"],
+    }),
+
+    getMercuryTransactions: builder.query<any, { accountId: string; limit?: number; offset?: number }>({
+      query: ({ accountId, limit = 10, offset = 0 }) => ({
+        url: `/financial/mercury/accounts/${accountId}/transactions`,
+        method: "GET",
+        params: { limit, offset },
+      }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["MercuryAccount"],
+    }),
+
+    // ═══════════════════════════════════════
+    // YEAR-END ARCHIVE
+    // ═══════════════════════════════════════
+    archiveCompletedProjects: builder.mutation<any, { year?: number }>({
+      query: (body) => ({
+        url: "/financial/archive-completed",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["FinancialOverview"],
+    }),
+
+    getArchivedSummary: builder.query<any, void>({
+      query: () => ({ url: "/financial/archived-summary", method: "GET" }),
+      transformResponse: (response: any) => response.data,
     }),
   }),
 });
@@ -191,5 +256,12 @@ export const {
   useRejectTimecardMutation,
   useDeleteTimecardMutation,
   useGetAllTimecardsQuery,
+  useGetTimecardsByPayPeriodQuery,
   useGetFinancialHistoryQuery,
+  useGetBillingRateQuery,
+  useSetBillingRateMutation,
+  useGetMercuryAccountsQuery,
+  useGetMercuryTransactionsQuery,
+  useArchiveCompletedProjectsMutation,
+  useGetArchivedSummaryQuery,
 } = financialApi;

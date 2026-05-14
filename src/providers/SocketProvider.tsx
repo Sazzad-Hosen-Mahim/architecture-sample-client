@@ -16,7 +16,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     if (user?.id) {
-      const newSocket = io("http://localhost:3000/notifications", {
+      const newSocket = io(`${import.meta.env.VITE_API_URL}/notifications`, {
         query: { userId: user.id },
         transports: ["websocket"],
       });

@@ -1,21 +1,19 @@
 import FinancialOverviewTab from "@/components/Deshboard/Finacials/FinacialsTabItem/FinancialOverviewTab";
 import PayrollManagementTab from "@/components/Deshboard/Finacials/FinacialsTabItem/Payroll Management Tab/PayrollManagementTab";
 import ProjectFinancialTracking from "@/components/Deshboard/Finacials/FinacialsTabItem/ProjectFinancialTracking";
-import TimecardsListTab from "@/components/Deshboard/Finacials/FinacialsTabItem/TimecardsListTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Financials() {
   return (
     <div className="mt-8">
       <Tabs defaultValue="overview" className="space-y-6 ">
-        <TabsList className="grid w-full grid-cols-4 bg-gray-50 ">
+        <TabsList className="grid w-full grid-cols-3 bg-gray-50 ">
           <TabsTrigger value="overview">Financial Overview</TabsTrigger>
           <TabsTrigger value="project-tracking">Project Tracking</TabsTrigger>
-          <TabsTrigger value="timecards">Timecards</TabsTrigger>
-          <TabsTrigger value="payroll">Payroll</TabsTrigger>
+          <TabsTrigger value="payroll">Accountant's Control</TabsTrigger>
         </TabsList>
 
-        {/* ------------------------  */}
+        {/* Financial Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <FinancialOverviewTab />
         </TabsContent>
@@ -25,10 +23,7 @@ export default function Financials() {
           <ProjectFinancialTracking />
         </TabsContent>
 
-        <TabsContent value="timecards" className="space-y-6">
-          <TimecardsListTab />
-        </TabsContent>
-
+        {/* Accountant's Control Tab (Payroll Management + AccountantDesk) */}
         <TabsContent value="payroll" className="space-y-3">
           <PayrollManagementTab />
         </TabsContent>

@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 // Validation Schema
 const forgotPasswordSchema = z.object({
@@ -29,7 +30,7 @@ const ForgotPassword = () => {
 
   const onSubmit = (data: ForgotPasswordInputs) => {
     console.log("Forgot Password Email:", data);
-    alert("Password reset link sent to your email (demo)");
+    toast.success("Password reset link sent to your email (demo)");
   };
 
   return (

@@ -6,9 +6,8 @@ import Cookies from "js-cookie";
 export const baseApi = createApi({
   reducerPath: "baseApi", // or just "api" if you prefer
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:3000/v1",
+    baseUrl: import.meta.env.VITE_API_BASE_URL,
     credentials: "include",
-    // baseUrl: "https://eric-architecture.onrender.com/v1",
 
     prepareHeaders: (headers, { getState }) => {
       const token =
@@ -21,5 +20,5 @@ export const baseApi = createApi({
     },
   }),
   endpoints: () => ({}),
-  tagTypes: ["User", "Project", "Amendment", "MasterContract", "AmendmentContract", "Media", "Notification", "OverheadExpense", "Timecard", "FinancialOverview"],
+  tagTypes: ["User", "Project", "Amendment", "MasterContract", "AmendmentContract", "Media", "Notification", "OverheadExpense", "Timecard", "FinancialOverview", "BillingRate", "Team", "MercuryAccount", "BankDetails", "PaymentStatus"],
 });

@@ -6,16 +6,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BarChart, DollarSign, Plus, TrendingUp, Users } from "lucide-react";
+import { BarChart, DollarSign, TrendingUp, Users, Archive, Loader2 } from "lucide-react";
+import { useGetFinancialOverviewQuery, useArchiveCompletedProjectsMutation, useGetArchivedSummaryQuery } from "@/redux/api/financialApi";
 import { useState } from "react";
-import { OverheadExpensesModal } from "./overheadModal/OverHeadModal";
-import { useGetFinancialOverviewQuery } from "@/redux/api/financialApi";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function FinancialOverviewTab() {
-  const navigate = useNavigate()
-  const [overheadModalOpen, setOverheadModalOpen] = useState(false);
   const { data: overview, isLoading } = useGetFinancialOverviewQuery();
+  const [archiveCompleted, { isLoading: isArchiving }] = useArchiveCompletedProjectsMutation();
+  const { data: archivedSummary } = useGetArchivedSummaryQuery();
+  const [archiveYear, setArchiveYear] = useState(new Date().getFullYear());
 
   if (isLoading) {
     return (
@@ -26,8 +26,9 @@ export default function FinancialOverviewTab() {
   }
 
   const labor = overview?.labor || { total: 0, totalSalaries: 0, totalTaxes: 0, employeeCount: 0, employees: [] };
-  const overhead = overview?.overhead || { total: 0, monthlyExpenses: 0, annualExpenses: 0, timecardCosts: 0, categoryBreakdown: {}, expenseCount: 0 };
+  const overhead = overview?.overhead || { total: 0, monthlyExpenses: 0, annualExpenses: 0, projectOverhead: 0, categoryBreakdown: {}, expenseCount: 0 };
   const revenue = overview?.revenue || { total: 0, activeProjectCount: 0 };
+  const projectFinancials = overview?.projectFinancials || { totalBurned: 0, totalLabor: 0, totalProjectOverhead: 0, totalStudioOverhead: 0, firmBillingRate: 0 };
   const profit = overview?.profit || { total: 0, margin: 0 };
 
   const totalCosts = labor.total + overhead.total;
@@ -61,10 +62,30 @@ export default function FinancialOverviewTab() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Total Revenue</span>
-                    <span className="font-medium">${revenue.total.toLocaleString()}</span>
+                    <span>Gross Revenue</span>
+                    <span className="font-medium">${(revenue.grossRevenue || revenue.total).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  {(revenue.amendmentRevenue || 0) > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm text-gray-500 pl-3 border-l-2 border-gray-200">
+                        <span>Original Contracts</span>
+                        <span className="font-medium">${(revenue.originalRevenue || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-amber-600 pl-3 border-l-2 border-amber-200">
+                        <span>Amendments ({revenue.amendmentCount || 0})</span>
+                        <span className="font-medium">+${(revenue.amendmentRevenue || 0).toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between text-sm text-red-600">
+                    <span>Approved Refunds</span>
+                    <span className="font-medium">-${(revenue.totalRefunds || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold pt-1 border-t border-gray-100">
+                    <span>Net Revenue</span>
+                    <span className="font-bold">${revenue.total.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm pt-1">
                     <span>Profit Margin</span>
                     <span className="font-medium">{profit.margin.toFixed(1)}%</span>
                   </div>
@@ -82,22 +103,22 @@ export default function FinancialOverviewTab() {
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
                       <span>Overhead</span>
-                      <span>${overhead.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span>${(overhead?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-orange-500 h-1.5 rounded-full"
-                        style={{ width: totalCosts > 0 ? `${(overhead.total / totalCosts) * 100}%` : "0%" }}
+                        style={{ width: (totalCosts || 0) > 0 ? `${((overhead?.total || 0) / (totalCosts || 1)) * 100}%` : "0%" }}
                       ></div>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span>Labor</span>
-                      <span>${labor.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span>${(labor?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-blue-500 h-1.5 rounded-full"
-                        style={{ width: totalCosts > 0 ? `${(labor.total / totalCosts) * 100}%` : "0%" }}
+                        style={{ width: (totalCosts || 0) > 0 ? `${((labor?.total || 0) / (totalCosts || 1)) * 100}%` : "0%" }}
                       ></div>
                     </div>
                   </div>
@@ -111,16 +132,6 @@ export default function FinancialOverviewTab() {
                     <BarChart className="h-5 w-5 mr-2 text-orange-600" />
                     Overhead
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setOverheadModalOpen(true)}
-                      className="flex items-center gap-1 border border-black text-black hover:bg-gray-900 hover:text-white cursor-pointer text-xs font-medium px-2 py-1 rounded-md shadow-sm transition-all duration-200"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Update Overhead
-                    </button>
-                    <OverheadExpensesModal open={overheadModalOpen} onOpenChange={setOverheadModalOpen} />
-                  </div>
                   <span className="text-sm font-bold text-orange-600">
                     ${overhead.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
@@ -129,24 +140,27 @@ export default function FinancialOverviewTab() {
                   <div className="flex justify-between text-sm">
                     <span>Monthly Expenses</span>
                     <span className="font-medium">
-                      ${overhead.monthlyExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${(overhead?.monthlyExpenses || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Annual Expenses</span>
                     <span className="font-medium">
-                      ${overhead.annualExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${(overhead?.annualExpenses || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Timecard OH Costs</span>
+                    <span>Project Overhead</span>
                     <span className="font-medium">
-                      ${overhead.timecardCosts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${(projectFinancials?.totalProjectOverhead || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-500 italic text-[10px] mt-1">
+                    <span>* Project overhead derived from non-billable timecards at ${projectFinancials?.firmBillingRate || "N/A"}/hr</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Expense Items</span>
-                    <span className="font-medium">{overhead.expenseCount}</span>
+                    <span className="font-medium">{overhead?.expenseCount || 0}</span>
                   </div>
                 </div>
                 <div className="pt-2">
@@ -180,31 +194,22 @@ export default function FinancialOverviewTab() {
                     <Users className="h-5 w-5 mr-2 text-blue-600" />
                     Labor
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => navigate("/dashboard/employees")}
-                      className="flex items-center gap-1 border border-black text-black hover:bg-gray-900 hover:text-white cursor-pointer text-xs font-medium px-2 py-1 rounded-md shadow-sm transition-all duration-200"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Update Labor
-                    </button>
-                  </div>
                   <span className="text-sm font-bold text-blue-600">
-                    ${labor.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${(labor?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Total Salaries</span>
-                    <span className="font-medium">${labor.totalSalaries.toLocaleString()}</span>
+                    <span className="font-medium">${(labor?.totalSalaries || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Taxes</span>
-                    <span className="font-medium">${labor.totalTaxes.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <span className="font-medium">${(labor?.totalTaxes || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Employees</span>
-                    <span className="font-medium">{labor.employeeCount}</span>
+                    <span className="font-medium">{labor?.employeeCount || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>% of Revenue</span>
@@ -220,7 +225,7 @@ export default function FinancialOverviewTab() {
                       <div key={emp.id} className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span>{emp.name}</span>
-                          <span>${emp.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                          <span>${(emp.totalCost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5">
                           <div
@@ -248,6 +253,30 @@ export default function FinancialOverviewTab() {
                     {profit.total > 0 ? "Good" : profit.total === 0 ? "Neutral" : "Attention"}
                   </span>
                 </div>
+
+                {/* Project Financials Summary */}
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-2">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Project Financials (Active)</div>
+                  <div className="flex justify-between text-sm">
+                    <span>Total Burned</span>
+                    <span className="font-bold text-amber-600">
+                      ${(projectFinancials?.totalBurned || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Total Project Labor</span>
+                    <span className="font-bold text-blue-600">
+                      ${(projectFinancials?.totalLabor || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Total Project Overhead</span>
+                    <span className="font-bold text-orange-600">
+                      ${(projectFinancials?.totalProjectOverhead || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
@@ -315,6 +344,99 @@ export default function FinancialOverviewTab() {
           </CardHeader>
           <CardContent>
             <FinancialChart />
+          </CardContent>
+        </Card>
+      </div>
+      {/* Year-End Archive Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+        <Card className="col-span-1 md:col-span-3 border-gray-50">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Archive className="h-5 w-5 text-gray-600" />
+                  Year-End Project Archive
+                </CardTitle>
+                <CardDescription>
+                  Completed projects from previous years are automatically archived at midnight daily.
+                  Archived projects are excluded from the financial summary above.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Year</label>
+                  <input
+                    type="number"
+                    value={archiveYear}
+                    onChange={(e) => setArchiveYear(parseInt(e.target.value) || new Date().getFullYear())}
+                    className="w-20 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-center"
+                    min={2020}
+                    max={2100}
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const result = await archiveCompleted({ year: archiveYear }).unwrap();
+                      toast.success(result.message || `Archived ${result.archivedCount} project(s)`);
+                    } catch (err: any) {
+                      toast.error(err?.data?.message || 'Failed to archive projects');
+                    }
+                  }}
+                  disabled={isArchiving}
+                  className="bg-gray-900 text-white px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-60 flex items-center gap-2"
+                >
+                  {isArchiving ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                  {isArchiving ? 'Archiving...' : 'Archive Completed'}
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {archivedSummary && archivedSummary.count > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-6 text-sm">
+                  <div className="bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
+                    <span className="text-gray-500 font-medium">Archived Projects: </span>
+                    <span className="font-black text-gray-900">{archivedSummary.count}</span>
+                  </div>
+                  <div className="bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
+                    <span className="text-gray-500 font-medium">Archived Revenue: </span>
+                    <span className="font-black text-gray-900">
+                      ${archivedSummary.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Project</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Manager</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Archived At</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {archivedSummary.projects.map((p: any) => (
+                        <tr key={p.id} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-bold text-gray-900">{p.projectName}</td>
+                          <td className="px-4 py-3 text-gray-600">{p.clientName}</td>
+                          <td className="px-4 py-3 text-gray-600">{p.assignedManager?.name || 'N/A'}</td>
+                          <td className="px-4 py-3 text-right font-bold">${p.totalAmount.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                            {p.archivedAt ? new Date(p.archivedAt).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic py-4">No archived projects yet. Completed projects from previous years will appear here.</p>
+            )}
           </CardContent>
         </Card>
       </div>

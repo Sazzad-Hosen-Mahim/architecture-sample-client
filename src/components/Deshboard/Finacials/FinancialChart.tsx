@@ -26,6 +26,8 @@ ChartJS.register(
 export function FinancialChart({ projectId }: { projectId?: string }) {
   const { data: history, isLoading } = useGetFinancialHistoryQuery(projectId);
 
+  console.log(history, "historyyy")
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 h-[400px] bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
@@ -180,6 +182,8 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
       }
     },
   };
+
+  console.log(totalRevenue, "totalRevenue")
 
   const avgRevenue = totalRevenue.reduce((a, b) => a + b, 0) / (totalRevenue.length || 1);
   const avgCost = totalCost.reduce((a, b) => a + b, 0) / (totalCost.length || 1);

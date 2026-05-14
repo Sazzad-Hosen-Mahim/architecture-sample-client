@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 // Validation Schema
 const resetPasswordSchema = z
@@ -34,7 +35,7 @@ const ResetPassword = () => {
 
   const onSubmit = (data: ResetPasswordInputs) => {
     console.log("Reset Password Data:", data);
-    alert("Password has been reset successfully (demo)");
+    toast("Password has been reset successfully (demo)");
   };
 
   return (

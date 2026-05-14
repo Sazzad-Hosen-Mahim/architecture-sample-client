@@ -33,6 +33,10 @@ import NewDynamicProposalPage from "@/pages/Dashboard/NewDynamicProposal";
 import Proposals from "@/pages/Dashboard/Proposals";
 import NewInquiryPage from "@/pages/Dashboard/NewInquiries";
 import NewInquiriesListPage from "@/pages/Dashboard/NewInquiriesList";
+import TimecardsPage from "@/pages/Dashboard/TimecardsPage";
+import Teams from "@/pages/Dashboard/Teams";
+import RefundRequests from "@/pages/Dashboard/RefundRequests";
+import ClientUsers from "@/pages/Dashboard/ClientUsers";
 // import ProfileSettings from "@/pages/ProfileSettings";
 
 const routes = createBrowserRouter([
@@ -143,6 +147,10 @@ const routes = createBrowserRouter([
       { path: "financials", element: <Financials /> },
       { path: "employees", element: <Employees /> },
       { path: "proposals", element: <Proposals /> },
+      { path: "timecards", element: <TimecardsPage /> },
+      { path: "teams", element: <Teams /> },
+      { path: "refund-requests", element: <RefundRequests /> },
+      { path: "client-users", element: <ClientUsers /> },
     ],
   },
   {

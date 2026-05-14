@@ -258,6 +258,7 @@ const ProposalsTab = ({ searchQuery = "" }: ProposalsTabProps) => {
                         setIsAmendmentProposalsOpen(false);
                         setViewAmendmentProposalId("");
                     }}
+                    handleOpenContract={handleOpenContract}
                 />
             )}
 
@@ -501,9 +502,10 @@ const CreateAmendmentModal = ({ isLoading, form, onChange, onSubmit, onClose }: 
 interface AmendmentProposalsModalProps {
     proposalId: string;
     onClose: () => void;
+    handleOpenContract: (proposalId: string) => void;
 }
 
-const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModalProps) => {
+const AmendmentProposalsModal = ({ proposalId, onClose, handleOpenContract }: AmendmentProposalsModalProps) => {
     const { data, isLoading } = useGetAllProposalsForProposalQuery(proposalId);
     const { data: amendmentsData, isLoading: isLoadingAmendments } = useGetAmendmentsQuery({ proposalId });
     const [changeProposalStatus, { isLoading: isChangingStatus }] = useChangeProposalStatusMutation();
@@ -565,8 +567,9 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: AmendmentProposalsModa
     };
 
     const handleAcceptProposal = (id: string) => {
-        setSigningProposalId(id);
-        setIsSignatureModalOpen(true);
+        // Close this modal and open the contract review modal for a consistent flow
+        onClose();
+        handleOpenContract(id);
     };
 
     const handleConfirmSign = async () => {

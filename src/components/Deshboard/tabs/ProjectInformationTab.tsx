@@ -12,10 +12,15 @@ import {
     Loader2,
     LinkIcon,
     ExternalLink,
-    Pencil,
     Trash2,
     UserCog,
+    Users,
+    Play,
+    X,
+    Pencil,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -31,6 +36,9 @@ import {
     useDeleteProjectDriveLinkMutation,
     useGetProjectManagersQuery,
     useAssignProjectManagerMutation,
+    useGetTeamsQuery,
+    useAssignProjectTeamsMutation,
+    useStartProjectMutation,
 } from "@/redux/api/adminDashboard/proposalApi";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
@@ -56,9 +64,14 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
     const [updateDriveLink, { isLoading: isUpdatingDriveLink }] = useUpdateProjectDriveLinkMutation();
     const [deleteDriveLink, { isLoading: isDeletingDriveLink }] = useDeleteProjectDriveLinkMutation();
     const [assignPM, { isLoading: isAssigning }] = useAssignProjectManagerMutation();
+    const [assignTeams] = useAssignProjectTeamsMutation();
+    const [startProject, { isLoading: isStartingProject }] = useStartProjectMutation();
+    
     const { data: pmData } = useGetProjectManagersQuery(undefined, { skip: !isSuperAdmin });
+    const { data: teamsData } = useGetTeamsQuery();
 
     const projectManagers = pmData?.data || [];
+    const allTeams = teamsData || [];
 
     // Drive link state
     const [showDriveLinkInput, setShowDriveLinkInput] = useState(false);
@@ -151,6 +164,34 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
         setDriveLinkValue(project.driveLink || "");
         setIsEditingDriveLink(true);
         setShowDriveLinkInput(true);
+    };
+
+    const handleAssignTeam = async (teamId: string) => {
+        const currentTeams = project.teams || [];
+        const isAssigned = currentTeams.some(t => t.id === teamId);
+        
+        let newTeamIds: string[];
+        if (isAssigned) {
+            newTeamIds = currentTeams.filter(t => t.id !== teamId).map(t => t.id);
+        } else {
+            newTeamIds = [...currentTeams.map(t => t.id), teamId];
+        }
+
+        try {
+            await assignTeams({ projectId: project.id, teamIds: newTeamIds }).unwrap();
+            toast.success(isAssigned ? "Team removed" : "Team assigned");
+        } catch (error) {
+            toast.error("Failed to update teams");
+        }
+    };
+
+    const handleStartProject = async () => {
+        try {
+            await startProject(project.id).unwrap();
+            toast.success("Project started successfully!");
+        } catch (error) {
+            toast.error("Failed to start project");
+        }
     };
 
     const getStatusLabel = (status: string) => {
@@ -474,6 +515,48 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                             <p className="text-xs text-gray-500 text-right">{progress}% Complete</p>
                         </div>
 
+                        {/* Project Activation / Start Button */}
+                        {project.status === "ACTIVE" && (
+                            <div className="pt-4 border-t border-gray-200 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-gray-900">Project Lifecycle</span>
+                                    {project.isProjectStarted ? (
+                                        <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
+                                            STARTED
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="text-gray-400 border-gray-200">
+                                            NOT STARTED
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {!project.isProjectStarted ? (
+                                    <Button 
+                                        onClick={handleStartProject}
+                                        disabled={isStartingProject || (!isSuperAdmin && currentUser?.role !== "PROJECT_MANAGER")}
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 h-10 shadow-lg shadow-green-100"
+                                    >
+                                        {isStartingProject ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                        Start Project
+                                    </Button>
+                                ) : (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                                            <CalendarIcon className="w-3 h-3" />
+                                            Started On:
+                                        </div>
+                                        <p className="text-sm font-bold text-gray-900">
+                                            {project.projectStartedAt ? new Date(project.projectStartedAt).toLocaleDateString() : "N/A"}
+                                        </p>
+                                    </div>
+                                )}
+                                <p className="text-[10px] text-gray-400 italic">
+                                    Starting the project initiates official timeline tracking and notifies all assigned team members.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Status Dropdown */}
                         <Select
                             value={selectedStatus || project.status}
@@ -515,6 +598,72 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                         </button>
                     </div>
                 </div>
+
+                {/* Team Assignment Card */}
+                {(isSuperAdmin || currentUser?.role === "PROJECT_MANAGER") && (
+                    <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Users className="w-5 h-5 text-purple-600" />
+                                <h3 className="text-lg font-semibold text-gray-900">Project Teams</h3>
+                            </div>
+                            
+                            <Select onValueChange={handleAssignTeam}>
+                                <SelectTrigger className="w-[180px] h-8 text-xs border-purple-200 bg-purple-50 text-purple-800 font-medium">
+                                    <SelectValue placeholder="Add/Remove Team" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-gray-200">
+                                    {allTeams.map((team) => (
+                                        <SelectItem key={team.id} value={team.id} className="cursor-pointer text-xs">
+                                            {project.teams?.some(t => t.id === team.id) ? "✓ " : "+ "}{team.name}
+                                        </SelectItem>
+                                    ))}
+                                    {allTeams.length === 0 && (
+                                        <div className="p-2 text-xs text-gray-400 italic">No teams available</div>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex flex-wrap gap-2">
+                                {project.teams?.map((team) => (
+                                    <Badge key={team.id} variant="secondary" className="bg-purple-100 text-purple-700 py-1 px-3 border-none flex items-center gap-2">
+                                        {team.name}
+                                        <button onClick={() => handleAssignTeam(team.id)} className="hover:text-purple-900">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                                {(!project.teams || project.teams.length === 0) && (
+                                    <p className="text-xs text-gray-400 italic">No teams assigned yet.</p>
+                                )}
+                            </div>
+
+                            {project.teams && project.teams.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">All Assigned Staff</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {project.teams.flatMap(t => t.members).reduce((acc: any[], curr) => {
+                                            if (!acc.find(m => m.id === curr.id)) acc.push(curr);
+                                            return acc;
+                                        }, []).map((member) => (
+                                            <div key={member.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                                <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold">
+                                                    {member.avatar ? <img src={member.avatar} className="h-full w-full rounded-full object-cover" /> : member.name.charAt(0)}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-medium text-gray-900 truncate">{member.name}</p>
+                                                    <p className="text-[8px] text-gray-500 truncate">{member.role}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

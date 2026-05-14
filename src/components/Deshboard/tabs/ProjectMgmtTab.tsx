@@ -32,8 +32,11 @@ import {
     Play,
     Square,
     TrendingUp,
+    Clock as ClockIcon,
+    AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGetAmendmentsByProjectQuery } from "@/redux/api/amendmentApi";
 
 import { FinancialChart } from "@/components/Deshboard/Finacials/FinancialChart";
 
@@ -703,8 +706,12 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
 }
 
 export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProps) {
+    const currentUser = useSelector(selectCurrentUser);
     const { data: proposalsData, isLoading } = useGetProposalsByProjectRequestQuery(project.id);
+    const { data: amendmentsData } = useGetAmendmentsByProjectQuery({ projectId: project.id });
     const [expandedProposals, setExpandedProposals] = useState<Set<string>>(new Set());
+
+    const pendingAmendments = (amendmentsData?.data || []).filter((a: any) => a.status === "PENDING");
 
     const allProposals: Proposal[] = proposalsData?.data || [];
 
@@ -746,9 +753,48 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
 
     return (
         <div className="space-y-4">
-            <p className="text-xs text-gray-500">
-                Manage project phases from signed contracts. Check phases and mark them as complete. Optionally add Google Drive links for client deliverables.
-            </p>
+            {pendingAmendments.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                            <AlertCircle className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-amber-900">Pending Amendment Requests</h4>
+                            <p className="text-xs text-amber-700">
+                                There are {pendingAmendments.length} amendment request{pendingAmendments.length > 1 ? 's' : ''} waiting for review.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            // Find the Tab buttons and click the Contracts one
+                            const contractsTab = document.getElementById('contracts-tab');
+                            if (contractsTab) contractsTab.click();
+                        }}
+                        className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition-all shadow-sm shadow-amber-600/20 active:scale-95 whitespace-nowrap"
+                    >
+                        Review Now
+                    </button>
+                </div>
+            )}
+
+            <div className="flex items-center justify-between bg-gray-50/50 p-4 rounded-xl border border-gray-100 mb-2">
+                <p className="text-xs text-gray-500 max-w-md">
+                    Manage project phases from signed contracts. Check phases and mark them as complete. Optionally add Google Drive links for client deliverables.
+                </p>
+                {project.isProjectStarted && project.projectStartedAt && (
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Project Active For</p>
+                            <p className="text-lg font-mono font-bold text-black flex items-center gap-2">
+                                <ClockIcon className="w-5 h-5 text-blue-600" />
+                                {Math.floor((new Date().getTime() - new Date(project.projectStartedAt).getTime()) / (1000 * 60 * 60 * 24))} Days
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {acceptedProposals.map((proposal) => {
                 const isExpanded = expandedProposals.has(proposal.id);
@@ -808,19 +854,21 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                 );
             })}
 
-            {/* Project Financial Performance Chart */}
-            <div className="mt-12 pt-8 border-t border-gray-100">
-                <div className="mb-6 px-2">
-                    <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-blue-600" />
-                        Project Financial Analytics
-                    </h3>
-                    <p className="text-xs text-gray-500 font-medium">Real-time revenue, labor costs, and profit trends for this project</p>
+            {/* Project Financial Performance Chart - Only for Managers */}
+            {(currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "PROJECT_MANAGER") && (
+                <div className="mt-12 pt-8 border-t border-gray-100">
+                    <div className="mb-6 px-2">
+                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                            Project Financial Analytics
+                        </h3>
+                        <p className="text-xs text-gray-500 font-medium">Real-time revenue, labor costs, and profit trends for this project</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <FinancialChart projectId={project.id} />
+                    </div>
                 </div>
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <FinancialChart projectId={project.id} />
-                </div>
-            </div>
+            )}
         </div>
     );
 }

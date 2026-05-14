@@ -71,15 +71,29 @@ export default function NavbarDashboard() {
               Media
             </NavLink>
 
-            <NavLink
-              to="/dashboard/financials"
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
-                }`
-              }
-            >
-              Financials
-            </NavLink>
+            {(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
+              <>
+                <NavLink
+                  to="/dashboard/financials"
+                  className={({ isActive }) =>
+                    `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                    }`
+                  }
+                >
+                  Financials
+                </NavLink>
+
+                <NavLink
+                  to="/dashboard/teams"
+                  className={({ isActive }) =>
+                    `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                    }`
+                  }
+                >
+                  Teams
+                </NavLink>
+              </>
+            )}
             {/* <NavLink
               to="/dashboard/employees"
               className={({ isActive }) =>
@@ -269,15 +283,29 @@ export default function NavbarDashboard() {
             >
               Media
             </NavLink>
-            <NavLink
-              to="/dashboard/financials"
-              className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
-                }`
-              }
-            >
-              Financials
-            </NavLink>
+            {(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER") && (
+              <>
+                <NavLink
+                  to="/dashboard/financials"
+                  className={({ isActive }) =>
+                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                    }`
+                  }
+                >
+                  Financials
+                </NavLink>
+
+                <NavLink
+                  to="/dashboard/teams"
+                  className={({ isActive }) =>
+                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                    }`
+                  }
+                >
+                  Teams
+                </NavLink>
+              </>
+            )}
             <NavLink
               to="/dashboard/new-inquiries-list"
               className={({ isActive }) =>

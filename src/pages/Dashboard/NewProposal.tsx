@@ -19,6 +19,7 @@ import ClientTabFrom from "@/components/NewProposalTabContent/ClientTabFrom";
 import ProjectTabForm from "@/components/NewProposalTabContent/ProjectTabForm";
 import ServicesTabForm from "@/components/NewProposalTabContent/ServicesTabForm";
 import SignProposalTab from "@/components/NewProposalTabContent/SignProposalTab";
+import { toast } from "sonner";
 
 // Add this function to check for holidays (you can expand this list as needed)
 
@@ -419,7 +420,7 @@ export default function NewProposalPage({
       console.log("PDF generated successfully ✅");
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Error generating PDF. Please try again.");
+      toast.error("Error generating PDF. Please try again.");
 
       const downloadBtn = document.querySelector("[data-download-btn]");
       if (downloadBtn) {

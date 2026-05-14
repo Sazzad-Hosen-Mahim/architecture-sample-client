@@ -89,7 +89,7 @@ const Navbar: React.FC = () => {
 
                 <PopoverContent className="mr-3 bg-website-color-darkGray border-none text-white space-y-2">
                   <Button
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => navigate(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE" || user?.role === "DRAFTER" || user?.role === "EMPLOYEE" ? "/dashboard" : "/user-dashboard")}
                     className="bg-website-color-lightGray text-black w-full cursor-pointer"
                   >
                     Dashboard
