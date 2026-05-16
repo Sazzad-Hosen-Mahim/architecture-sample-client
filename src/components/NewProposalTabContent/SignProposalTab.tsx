@@ -28,7 +28,7 @@ interface ProposalSignProps {
   setSignatureAr: (value: string) => void;
   clientSignatureRef: React.RefObject<SignatureCanvas | null>;
   architectSignatureRef: React.RefObject<SignatureCanvas | null>;
-  clearSignature: (ref: React.RefObject<SignatureCanvas | null>) => void; // ✅ updated here
+  clearSignature: (ref: React.RefObject<SignatureCanvas | null>) => void;
   handleSubmit: () => void;
   handleBack: () => void;
   downloadPDF: () => void;

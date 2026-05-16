@@ -2,7 +2,7 @@ import { baseApi } from "@/redux/api/baseApi";
 
 export const mediaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    // ✅ GET all media
+    //   GET all media
     getAllMedia: builder.query<any, any>({
       query: (params) => ({
         url: "/media",
@@ -11,7 +11,7 @@ export const mediaApi = baseApi.injectEndpoints({
       }),
     }),
 
-    // ✅ GET single media
+    //   GET single media
     getMediaByIdOrSlug: builder.query<any, string>({
       query: (idOrSlug) => ({
         url: `/media/${idOrSlug}`,
@@ -19,7 +19,7 @@ export const mediaApi = baseApi.injectEndpoints({
       }),
     }),
 
-    // ✅ CREATE media metadata (JSON)
+    //   CREATE media metadata (JSON)
     createMedia: builder.mutation<any, any>({
       query: (data) => ({
         url: "/media",
@@ -28,7 +28,7 @@ export const mediaApi = baseApi.injectEndpoints({
       }),
     }),
 
-    // ✅ UPLOAD assets (multipart/form-data)
+    //   UPLOAD assets (multipart/form-data)
     uploadMediaAssets: builder.mutation<any, { id: string; formData: FormData }>({
       query: ({ id, formData }) => ({
         url: `/media/${id}/assets`,
@@ -36,7 +36,7 @@ export const mediaApi = baseApi.injectEndpoints({
         body: formData,
       }),
     }),
-    // ✅ TOGGLE like/vote
+    //   TOGGLE like/vote
     toggleLike: builder.mutation<any, string>({
       query: (id) => ({
         url: `/media/${id}/like`,
@@ -45,7 +45,7 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, id) => [{ type: "Media" as const, id }],
     }),
 
-    // ✅ CREATE comment
+    //   CREATE comment
     createComment: builder.mutation<any, { id: string; content: string }>({
       query: ({ id, content }) => ({
         url: `/media/${id}/comments`,
@@ -55,7 +55,7 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [{ type: "Media" as const, id: `COMMENTS_${id}` }],
     }),
 
-    // ✅ UPDATE media
+    //   UPDATE media
     updateMedia: builder.mutation<any, { id: string; data: any }>({
       query: ({ id, data }) => ({
         url: `/media/${id}`,
@@ -65,7 +65,7 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [{ type: "Media" as const, id }, { type: "Media" as const, id: "LIST" }],
     }),
 
-    // ✅ DELETE media
+    //   DELETE media
     deleteMedia: builder.mutation<any, string>({
       query: (id) => ({
         url: `/media/${id}`,
@@ -74,7 +74,7 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: "Media" as const, id: "LIST" }],
     }),
 
-    // ✅ GET all media for admin (including drafts)
+    //   GET all media for admin (including drafts)
     getAllMediaAdmin: builder.query<any, any>({
       query: (params) => ({
         url: "/media/admin/all-statuses",
@@ -90,7 +90,7 @@ export const mediaApi = baseApi.injectEndpoints({
           : [{ type: "Media" as const, id: "LIST" }],
     }),
 
-    // ✅ GET comments
+    //   GET comments
     getMediaComments: builder.query<any, { id: string; page?: number; limit?: number }>({
       query: ({ id, ...params }) => ({
         url: `/media/${id}/comments`,

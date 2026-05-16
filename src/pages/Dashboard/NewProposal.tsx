@@ -417,7 +417,7 @@ export default function NewProposalPage({
         (downloadBtn as HTMLButtonElement).disabled = false;
       }
 
-      console.log("PDF generated successfully ✅");
+      console.log("PDF generated successfully  ");
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Error generating PDF. Please try again.");

@@ -155,7 +155,7 @@ export default function LeafletMapSearch({
 // import "leaflet/dist/leaflet.css";
 // import L from "leaflet";
 
-// // ✅ Fix Leaflet default icon issue
+// //   Fix Leaflet default icon issue
 // delete (L.Icon.Default.prototype as any)._getIconUrl;
 // L.Icon.Default.mergeOptions({
 //   iconRetinaUrl:

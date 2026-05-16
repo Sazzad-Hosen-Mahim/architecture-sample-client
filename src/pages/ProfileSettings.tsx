@@ -96,7 +96,7 @@ export function ProfileSettings() {
     const imageUrl = URL.createObjectURL(file);
     setProfilePhoto(imageUrl);
 
-    // ✅ Save file for uploading
+    //   Save file for uploading
     setProfileData((prev) => ({
       ...prev,
       profileImg: file, // <-- Store the actual File object
@@ -139,7 +139,7 @@ export function ProfileSettings() {
         const updatedData = response.data;
         console.log("i am comming data for dispatch", updatedData);
 
-        // ✅ Update redux user data with new info
+        //   Update redux user data with new info
         dispatch(
           updateUser({
             name: updatedData.name,

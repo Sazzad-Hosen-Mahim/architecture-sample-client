@@ -75,7 +75,7 @@ import {
   Libraries,
 } from "@react-google-maps/api";
 
-// ✅ Define allowed libraries type
+//   Define allowed libraries type
 const libraries: Libraries = ["places"];
 
 const containerStyle = {
@@ -104,7 +104,7 @@ export default function GoogleMapSearch({
 
     const place = places[0];
 
-    // ✅ TypeScript-safe check for geometry
+    //   TypeScript-safe check for geometry
     if (place.geometry?.location) {
       const newLocation = {
         lat: place.geometry.location.lat(),
