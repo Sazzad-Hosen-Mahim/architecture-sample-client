@@ -127,7 +127,7 @@ const TimecardsListTab = () => {
   return (
     <div className="space-y-6">
       {/* Filters & Actions Header */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 sm:space-y-6">
         <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
           <div className="space-y-1">
             <h2 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
@@ -153,7 +153,7 @@ const TimecardsListTab = () => {
               </select>
             </div>
 
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl min-w-[200px]">
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 sm:px-4 py-2 rounded-xl min-w-[160px] sm:min-w-[200px]">
               <Clock size={14} className="text-gray-400" />
               <select
                 className="text-sm bg-transparent outline-none font-bold text-gray-700 w-full"
@@ -193,7 +193,7 @@ const TimecardsListTab = () => {
             />
           </div>
 
-          <div className="flex gap-6 items-center">
+          <div className="flex flex-wrap gap-3 sm:gap-6 items-center">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500" />
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Approved: {timecards.filter(t => t.status === 'APPROVED').length}</span>
@@ -211,8 +211,8 @@ const TimecardsListTab = () => {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+        <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Employee</th>

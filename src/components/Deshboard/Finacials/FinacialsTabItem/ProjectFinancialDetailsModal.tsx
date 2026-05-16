@@ -123,10 +123,10 @@ export default function ProjectFinancialDetailsModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[900px] bg-white text-black p-0 overflow-hidden font-semibold">
+            <DialogContent className="max-w-[95vw] sm:max-w-[900px] bg-white text-black p-0 overflow-hidden font-semibold">
                 <div id="project-financial-content">
-                    <DialogHeader className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                        <div className="flex justify-between items-start">
+                    <DialogHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 bg-gray-50/50">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                             <div className="space-y-1">
                                 <DialogTitle className="text-2xl font-black tracking-tight text-gray-900">
                                     {details.projectName}
@@ -151,7 +151,7 @@ export default function ProjectFinancialDetailsModal({
                                             Refunds: -{formatCurrency(details.totalProjectRefunds)}
                                         </div>
                                     )}
-                                    <div className="text-3xl font-black text-blue-600 pt-1 border-t border-gray-100">
+                                    <div className="text-2xl sm:text-3xl font-black text-blue-600 pt-1 border-t border-gray-100">
                                         {formatCurrency(details.projectCost)}
                                         <span className="text-[10px] ml-1 text-gray-400 uppercase font-black tracking-tighter">Net</span>
                                     </div>
@@ -160,10 +160,10 @@ export default function ProjectFinancialDetailsModal({
                         </div>
                     </DialogHeader>
 
-                    <div className="p-8 max-h-[75vh] overflow-y-auto space-y-10">
-                        
+                    <div className="p-4 sm:p-8 max-h-[75vh] overflow-y-auto space-y-6 sm:space-y-10">
+
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
                                 <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
                                     <Clock size={14} className="group-hover:text-blue-400" />
@@ -215,8 +215,8 @@ export default function ProjectFinancialDetailsModal({
                             <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
                                 Real-Time Project Phase Profit Tracking
                             </h4>
-                            <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                <table className="w-full text-[11px] text-left">
+                            <div className="border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+                                <table className="w-full text-[11px] text-left min-w-[600px]">
                                     <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[9px]">
                                         <tr>
                                             <th className="px-4 py-4">Phase Name</th>
@@ -284,8 +284,8 @@ export default function ProjectFinancialDetailsModal({
                             <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-black pl-3">
                                 Direct Labor Breakdown
                             </h4>
-                            <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                <table className="w-full text-xs text-left">
+                            <div className="border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+                                <table className="w-full text-xs text-left min-w-[500px]">
                                     <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[10px]">
                                         <tr>
                                             <th className="px-6 py-4">Employee</th>
@@ -301,12 +301,11 @@ export default function ProjectFinancialDetailsModal({
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-bold text-gray-900">{emp.name}</div>
                                                         {emp.role && (
-                                                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${
-                                                                emp.role === 'PROJECT_MANAGER' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${emp.role === 'PROJECT_MANAGER' ? 'bg-blue-50 text-blue-600 border-blue-200' :
                                                                 emp.role === 'DRAFTER' ? 'bg-purple-50 text-purple-600 border-purple-200' :
-                                                                emp.role === 'SUPER_ADMIN' || emp.role === 'ADMIN' ? 'bg-red-50 text-red-600 border-red-200' :
-                                                                'bg-gray-50 text-gray-600 border-gray-200'
-                                                            }`}>
+                                                                    emp.role === 'SUPER_ADMIN' || emp.role === 'ADMIN' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                                        'bg-gray-50 text-gray-600 border-gray-200'
+                                                                }`}>
                                                                 {emp.role.replace('_', ' ')}
                                                             </span>
                                                         )}
@@ -336,8 +335,8 @@ export default function ProjectFinancialDetailsModal({
                                 <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-amber-500 pl-3">
                                     Amendment Proposals
                                 </h4>
-                                <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-[11px] text-left">
+                                <div className="border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+                                    <table className="w-full text-[11px] text-left min-w-[500px]">
                                         <thead className="bg-amber-50 text-gray-400 uppercase tracking-wider font-black text-[9px]">
                                             <tr>
                                                 <th className="px-4 py-4">Amendment</th>
@@ -393,34 +392,34 @@ export default function ProjectFinancialDetailsModal({
                         )}
 
                         {/* Bottom Profitability Analysis */}
-                        <div className="bg-black text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
+                        <div className="bg-black text-white p-4 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl transition-all duration-700 group-hover:bg-blue-500/20"></div>
-                            <div className="relative z-10 flex justify-between items-center">
+                            <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] flex items-center gap-2">
                                         <BarChart3 size={14} className="text-blue-500" />
                                         Profitability Analysis
                                     </h4>
                                     <div className="space-y-1">
-                                        <div className="text-4xl font-black tracking-tight flex items-baseline gap-3">
+                                        <div className="text-2xl sm:text-4xl font-black tracking-tight flex items-baseline gap-3">
                                             {profitMargin.toFixed(1)}%
                                             <span className="text-sm text-gray-500 font-bold uppercase tracking-widest">Profit Margin</span>
                                         </div>
                                         <p className="text-xs text-gray-400 max-w-sm leading-relaxed">
-                                            Calculated based on contract value vs. total labor and overhead allocation. 
+                                            Calculated based on contract value vs. total labor and overhead allocation.
                                             {profitMargin > 20 ? " Exceptional project performance." : " Monitor labor efficiency carefully."}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right space-y-1">
                                     <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Net Gain</div>
-                                    <div className={`text-4xl font-black ${details.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                    <div className={`text-2xl sm:text-4xl font-black ${details.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
                                         {formatCurrency(details.profit)}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* Project Performance Chart */}
                         <div className="space-y-4 no-pdf" data-html2canvas-ignore="true">
                             <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
@@ -431,7 +430,7 @@ export default function ProjectFinancialDetailsModal({
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-900">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-900">
                             <Info size={16} className="text-blue-500" />
                             <p className="text-[10px] font-black uppercase tracking-wider leading-none">
                                 Overhead is calculated as Firm Billing Rate (${details.firmBillingRate}/hr) × Non-Billable Hours ({details.totalProjectNonBillableHours?.toFixed(1) || 0} hrs) from timecards.
@@ -440,7 +439,7 @@ export default function ProjectFinancialDetailsModal({
                     </div>
                 </div>
 
-                <div className="px-8 py-4 bg-white border-t border-gray-100 flex justify-end gap-3 no-pdf" data-html2canvas-ignore="true">
+                <div className="px-4 sm:px-8 py-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 no-pdf" data-html2canvas-ignore="true">
                     <button
                         onClick={handleDownloadPDF}
                         disabled={isGeneratingPDF}

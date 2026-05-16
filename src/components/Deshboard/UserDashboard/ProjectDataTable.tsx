@@ -81,8 +81,8 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
     }
 
     return (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <table className="min-w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+            <table className="min-w-[800px] w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                     <tr>
                         <th className="px-6 py-4 text-left font-semibold">Project Name</th>

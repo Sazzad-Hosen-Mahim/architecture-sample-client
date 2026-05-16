@@ -41,7 +41,7 @@ export default function TimeCardDialog({ open, onOpenChange }: TimeCardDialogPro
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[700px] bg-white max-h-[90vh] overflow-y-auto border-gray-300">
+        <DialogContent className="max-w-[95vw] sm:max-w-[700px] bg-white max-h-[90vh] overflow-y-auto border-gray-300">
           <DialogHeader>
             <DialogTitle>My Last 10 Timesheets</DialogTitle>
             <DialogDescription>
@@ -58,8 +58,8 @@ export default function TimeCardDialog({ open, onOpenChange }: TimeCardDialogPro
             </Button>
           </div>
 
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full text-sm text-gray-700">
+          <div className="border border-gray-200 rounded-lg overflow-x-auto">
+            <table className="w-full text-sm text-gray-700 min-w-[500px]">
               <thead className="bg-gray-100 text-gray-900 text-sm font-semibold">
                 <tr>
                   <th className="py-2 px-3 text-left">Timesheet Date</th>

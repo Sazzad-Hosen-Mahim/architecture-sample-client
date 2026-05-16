@@ -129,10 +129,10 @@ export default function ProjectDetailsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col relative"
+        className="bg-white rounded-none sm:rounded-2xl max-w-6xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-hidden flex flex-col relative"
       >
         {/* Header Section */}
-        <div className="px-8 pt-4 pb-0 border-b border-gray-200 sticky top-0 bg-white z-10">
+        <div className="px-4 sm:px-8 pt-4 pb-0 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4">
             <div className="space-y-3">
               <div className="flex items-center gap-3">
@@ -178,12 +178,12 @@ export default function ProjectDetailsModal({
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex items-center gap-1 -mb-px">
+          <div className="flex items-center gap-1 -mb-px overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all ${activeTab === tab.key
+                className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.key
                   ? "border-gray-900 text-gray-900"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
@@ -196,7 +196,7 @@ export default function ProjectDetailsModal({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
           {activeTab === "information" && (
             <ProjectInformationTab project={{ ...project, meetingLinks }} />
           )}

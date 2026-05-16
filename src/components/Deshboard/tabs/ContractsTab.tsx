@@ -206,7 +206,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
     return (
         <div className="space-y-6">
             {/* Top bar: filters + Make New Proposal button */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                     <FilterIcon className="w-4 h-4 text-gray-400" />
                     <div className="flex bg-gray-100 rounded-lg p-0.5">
@@ -279,7 +279,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                             key={proposal.id}
                             className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 hover:shadow-sm transition-all bg-white"
                         >
-                            <div className="flex items-start justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-2">
                                         {getTypeBadge(proposal)}
@@ -321,7 +321,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex flex-col gap-2 flex-shrink-0">
+                                <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0 flex-wrap">
                                     {proposal.status === "ACCEPTED" && (
                                         <button
                                             onClick={() => handleViewContract(proposal.id)}

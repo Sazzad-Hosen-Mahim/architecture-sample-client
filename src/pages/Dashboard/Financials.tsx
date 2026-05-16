@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function Financials() {
   return (
     <div className="mt-8">
-      <Tabs defaultValue="overview" className="space-y-6 ">
-        <TabsList className="grid w-full grid-cols-3 bg-gray-50 ">
+      <Tabs defaultValue="overview" className="space-y-18 md:space-y-4 lg:space-y-2 ">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 bg-gray-50 gap-2">
           <TabsTrigger value="overview">Financial Overview</TabsTrigger>
           <TabsTrigger value="project-tracking">Project Tracking</TabsTrigger>
           <TabsTrigger value="payroll">Accountant's Control</TabsTrigger>

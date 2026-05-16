@@ -336,7 +336,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <h5
                                                 className={`text-sm font-bold ${isCompleted ? "text-green-700 line-through" : "text-gray-900"
@@ -367,15 +367,17 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-8">
+                                        <div className="flex flex-wrap items-center gap-2 sm:gap-8">
                                             {/* Task 2: Timer Integration */}
                                             {!isCompleted && (
-                                                <PhaseTimer stage={stage} readOnly={readOnly} />
+                                                <div className="hidden md:block">
+                                                    <PhaseTimer stage={stage} readOnly={readOnly} />
+                                                </div>
                                             )}
 
                                             {/* Deadline add buttons - only for authorized users */}
                                             {!readOnly && !isCompleted && userCanManageDeadlines && (
-                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                <div className="flex items-center gap-1 flex-shrink-0 flex-wrap">
                                                     {!stage.internalDeadline && (
                                                         <button
                                                             onClick={() => setShowDeadlineInput((prev) => ({
@@ -864,7 +866,7 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                         </h3>
                         <p className="text-xs text-gray-500 font-medium">Real-time revenue, labor costs, and profit trends for this project</p>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="bg-white p-3 sm:p-6 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
                         <FinancialChart projectId={project.id} />
                     </div>
                 </div>

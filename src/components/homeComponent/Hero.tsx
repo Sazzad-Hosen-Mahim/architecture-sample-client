@@ -83,15 +83,15 @@ function Hero() {
         </div>
 
         {/* Bottom Details Section */}
-        <div className="absolute bottom-12 left-0 right-0 px-12 flex flex-col md:flex-row justify-between items-end text-white/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium">
-          <div className="mb-5 space-y-2 text-left">
-            <p><span className="text-white/30 mr-2">Architect:</span> {latestMedia?.architect || "N/A"}</p>
-            <p><span className="text-white/30 mr-2">Photographer:</span> {latestMedia?.photographer || "N/A"}</p>
+        <div className="absolute bottom-6 sm:bottom-12 left-0 right-0 px-4 sm:px-12 flex justify-between items-end text-white/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium">
+          <div className="mb-0 space-y-1 sm:space-y-2 text-left max-w-[45%]">
+            <p className="truncate"><span className="text-white/30 mr-2">Architect:</span> {latestMedia?.architect || "N/A"}</p>
+            <p className="truncate"><span className="text-white/30 mr-2">Photographer:</span> {latestMedia?.photographer || "N/A"}</p>
           </div>
 
-          <div className="mb-5 md:mt-0 space-y-2 text-right">
-            <p>{latestMedia?.location || "Earth"}</p>
-            <p className="text-white/50">{latestMedia?.projectYear || "2024"}</p>
+          <div className="mb-0 space-y-1 sm:space-y-2 text-right max-w-[45%]">
+            <p className="truncate">{latestMedia?.location || "Earth"}</p>
+            <p className="text-white/50 truncate">{latestMedia?.projectYear || "2024"}</p>
           </div>
         </div>
       </div>

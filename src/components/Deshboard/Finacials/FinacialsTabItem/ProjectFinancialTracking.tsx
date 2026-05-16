@@ -15,7 +15,7 @@ export default function ProjectFinancialTracking() {
 
   const filteredProjects = useMemo(() => {
     let result = projects;
-    
+
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -28,17 +28,17 @@ export default function ProjectFinancialTracking() {
     // Apply status filter
     if (activeFilter === "ACTIVE") {
       // Active: Projects that have stages but not all are completed
-      result = result.filter((p: any) => 
+      result = result.filter((p: any) =>
         p.phases && p.phases.length > 0 && p.phases.some((ph: any) => ph.status !== "COMPLETED")
       );
     } else if (activeFilter === "IMPLEMENTED") {
       // Implemented: Projects where at least one stage is IN_PROGRESS or COMPLETED
       // (This distinguishes from projects that haven't started any work yet)
-      result = result.filter((p: any) => 
+      result = result.filter((p: any) =>
         p.phases && p.phases.some((ph: any) => ph.status === "IN_PROGRESS" || ph.status === "COMPLETED")
       );
     }
-    
+
     return result;
   }, [projects, searchQuery, activeFilter]);
 
@@ -47,7 +47,7 @@ export default function ProjectFinancialTracking() {
   };
 
   return (
-    <div className="px-6 pb-12 font-semibold">
+    <div className="px-3 sm:px-6 pb-12 font-semibold">
       {/* Project Financial Details Modal */}
       <ProjectFinancialDetailsModal
         open={!!selectedProjectId}
@@ -56,11 +56,11 @@ export default function ProjectFinancialTracking() {
       />
 
       {/* Project Search Section */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-3 lg:flex-row items-center justify-between mb-8">
         <h1 className="text-sm font-bold text-gray-600">
           Project Financial Tracking
         </h1>
-        <div className="flex bg-gray-100 p-1 rounded-lg">
+        <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
           <button
             onClick={() => setActiveFilter("ALL")}
             className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ALL" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
@@ -82,7 +82,7 @@ export default function ProjectFinancialTracking() {
         </div>
       </div>
 
-      <div className=" border p-6 rounded-xl border-gray-200 py-8 mb-8 bg-white shadow-sm">
+      <div className="border p-4 sm:p-6 rounded-xl border-gray-200 py-6 sm:py-8 mb-8 bg-white shadow-sm">
         {/* Project Search */}
         <div className="mb-10">
           <h2 className="text-sm font-bold text-gray-900 mb-2">
@@ -120,7 +120,7 @@ export default function ProjectFinancialTracking() {
             {activeFilter === "ALL" ? "All" : activeFilter === "ACTIVE" ? "Active" : "Implemented"} Projects Summary
           </h2>
           <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80">
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">

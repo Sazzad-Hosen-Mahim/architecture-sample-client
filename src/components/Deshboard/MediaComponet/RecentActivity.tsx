@@ -78,9 +78,9 @@ export default function RecentActivity() {
 
   return (
     <Card className="bg-white shadow-lg border-gray-200">
-      <CardHeader className="border-b border-gray-200 flex flex-row items-center justify-between">
+      <CardHeader className="border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <CardTitle className="text-sm text-gray-800">Recent Activity</CardTitle>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {(["ALL", "PORTFOLIO", "WORLD_PROJECT", "NEWS"] as FilterType[]).map((f) => (
             <Button
               key={f}

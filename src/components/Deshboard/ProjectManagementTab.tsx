@@ -171,18 +171,15 @@ export function ProjectManagementTab() {
 
     return (
       <div className="rounded-lg border bg-card border-gray-200">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Project Workflow: Projects progress through stages from Pending to Completed.
-            Once a consultation is scheduled, the project moves to Scheduled stage.
-          </p>
-          <div className="flex items-center gap-2">
+        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+
+          <div className="flex items-center justify-start lg:justify-end w-full gap-2">
             <span className="text-xs font-medium text-gray-500">Filter:</span>
             <Select value={assignedFilter} onValueChange={(val) => { setAssignedFilter(val); setCurrentPage(1); }}>
               <SelectTrigger className="w-[160px] h-8 text-xs bg-white">
                 <SelectValue placeholder="Filter projects" />
               </SelectTrigger>
-              <SelectContent className="bg-white">
+              <SelectContent className="bg-white border-gray-200">
                 <SelectItem value="all">All Projects</SelectItem>
                 <SelectItem value="assigned">Assigned Projects</SelectItem>
               </SelectContent>
@@ -198,7 +195,8 @@ export function ProjectManagementTab() {
           <div className="p-8 text-center text-gray-500">No projects found.</div>
         ) : (
           <>
-            <Table>
+            <div className="overflow-x-auto">
+            <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
@@ -291,9 +289,10 @@ export function ProjectManagementTab() {
                 ))}
               </TableBody>
             </Table>
+            </div>
 
             {/* Pagination UI */}
-            <div className="p-4 border-t flex justify-between items-center bg-gray-50/50">
+            <div className="p-4 border-t border-gray-300 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-50/50">
               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
                 Page {currentPage} of {totalPages} ({filteredProjects.length} total)
               </div>
@@ -357,11 +356,11 @@ export function ProjectManagementTab() {
   return (
     <div className="p-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center justify-between gap-4 mb-6 bg-gray-100 py-0.5 overflow-x-auto sm:overflow-x-visible">
-          <TabsList className="flex-1 cursor-pointer">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 bg-gray-100 py-0.5 overflow-x-auto">
+          <TabsList className="flex-1 cursor-pointer gap-1 sm:gap-2 w-full overflow-x-auto scrollbar-hide">
             <TabsTrigger
               value="all"
-              className={`flex-1 font-medium border-b-2 ${activeTab === "all"
+              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "all"
                 ? "border-b-gray-800 py-4 cursor-pointer"
                 : "border-b-transparent"
                 }`}
@@ -370,7 +369,7 @@ export function ProjectManagementTab() {
             </TabsTrigger>
             <TabsTrigger
               value="inquiry"
-              className={`flex-1 font-medium border-b-2 ${activeTab === "inquiry"
+              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "inquiry"
                 ? "border-b-gray-800 py-4 cursor-pointer"
                 : "border-b-transparent"
                 }`}
@@ -379,7 +378,7 @@ export function ProjectManagementTab() {
             </TabsTrigger>
             <TabsTrigger
               value="scheduled"
-              className={`flex-1 font-medium border-b-2 ${activeTab === "scheduled"
+              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "scheduled"
                 ? "border-b-gray-800 py-4 cursor-pointer"
                 : "border-b-transparent"
                 }`}
@@ -388,7 +387,7 @@ export function ProjectManagementTab() {
             </TabsTrigger>
             <TabsTrigger
               value="active"
-              className={`flex-1 font-medium border-b-2 ${activeTab === "active"
+              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "active"
                 ? "border-b-gray-800 py-4 cursor-pointer"
                 : "border-b-transparent"
                 }`}
@@ -397,7 +396,7 @@ export function ProjectManagementTab() {
             </TabsTrigger>
             <TabsTrigger
               value="completed"
-              className={`flex-1 font-medium border-b-2 ${activeTab === "completed"
+              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "completed"
                 ? "border-b-gray-800 py-4 cursor-pointer"
                 : "border-b-transparent"
                 }`}

@@ -34,7 +34,7 @@ export default function FinancialOverviewTab() {
   const totalCosts = labor.total + overhead.total;
 
   return (
-    <div className="px-6">
+    <div className="px-3 sm:px-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="col-span-1 md:col-span-3 border-gray-50">
           <CardHeader className="pb-2">
@@ -351,7 +351,7 @@ export default function FinancialOverviewTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
         <Card className="col-span-1 md:col-span-3 border-gray-50">
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Archive className="h-5 w-5 text-gray-600" />
@@ -362,7 +362,7 @@ export default function FinancialOverviewTab() {
                   Archived projects are excluded from the financial summary above.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Year</label>
                   <input
@@ -395,7 +395,7 @@ export default function FinancialOverviewTab() {
           <CardContent>
             {archivedSummary && archivedSummary.count > 0 ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
                   <div className="bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
                     <span className="text-gray-500 font-medium">Archived Projects: </span>
                     <span className="font-black text-gray-900">{archivedSummary.count}</span>
@@ -407,7 +407,7 @@ export default function FinancialOverviewTab() {
                     </span>
                   </div>
                 </div>
-                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="border border-gray-100 rounded-xl overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>

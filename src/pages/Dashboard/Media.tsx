@@ -6,26 +6,26 @@ import HomeMediaManager from "@/components/Deshboard/MediaComponet/HomeMediaMana
 export default function Media() {
   return (
     <div className=" ">
-      <div className="max-w-8xl mx-auto px-10 ">
+      <div className="max-w-8xl mx-auto px-4 sm:px-10">
         <div className="bg-blue-50 border-blue-400  mt-4 p-3 rounded-xl ">
           <h2>Media Center</h2>
           <p className="text-xs text-gray-600">
             Create harmony in your digital presence
           </p>
         </div>
-        <div className="flex flex-col gap-6 md:flex-row mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {/* Left Column - Create New Media (40%) */}
-          <div className="w-full md:w-2/5">
+          <div className="w-full">
             <CreateNewMedia />
           </div>
 
           {/* Middle Column - Recent Activity (30%) */}
-          <div className="w-full md:w-3/10 pb-6">
+          <div className="w-full pb-6">
             <RecentActivity />
           </div>
 
           {/* Right Column - Media Archive (30%) */}
-          <div className="w-full md:w-3/10 flex flex-col gap-6">
+          <div className="w-full flex flex-col gap-6">
             <MediaArchive />
             <HomeMediaManager />
           </div>

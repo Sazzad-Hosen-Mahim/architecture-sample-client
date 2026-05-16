@@ -49,7 +49,7 @@ const AccountantDesk = () => {
     return (
         <div className="space-y-6">
             {/* Top Banner */}
-            <div className="bg-gradient-to-r from-gray-900 to-black rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-900 to-black rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-10 opacity-10">
                     <ShieldCheck size={180} />
                 </div>
@@ -57,7 +57,7 @@ const AccountantDesk = () => {
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-widest">
                         <ShieldCheck size={12} /> Firm Administrator Access
                     </div>
-                    <h1 className="text-4xl font-black tracking-tight leading-tight">
+                    <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
                         Accountant's Central <br /> <span className="text-gray-400">Control Desk</span>
                     </h1>
                     <p className="text-gray-400 text-sm font-medium leading-relaxed">
@@ -68,8 +68,8 @@ const AccountantDesk = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Billing Rate Control */}
-                <div className="md:col-span-2 bg-white rounded-3xl border border-gray-100 p-8 shadow-sm space-y-8">
-                    <div className="flex justify-between items-start">
+                <div className="md:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-8 shadow-sm space-y-6 sm:space-y-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                         <div className="space-y-1">
                             <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest">Global Project Billing Rate</h3>
                             <p className="text-xs text-gray-400 font-medium italic">Applied to all project hours for client billing calculations.</p>
@@ -79,10 +79,10 @@ const AccountantDesk = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-end gap-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
                         <div className="space-y-2">
                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Current Rate</span>
-                            <div className="text-5xl font-black tracking-tighter text-gray-900">
+                            <div className="text-3xl sm:text-5xl font-black tracking-tighter text-gray-900">
                                 ${billingRateData?.billingRate || 0}<span className="text-lg text-gray-400">/hr</span>
                             </div>
                         </div>
@@ -133,7 +133,7 @@ const AccountantDesk = () => {
                 </div>
 
                 {/* Quick Actions Card */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm space-y-8 flex flex-col">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-8 shadow-sm space-y-6 sm:space-y-8 flex flex-col">
                     <div className="space-y-1">
                         <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest">Global Allocations</h3>
                         <p className="text-xs text-gray-400 font-medium italic">Manage firm expenditures & labor.</p>

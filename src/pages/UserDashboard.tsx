@@ -34,7 +34,7 @@ const UserDashboard = () => {
     activeTab === "projects" ? ProjectDataTable : NewInquiriesClientTab;
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-6">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>

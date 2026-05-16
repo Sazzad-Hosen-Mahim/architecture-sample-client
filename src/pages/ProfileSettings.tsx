@@ -182,7 +182,7 @@ export function ProfileSettings() {
   }) => (
     <button
       onClick={() => setActiveTab(value)}
-      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive
+      className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${isActive
         ? "bg-white border-b-2 border-gray-800"
         : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
         }`}
@@ -193,7 +193,7 @@ export function ProfileSettings() {
   );
 
   return (
-    <div className="container mx-auto py-6 max-w-5xl md:px-0 px-8">
+    <div className="container mx-auto py-4 sm:py-6 max-w-5xl px-4 sm:px-8 md:px-0">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Button
@@ -272,7 +272,7 @@ export function ProfileSettings() {
         {/* Main content */}
         <div className="col-span-12 md:col-span-8 lg:col-span-9">
           <div className="mb-6">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg overflow-x-auto scrollbar-hide">
               <TabButton
                 value="profile"
                 icon={User}
