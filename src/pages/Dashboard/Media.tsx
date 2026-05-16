@@ -1,6 +1,7 @@
 import CreateNewMedia from "@/components/Deshboard/MediaComponet/CreateNewMedia";
 import MediaArchive from "@/components/Deshboard/MediaComponet/MediaArchive";
 import RecentActivity from "@/components/Deshboard/MediaComponet/RecentActivity";
+import HomeMediaManager from "@/components/Deshboard/MediaComponet/HomeMediaManager";
 
 export default function Media() {
   return (
@@ -24,8 +25,9 @@ export default function Media() {
           </div>
 
           {/* Right Column - Media Archive (30%) */}
-          <div className="w-full md:w-3/10">
+          <div className="w-full md:w-3/10 flex flex-col gap-6">
             <MediaArchive />
+            <HomeMediaManager />
           </div>
         </div>
       </div>

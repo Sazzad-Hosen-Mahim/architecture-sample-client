@@ -10,16 +10,16 @@ function Hero() {
   const user = useAppSelector(selectCurrentUser);
   console.log("ami user from g", user);
 
-  const { data, isLoading } = useGetAllMediaQuery(undefined);
+  const { data, isLoading } = useGetAllMediaQuery({ type: "HOME_HERO" as any });
   console.log("i am data for media", data);
 
-  // Get latest media
+  // Get active home hero media (featured first, then latest)
   const latestMedia: any = data?.data?.length
-    ? data.data.reduce((latest: any, current: any) =>
-      new Date(current.createdAt) > new Date(latest.createdAt)
-        ? current
-        : latest
-    )
+    ? [...data.data].sort((a: any, b: any) => {
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    })[0]
     : null;
 
   console.log("i am the ", latestMedia);
@@ -61,31 +61,38 @@ function Hero() {
   }
   return (
     <div
-      className="relative  h-screen bg-cover bg-center bg-no-repeat overflow-hidden "
-      // style={{
-      //   backgroundImage:
-      //     "url('https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')",
-      // }}
-
+      className="relative h-screen bg-cover bg-center bg-no-repeat overflow-hidden"
       style={{
-        backgroundImage: latestMedia
-          ? `url(${latestMedia.fileUrl})`
+        backgroundImage: latestMedia?.assets?.[0]?.cdnUrl
+          ? `url(${latestMedia.assets[0].cdnUrl})`
           : "url('https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')",
       }}
     >
       {/* Background overlay for better text readability */}
-      <div className="absolute  inset-0 bg-black/30" />
+      <div className="absolute inset-0 bg-black/40" />
 
       {/* Hero content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen">
-        <div className="text-center text-white">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4">
-            {latestMedia?.title || ""}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
+        <div className="text-center text-white max-w-4xl">
+          <h1 className="text-5xl md:text-8xl font-bold mb-6 tracking-tight uppercase">
+            {latestMedia?.title || "Architecture"}
           </h1>
-          {/* <h2>ami use:{user?.name}</h2> */}
-          <p className="text-lg md:text-xl mb-8 w-[90%] md:w-1/2 mx-auto">
-            {latestMedia?.description || ""}
+          <p className="text-lg md:text-xl mb-10 opacity-80 leading-relaxed max-w-2xl mx-auto font-light">
+            {latestMedia?.content || "Innovative design solutions for the modern world."}
           </p>
+        </div>
+
+        {/* Bottom Details Section */}
+        <div className="absolute bottom-12 left-0 right-0 px-12 flex flex-col md:flex-row justify-between items-end text-white/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium">
+          <div className="mb-5 space-y-2 text-left">
+            <p><span className="text-white/30 mr-2">Architect:</span> {latestMedia?.architect || "N/A"}</p>
+            <p><span className="text-white/30 mr-2">Photographer:</span> {latestMedia?.photographer || "N/A"}</p>
+          </div>
+
+          <div className="mb-5 md:mt-0 space-y-2 text-right">
+            <p>{latestMedia?.location || "Earth"}</p>
+            <p className="text-white/50">{latestMedia?.projectYear || "2024"}</p>
+          </div>
         </div>
       </div>
 

@@ -55,6 +55,41 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [{ type: "Media" as const, id: `COMMENTS_${id}` }],
     }),
 
+    // ✅ UPDATE media
+    updateMedia: builder.mutation<any, { id: string; data: any }>({
+      query: ({ id, data }) => ({
+        url: `/media/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Media" as const, id }, { type: "Media" as const, id: "LIST" }],
+    }),
+
+    // ✅ DELETE media
+    deleteMedia: builder.mutation<any, string>({
+      query: (id) => ({
+        url: `/media/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: [{ type: "Media" as const, id: "LIST" }],
+    }),
+
+    // ✅ GET all media for admin (including drafts)
+    getAllMediaAdmin: builder.query<any, any>({
+      query: (params) => ({
+        url: "/media/admin/all-statuses",
+        method: "GET",
+        params,
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+            ...result.data.map(({ id }: { id: string }) => ({ type: "Media" as const, id })),
+            { type: "Media" as const, id: "LIST" },
+          ]
+          : [{ type: "Media" as const, id: "LIST" }],
+    }),
+
     // ✅ GET comments
     getMediaComments: builder.query<any, { id: string; page?: number; limit?: number }>({
       query: ({ id, ...params }) => ({
@@ -70,7 +105,10 @@ export const mediaApi = baseApi.injectEndpoints({
 
 export const {
   useGetAllMediaQuery,
+  useGetAllMediaAdminQuery,
   useCreateMediaMutation,
+  useUpdateMediaMutation,
+  useDeleteMediaMutation,
   useUploadMediaAssetsMutation,
   useGetMediaByIdOrSlugQuery,
   useToggleLikeMutation,
