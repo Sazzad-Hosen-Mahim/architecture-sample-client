@@ -36,6 +36,7 @@ import {
   useDeleteOverheadExpenseMutation,
 } from "@/redux/api/financialApi";
 import { toast } from "sonner";
+import { Loader } from "@/components/ui/loader";
 
 interface OverheadExpensesModalProps {
   open: boolean;
@@ -173,8 +174,8 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                          Loading expenses...
+                        <TableCell colSpan={5}>
+                          <Loader fullScreen={false} size={8} />
                         </TableCell>
                       </TableRow>
                     ) : overheadExpenses.length === 0 ? (

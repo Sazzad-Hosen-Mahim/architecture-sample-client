@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { OverheadExpensesModal } from "../overheadModal/OverHeadModal";
 
+import { Loader } from "@/components/ui/loader";
+
 const AccountantDesk = () => {
     const { data: billingRateData, isLoading } = useGetBillingRateQuery();
     const [setBillingRate, { isLoading: isUpdating }] = useSetBillingRateMutation();
@@ -44,7 +46,7 @@ const AccountantDesk = () => {
         }
     };
 
-    if (isLoading) return <div className="p-12 text-center text-gray-400">Loading firm controls...</div>;
+    if (isLoading) return <Loader fullScreen={false} />;
 
     return (
         <div className="space-y-6">

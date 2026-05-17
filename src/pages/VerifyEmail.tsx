@@ -1,7 +1,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useVerifyEmailMutation } from "@/redux/api/authApi";
 import { useEffect } from "react";
-import SyncLoader from "react-spinners/SyncLoader";
+import { Loader } from "@/components/ui/loader";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -22,11 +22,7 @@ const VerifyEmail = () => {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <SyncLoader />
-      </div>
-    );
+    return <Loader />;
   }
 
   return (

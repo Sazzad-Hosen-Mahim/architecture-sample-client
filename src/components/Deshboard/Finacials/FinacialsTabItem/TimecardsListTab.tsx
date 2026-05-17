@@ -20,6 +20,7 @@ import TimesheetEntryFormDialog from "@/components/Deshboard/TimeCardDialog/Time
 import { generatePayrollPDF } from "@/utils/payrollPDFGenerator";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
 
 // Helper to generate 26 periods (same logic as NewTimesheetDialog)
 function generatePayPeriods(year: number) {
@@ -117,12 +118,7 @@ const TimecardsListTab = () => {
     }
   };
 
-  if (isLoadingTimecards) {
-    return <div className="p-20 text-center flex flex-col items-center gap-4">
-      <RotateCcw className="animate-spin text-gray-300" size={40} />
-      <span className="text-gray-500 font-bold tracking-tight">Syncing Payroll Data...</span>
-    </div>;
-  }
+  if (isLoadingTimecards) return <Loader fullScreen={false} />;
 
   return (
     <div className="space-y-6">

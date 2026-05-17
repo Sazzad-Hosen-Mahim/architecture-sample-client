@@ -10,6 +10,7 @@ import { BarChart, DollarSign, TrendingUp, Users, Archive, Loader2 } from "lucid
 import { useGetFinancialOverviewQuery, useArchiveCompletedProjectsMutation, useGetArchivedSummaryQuery } from "@/redux/api/financialApi";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Loader } from "@/components/ui/loader";
 
 export default function FinancialOverviewTab() {
   const { data: overview, isLoading } = useGetFinancialOverviewQuery();
@@ -17,13 +18,7 @@ export default function FinancialOverviewTab() {
   const { data: archivedSummary } = useGetArchivedSummaryQuery();
   const [archiveYear, setArchiveYear] = useState(new Date().getFullYear());
 
-  if (isLoading) {
-    return (
-      <div className="px-6 py-12 text-center text-gray-500">
-        Loading financial overview...
-      </div>
-    );
-  }
+  if (isLoading) return <Loader />;
 
   const labor = overview?.labor || { total: 0, totalSalaries: 0, totalTaxes: 0, employeeCount: 0, employees: [] };
   const overhead = overview?.overhead || { total: 0, monthlyExpenses: 0, annualExpenses: 0, projectOverhead: 0, categoryBreakdown: {}, expenseCount: 0 };

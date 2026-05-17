@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import TimesheetEntryFormDialog from "../../../TimeCardDialog/TimesheetEntryFormDialog";
 import { Link } from "react-router-dom";
+import { Loader } from "@/components/ui/loader";
 
 export function PendingApprovalsPayroll() {
   const [employeesModalOpen, setEmployeesModalOpen] = useState(false);
@@ -56,7 +57,7 @@ export function PendingApprovalsPayroll() {
       {/* Pending Items */}
       <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2">
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading pending approvals...</p>
+          <Loader fullScreen={false} size={8} />
         ) : pendingTimecards.length === 0 ? (
           <p className="text-sm text-gray-500 font-medium italic">No pending timecards for approval.</p>
         ) : (
@@ -118,7 +119,7 @@ export function PendingApprovalsPayroll() {
 
       {/* Payroll Summary */}
       <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm mt-auto">
-        <div className="flex justify-between items-center mb-4 border-b pb-2">
+        <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
           <h3 className="font-bold text-gray-900">Payroll Context</h3>
           <span className="text-xs text-green-600 font-bold">Bi-Weekly</span>
         </div>
@@ -143,7 +144,7 @@ export function PendingApprovalsPayroll() {
 
         <button
           onClick={() => setEmployeesModalOpen(true)}
-          className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]"
+          className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]"
         >
           <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
           <span>Manage Team Registry</span>
@@ -152,7 +153,7 @@ export function PendingApprovalsPayroll() {
 
       <div className="mt-20">
         <Link to="/dashboard/timecards">
-          <button className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]">
+          <button className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]">
             <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
             <span>Timecards</span>
           </button>

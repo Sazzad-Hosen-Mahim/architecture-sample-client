@@ -6,6 +6,7 @@ import { Search, Eye } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useGetActiveProjectsQuery } from "@/redux/api/financialApi";
 import ProjectFinancialDetailsModal from "./ProjectFinancialDetailsModal";
+import { Loader } from "@/components/ui/loader";
 
 export default function ProjectFinancialTracking() {
   const { data: projects = [], isLoading } = useGetActiveProjectsQuery();
@@ -57,7 +58,7 @@ export default function ProjectFinancialTracking() {
 
       {/* Project Search Section */}
       <div className="flex flex-col gap-3 lg:flex-row items-center justify-between mb-8">
-        <h1 className="text-sm font-bold text-gray-600">
+        <h1 className="text-sm font-bold hidden md:block text-gray-600">
           Project Financial Tracking
         </h1>
         <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
@@ -143,8 +144,8 @@ export default function ProjectFinancialTracking() {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500 font-medium">
-                      Loading projects...
+                    <td colSpan={5}>
+                      <Loader fullScreen={false} size={8} />
                     </td>
                   </tr>
                 ) : filteredProjects.length === 0 ? (

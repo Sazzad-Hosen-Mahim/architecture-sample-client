@@ -3,6 +3,7 @@ import { useGetAllUsersQuery, useDeleteUserMutation } from "@/redux/api/userApi"
 import { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Loader } from "@/components/ui/loader";
 
 const Employees = () => {
   const { data, isLoading } = useGetAllUsersQuery();
@@ -19,7 +20,7 @@ const Employees = () => {
     }
   };
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
+  if (isLoading) return <Loader />;
 
   return (
     <div className="bg-white p-6 rounded-md shadow font-semibold">

@@ -13,6 +13,7 @@ import {
   Archive,
   Loader2,
 } from "lucide-react";
+import { Loader } from "@/components/ui/loader";
 
 const OwnerControlsTab = lazy(() => import("@/components/ProfileSetting/OwnerControlsTab").then(module => ({ default: module.OwnerControlsTab })));
 const ArchivedProjectsTab = lazy(() => import("@/components/ProfileSetting/ArchivedProjectsTab").then(module => ({ default: module.ArchivedProjectsTab })));
@@ -21,11 +22,7 @@ const SecuritySettingsCard = lazy(() => import("@/components/ProfileSetting/Secu
 const MasterContractTab = lazy(() => import("@/components/ProfileSetting/MasterContractTab"));
 const AmendmentContractTab = lazy(() => import("@/components/ProfileSetting/AmendmentContractTab"));
 
-const TabLoader = () => (
-  <div className="flex items-center justify-center p-12">
-    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-  </div>
-);
+const TabLoader = () => <Loader fullScreen={false} />;
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -337,30 +334,30 @@ export function ProfileSettings() {
           </div>
 
           <Suspense fallback={<TabLoader />}>
-          {/* Profile Tab */}
-          {activeTab === "profile" && (
-            <Card>
-              <form onSubmit={handleProfileUpdate}>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription className="text-xs mb-6">
-                    Update your personal information and how others see you on
-                    the platform.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={profileData.name}
-                        onChange={handleProfileChange}
-                        placeholder="Your full name"
-                      />
-                    </div>
-                    {/* <div className="space-y-2">
+            {/* Profile Tab */}
+            {activeTab === "profile" && (
+              <Card>
+                <form onSubmit={handleProfileUpdate}>
+                  <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                    <CardDescription className="text-xs mb-6">
+                      Update your personal information and how others see you on
+                      the platform.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Full Name</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={profileData.name}
+                          onChange={handleProfileChange}
+                          placeholder="Your full name"
+                        />
+                      </div>
+                      {/* <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
@@ -371,28 +368,28 @@ export function ProfileSettings() {
                         placeholder="Your email address"
                       />
                     </div> */}
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        value={profileData.phone}
-                        onChange={handleProfileChange}
-                        placeholder="Your phone number"
-                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={profileData.phone}
+                          onChange={handleProfileChange}
+                          placeholder="Your phone number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="company">Company</Label>
+                        <Input
+                          id="company"
+                          name="company"
+                          value={profileData.company}
+                          onChange={handleProfileChange}
+                          placeholder="Your company"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="company">Company</Label>
-                      <Input
-                        id="company"
-                        name="company"
-                        value={profileData.company}
-                        onChange={handleProfileChange}
-                        placeholder="Your company"
-                      />
-                    </div>
-                  </div>
-                  {/* <div className="space-y-2">
+                    {/* <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
                     <Input
                       id="role"
@@ -402,53 +399,53 @@ export function ProfileSettings() {
                       placeholder="Your role"
                     />
                   </div> */}
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <textarea
-                      id="bio"
-                      name="bio"
-                      value={profileData.bio}
-                      onChange={(e) =>
-                        setProfileData((prev) => ({
-                          ...prev,
-                          bio: e.target.value,
-                        }))
-                      }
-                      placeholder="Tell us about yourself"
-                      className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="bg-gray-800 text-white mt-4 cursor-pointer  hover:bg-black"
-                  >
-                    {isLoading ? "Saving..." : "Save changes"}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          )}
+                    <div className="space-y-2">
+                      <Label htmlFor="bio">Bio</Label>
+                      <textarea
+                        id="bio"
+                        name="bio"
+                        value={profileData.bio}
+                        onChange={(e) =>
+                          setProfileData((prev) => ({
+                            ...prev,
+                            bio: e.target.value,
+                          }))
+                        }
+                        placeholder="Tell us about yourself"
+                        className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="bg-gray-800 text-white mt-4 cursor-pointer  hover:bg-black"
+                    >
+                      {isLoading ? "Saving..." : "Save changes"}
+                    </Button>
+                  </CardFooter>
+                </form>
+              </Card>
+            )}
 
-          {/* Security Tab */}
-          {activeTab === "security" && <SecuritySettingsCard />}
+            {/* Security Tab */}
+            {activeTab === "security" && <SecuritySettingsCard />}
 
-          {/* Notifications Tab */}
-          {activeTab === "notifications" && <NotificationSettingsTab />}
+            {/* Notifications Tab */}
+            {activeTab === "notifications" && <NotificationSettingsTab />}
 
-          {/* Master Contract Tab */}
-          {activeTab === "masterContract" && <MasterContractTab />}
+            {/* Master Contract Tab */}
+            {activeTab === "masterContract" && <MasterContractTab />}
 
-          {/* Amendment Contract Tab */}
-          {activeTab === "amendmentContract" && <AmendmentContractTab />}
+            {/* Amendment Contract Tab */}
+            {activeTab === "amendmentContract" && <AmendmentContractTab />}
 
-          {/* Owner Controls Tab - Only visible to owners */}
-          {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}
+            {/* Owner Controls Tab - Only visible to owners */}
+            {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}
 
-          {/* Archived Projects Tab - Only visible to staff */}
-          {isStaff && activeTab === "archives" && <ArchivedProjectsTab />}
+            {/* Archived Projects Tab - Only visible to staff */}
+            {isStaff && activeTab === "archives" && <ArchivedProjectsTab />}
           </Suspense>
         </div>
       </div>

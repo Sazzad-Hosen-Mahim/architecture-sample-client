@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useGetAllUsersQuery } from "@/redux/api/userApi";
+import { Loader } from "@/components/ui/loader";
 
 interface TeamManagementModalProps {
   open: boolean;
@@ -145,9 +146,7 @@ export default function TeamManagementModa({
           </div>
 
           {isLoading ? (
-            <div className="h-64 flex items-center justify-center text-gray-500 font-medium italic">
-              Loading team directory...
-            </div>
+            <Loader fullScreen={false} />
           ) : (
             <EmployeeList employees={users} />
           )}

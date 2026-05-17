@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Users, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader } from "@/components/ui/loader";
 
 export default function Teams() {
   const { data: teams, isLoading } = useGetTeamsQuery();
@@ -100,7 +101,7 @@ export default function Teams() {
     );
   };
 
-  if (isLoading) return <div className="p-8 text-center">Loading teams...</div>;
+  if (isLoading) return <Loader />;
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">

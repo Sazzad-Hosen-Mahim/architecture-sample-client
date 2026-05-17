@@ -12,6 +12,7 @@ import { useState } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
+import { Loader } from "@/components/ui/loader";
 
 interface ProjectFinancialDetailsModalProps {
     open: boolean;
@@ -111,7 +112,7 @@ export default function ProjectFinancialDetailsModal({
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-[800px] p-20 flex justify-center bg-white">
-                    <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                    <Loader fullScreen={false} size={8} />
                 </DialogContent>
             </Dialog>
         );

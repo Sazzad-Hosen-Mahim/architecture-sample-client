@@ -18,6 +18,7 @@ import ContractReviewModal from '@/components/Deshboard/ContractReviewModal';
 import { FileTextIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import SignatureCanvas from 'react-signature-canvas';
+import { Loader } from "@/components/ui/loader";
 
 const Proposals = () => {
     const { data: proposalsData, isLoading, isError } = useGetAdminViewAllProposalsQuery();
@@ -61,14 +62,7 @@ const Proposals = () => {
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-500">Loading proposals...</span>
-            </div>
-        );
-    }
+    if (isLoading) return <Loader />;
 
     if (isError) {
         return (
@@ -620,7 +614,7 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                                 Amendments
                             </h3>
                             {isLoadingAmendments ? (
-                                <div className="text-center text-gray-500 py-4">Loading amendments...</div>
+                                <Loader fullScreen={false} />
                             ) : amendments.length === 0 ? (
                                 <div className="text-center text-gray-400 py-4">No amendments found for this proposal.</div>
                             ) : (
@@ -780,7 +774,7 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                                 Amendment Proposals
                             </h3>
                             {isLoadingAllProposals ? (
-                                <div className="text-center text-gray-500 py-4">Loading proposals...</div>
+                                <Loader fullScreen={false} />
                             ) : amendmentProposals.length === 0 ? (
                                 <div className="text-center text-gray-400 py-4">No amendment proposals found.</div>
                             ) : (

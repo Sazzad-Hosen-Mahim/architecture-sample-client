@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, Clock, DollarSign, User, ArrowLeft, AlertCircle, 
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import CommonWrapper from "@/common/CommonWrapper";
+import { Loader } from "@/components/ui/loader";
 
 export default function RefundRequests() {
     const { data: refundsData, isLoading, refetch } = useGetRefundRequestsQuery(undefined);
@@ -49,7 +50,7 @@ export default function RefundRequests() {
     };
 
     const pendingCount = refunds.filter((r: any) => r.refundStatus === "PENDING").length;
-    if (isLoading) return <div className="mt-8 flex justify-center items-center min-h-[300px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>;
+    if (isLoading) return <Loader />;
 
     return (
         <CommonWrapper>

@@ -18,12 +18,9 @@ const MeetingRequestTab = lazy(() => import("./tabs/MeetingRequestTab"));
 
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { Loader } from "@/components/ui/loader";
 
-const TabLoader = () => (
-  <div className="flex items-center justify-center p-12">
-    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-  </div>
-);
+const TabLoader = () => <Loader fullScreen={false} />;
 
 type ProjectModalProps = {
   isOpen: boolean;

@@ -13,6 +13,7 @@ import {
   useGetMercuryAccountsQuery,
   useGetMercuryTransactionsQuery,
 } from "@/redux/api/financialApi";
+import { Loader } from "@/components/ui/loader";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -90,10 +91,7 @@ export function BusinessAccounts() {
   if (isLoadingAccounts) {
     return (
       <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6 h-full flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
-        <p className="text-sm text-gray-600">
-          Connecting to Mercury Banking...
-        </p>
+        <Loader fullScreen={false} />
       </div>
     );
   }
@@ -239,9 +237,7 @@ export function BusinessAccounts() {
         </div>
 
         {isLoadingTx ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-          </div>
+          <Loader fullScreen={false} size={8} />
         ) : transactions.length === 0 ? (
           <p className="text-xs text-gray-500 text-center py-4">
             No recent transactions

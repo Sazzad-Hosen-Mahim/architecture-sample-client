@@ -2,16 +2,13 @@ import React, { Suspense, lazy } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import CommonWrapper from "@/common/CommonWrapper";
+import { Loader } from "@/components/ui/loader";
 
 const FinancialOverviewTab = lazy(() => import("@/components/Deshboard/Finacials/FinacialsTabItem/FinancialOverviewTab"));
 const PayrollManagementTab = lazy(() => import("@/components/Deshboard/Finacials/FinacialsTabItem/Payroll Management Tab/PayrollManagementTab"));
 const ProjectFinancialTracking = lazy(() => import("@/components/Deshboard/Finacials/FinacialsTabItem/ProjectFinancialTracking"));
 
-const TabLoader = () => (
-  <div className="flex items-center justify-center py-20">
-    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-  </div>
-);
+const TabLoader = () => <Loader fullScreen={false} />;
 
 export default function Financials() {
   return (
