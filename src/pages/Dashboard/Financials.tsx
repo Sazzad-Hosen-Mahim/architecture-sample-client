@@ -1,6 +1,6 @@
-import React, { Suspense, lazy } from "react";
+import { Suspense, lazy } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+// import { Loader2 } from "lucide-react";
 import CommonWrapper from "@/common/CommonWrapper";
 import { Loader } from "@/components/ui/loader";
 

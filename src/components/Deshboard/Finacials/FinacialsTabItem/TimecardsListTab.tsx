@@ -9,7 +9,7 @@ import {
   Search,
   Eye,
   Calendar,
-  RotateCcw,
+  // RotateCcw,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -165,8 +165,8 @@ const TimecardsListTab = () => {
               onClick={handleProcessPayroll}
               disabled={!canProcessPayroll}
               className={`font-black uppercase tracking-widest px-6 shadow-lg transition-all active:scale-95 ${canProcessPayroll
-                  ? "bg-black text-white hover:bg-gray-800 shadow-black/10"
-                  : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                ? "bg-black text-white hover:bg-gray-800 shadow-black/10"
+                : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                 }`}
             >
               <FileText size={16} className="mr-2" />
@@ -274,10 +274,10 @@ const TimecardsListTab = () => {
                         <Clock size={16} className="text-blue-500" />
                       )}
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                          item.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-700' :
-                            item.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                              item.status === 'MISSING' ? 'bg-gray-100 text-gray-400' :
-                                'bg-gray-100 text-gray-600'
+                        item.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-700' :
+                          item.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                            item.status === 'MISSING' ? 'bg-gray-100 text-gray-400' :
+                              'bg-gray-100 text-gray-600'
                         }`}>
                         {item.status}
                       </span>
