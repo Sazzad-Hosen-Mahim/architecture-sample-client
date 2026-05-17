@@ -123,19 +123,19 @@ export default function ProjectFinancialDetailsModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95vw] sm:max-w-[900px] bg-white text-black p-0 overflow-hidden font-semibold">
-                <div id="project-financial-content">
-                    <DialogHeader className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 bg-gray-50/50">
+            <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-[900px] max-h-[90vh] flex flex-col bg-white text-black p-0 overflow-hidden font-semibold">
+                <div id="project-financial-content" className="w-full max-w-full overflow-x-hidden flex flex-col flex-1 min-h-0">
+                    <DialogHeader className="px-4 lg:px-8 py-4 sm:py-6 border-b border-gray-100 bg-gray-50/50 flex-shrink-0">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                            <div className="space-y-1">
-                                <DialogTitle className="text-2xl font-black tracking-tight text-gray-900">
+                            <div className="space-y-1 w-full sm:w-auto">
+                                <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 break-words">
                                     {details.projectName}
                                 </DialogTitle>
-                                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">
+                                <p className="text-xs sm:text-sm text-gray-500 font-bold uppercase tracking-wider break-words">
                                     Client: {details.clientName}
                                 </p>
                             </div>
-                            <div className="text-right space-y-1">
+                            <div className="text-left sm:text-right space-y-1 w-full sm:w-auto bg-gray-100/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none">
                                 <div className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-1">Project Valuation</div>
                                 <div className="space-y-0.5">
                                     <div className="text-xs font-bold text-gray-500">
@@ -160,10 +160,10 @@ export default function ProjectFinancialDetailsModal({
                         </div>
                     </DialogHeader>
 
-                    <div className="p-4 sm:p-8 max-h-[75vh] overflow-y-auto space-y-6 sm:space-y-10">
+                    <div className="p-4 sm:p-8 overflow-y-auto overflow-x-hidden w-full max-w-full space-y-6 sm:space-y-10 flex-1 min-h-0">
 
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
                                 <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
                                     <Clock size={14} className="group-hover:text-blue-400" />
@@ -394,7 +394,7 @@ export default function ProjectFinancialDetailsModal({
                         {/* Bottom Profitability Analysis */}
                         <div className="bg-black text-white p-4 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl transition-all duration-700 group-hover:bg-blue-500/20"></div>
-                            <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 sm:gap-4">
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] flex items-center gap-2">
                                         <BarChart3 size={14} className="text-blue-500" />
@@ -403,7 +403,7 @@ export default function ProjectFinancialDetailsModal({
                                     <div className="space-y-1">
                                         <div className="text-2xl sm:text-4xl font-black tracking-tight flex items-baseline gap-3">
                                             {profitMargin.toFixed(1)}%
-                                            <span className="text-sm text-gray-500 font-bold uppercase tracking-widest">Profit Margin</span>
+                                            <span className="text-xs sm:text-sm text-gray-500 font-bold uppercase tracking-widest">Profit Margin</span>
                                         </div>
                                         <p className="text-xs text-gray-400 max-w-sm leading-relaxed">
                                             Calculated based on contract value vs. total labor and overhead allocation.
@@ -411,7 +411,7 @@ export default function ProjectFinancialDetailsModal({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right space-y-1">
+                                <div className="text-left sm:text-right space-y-1 w-full sm:w-auto border-t border-gray-800 sm:border-none pt-4 sm:pt-0">
                                     <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Net Gain</div>
                                     <div className={`text-2xl sm:text-4xl font-black ${details.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
                                         {formatCurrency(details.profit)}
@@ -439,18 +439,18 @@ export default function ProjectFinancialDetailsModal({
                     </div>
                 </div>
 
-                <div className="px-4 sm:px-8 py-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 no-pdf" data-html2canvas-ignore="true">
+                <div className="px-4 sm:px-8 py-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3 no-pdf flex-shrink-0" data-html2canvas-ignore="true">
                     <button
                         onClick={handleDownloadPDF}
                         disabled={isGeneratingPDF}
-                        className="bg-gray-100 text-black px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="bg-gray-100 w-full cursor-pointer sm:w-auto text-black px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {isGeneratingPDF ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                         {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
                     </button>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="bg-black text-white px-10 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10"
+                        className="bg-black cursor-pointer w-full sm:w-auto text-white px-10 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10"
                     >
                         Close Summary
                     </button>

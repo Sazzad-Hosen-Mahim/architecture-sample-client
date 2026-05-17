@@ -1,20 +1,29 @@
 import { ProjectRequest, useGetProposalInfoQuery } from "@/redux/api/adminDashboard/proposalApi";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   FileTextIcon,
   FolderKanban,
   Info,
   CalendarIcon,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // Tab components
-import ProjectInformationTab from "./tabs/ProjectInformationTab";
-import ContractsTab from "./tabs/ContractsTab";
-import ProjectMgmtTab from "./tabs/ProjectMgmtTab";
-import MeetingRequestTab from "./tabs/MeetingRequestTab";
+const ProjectInformationTab = lazy(() => import("./tabs/ProjectInformationTab"));
+const ContractsTab = lazy(() => import("./tabs/ContractsTab"));
+const ProjectMgmtTab = lazy(() => import("./tabs/ProjectMgmtTab"));
+const MeetingRequestTab = lazy(() => import("./tabs/MeetingRequestTab"));
+
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
+
+const TabLoader = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+  </div>
+);
 
 type ProjectModalProps = {
   isOpen: boolean;
@@ -44,8 +53,19 @@ export default function ProjectDetailsModal({
   readOnly,
 }: ProjectModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<ModalTab>("information");
   const user = useAppSelector(selectCurrentUser);
+
+  const scrollTabs = (direction: "left" | "right") => {
+    if (tabsContainerRef.current) {
+      const scrollAmount = 150;
+      tabsContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
 
   // Fetch fresh project details including meeting links
   const { data: refreshedProject, isLoading } = useGetProposalInfoQuery(initialProject?.id as string, {
@@ -177,38 +197,64 @@ export default function ProjectDetailsModal({
             )}
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex items-center gap-1 -mb-px overflow-x-auto scrollbar-hide">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.key
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+          {/* Tab Navigation Wrapper */}
+          <div className="relative flex items-center w-full">
+            {/* Left Scroll Indicator Button */}
+            <button
+              onClick={() => scrollTabs("left")}
+              className="absolute left-0 z-10 p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all md:hidden"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            {/* Tab Navigation */}
+            <div
+              ref={tabsContainerRef}
+              className="flex-1 flex items-center gap-1 -mb-px overflow-x-auto scrollbar-hide px-6 md:px-0"
+            >
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.key
+                    ? "border-gray-900 text-gray-900 font-bold"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Right Scroll Indicator Button */}
+            <button
+              onClick={() => scrollTabs("right")}
+              className="absolute right-0 z-10 p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all md:hidden"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
 
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
-          {activeTab === "information" && (
-            <ProjectInformationTab project={{ ...project, meetingLinks }} />
-          )}
-          {activeTab === "meeting" && (
-            <MeetingRequestTab project={{ ...project, meetingLinks }} />
-          )}
-          {activeTab === "contracts" && (
-            <ContractsTab project={{ ...project, meetingLinks }} />
-          )}
-          {activeTab === "management" && (
-            <ProjectMgmtTab project={{ ...project, meetingLinks }} readOnly={readOnly} />
-          )}
+          <Suspense fallback={<TabLoader />}>
+            {activeTab === "information" && (
+              <ProjectInformationTab project={{ ...project, meetingLinks }} />
+            )}
+            {activeTab === "meeting" && (
+              <MeetingRequestTab project={{ ...project, meetingLinks }} />
+            )}
+            {activeTab === "contracts" && (
+              <ContractsTab project={{ ...project, meetingLinks }} />
+            )}
+            {activeTab === "management" && (
+              <ProjectMgmtTab project={{ ...project, meetingLinks }} readOnly={readOnly} />
+            )}
+          </Suspense>
         </div>
 
         {/* Close button */}

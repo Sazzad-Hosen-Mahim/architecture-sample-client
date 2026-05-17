@@ -66,7 +66,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
     const [assignPM, { isLoading: isAssigning }] = useAssignProjectManagerMutation();
     const [assignTeams] = useAssignProjectTeamsMutation();
     const [startProject, { isLoading: isStartingProject }] = useStartProjectMutation();
-    
+
     const { data: pmData } = useGetProjectManagersQuery(undefined, { skip: !isSuperAdmin });
     const { data: teamsData } = useGetTeamsQuery();
 
@@ -169,7 +169,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
     const handleAssignTeam = async (teamId: string) => {
         const currentTeams = project.teams || [];
         const isAssigned = currentTeams.some(t => t.id === teamId);
-        
+
         let newTeamIds: string[];
         if (isAssigned) {
             newTeamIds = currentTeams.filter(t => t.id !== teamId).map(t => t.id);
@@ -221,7 +221,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
             <div className="lg:col-span-2 space-y-6">
 
                 <div className="border border-gray-200 rounded-xl p-6">
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex flex-col gap-3 md:flex-row items-start justify-between mb-2">
                         <div>
                             <h3 className="text-lg font-semibold">Project Details</h3>
                             <p className="text-sm text-blue-600 font-medium">
@@ -532,7 +532,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 </div>
 
                                 {!project.isProjectStarted ? (
-                                    <Button 
+                                    <Button
                                         onClick={handleStartProject}
                                         disabled={isStartingProject || (!isSuperAdmin && currentUser?.role !== "PROJECT_MANAGER")}
                                         className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 h-10 shadow-lg shadow-green-100"
@@ -607,7 +607,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 <Users className="w-5 h-5 text-purple-600" />
                                 <h3 className="text-lg font-semibold text-gray-900">Project Teams</h3>
                             </div>
-                            
+
                             <Select onValueChange={handleAssignTeam}>
                                 <SelectTrigger className="w-[180px] h-8 text-xs border-purple-200 bg-purple-50 text-purple-800 font-medium">
                                     <SelectValue placeholder="Add/Remove Team" />

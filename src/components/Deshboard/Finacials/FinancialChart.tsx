@@ -211,7 +211,7 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
         </div>
       </div>
 
-      <div className="h-[400px] w-full bg-white p-2">
+      <div className="h-[250px] sm:h-[400px] w-full bg-white p-2">
         <Line
           options={options}
           data={{
@@ -235,14 +235,14 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Avg Monthly Revenue', value: avgRevenue, color: 'blue', sub: 'Total revenue / 12' },
           { label: 'Avg Monthly Cost', value: avgCost, color: 'red', sub: 'Total costs / 12' },
           { label: 'Avg Monthly Profit', value: avgProfit, color: 'green', sub: 'Total profit / 12' },
-          { label: 'Avg Utilization', value: avgUtil, color: 'orange', sub: 'Last 12 months avg', isPct: true },
+          { label: 'Avg Utilization', value: avgUtil, color: 'amber', sub: 'Last 12 months avg', isPct: true },
         ].map((stat, i) => (
-          <div key={i} className={`bg-${stat.color}-50/50 p-4 rounded-xl border border-${stat.color}-100 transition-all hover:shadow-md hover:shadow-${stat.color}-100/20`}>
+          <div key={i} className={`bg-${stat.color}-50/50 p-4 sm:p-5 rounded-xl border border-${stat.color}-100 transition-all hover:shadow-md hover:shadow-${stat.color}-100/20`}>
             <p className={`text-[10px] font-black uppercase tracking-widest text-${stat.color}-600 mb-1`}>{stat.label}</p>
             <p className="text-2xl font-black text-gray-900 leading-none">
               {stat.isPct ? `${stat.value.toFixed(1)}%` : `$${Math.round(stat.value).toLocaleString()}`}

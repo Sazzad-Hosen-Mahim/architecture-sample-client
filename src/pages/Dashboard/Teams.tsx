@@ -104,7 +104,7 @@ export default function Teams() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-center w-full justify-start md:justify-between gap-y-4 md:gap-y-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Team Management</h1>
           <p className="text-gray-500 mt-1">Create and manage your drafting teams for project assignments.</p>
@@ -117,7 +117,7 @@ export default function Teams() {
               Create New Team
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md bg-white">
+          <DialogContent className="max-w-sm md:max-w-md bg-white border-gray-200">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold">Create New Team</DialogTitle>
             </DialogHeader>

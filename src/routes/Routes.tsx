@@ -1,43 +1,58 @@
 import { createBrowserRouter } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
 import App from "../App";
-import About from "../pages/About";
-import Contact from "../pages/Contact";
-import NotFound from "../pages/NotFound";
-import Home from "../pages/Home";
-// import AdminRoute from "./AdminRoutes";
-import AdminDashboard from "@/pages/Admin/AdminDashboard";
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
-import Services from "@/pages/Services";
-import NewsFeed from "@/pages/NewsFeed";
-import WorldProject from "@/pages/WorldProject";
-import NewProject from "@/pages/NewProject";
-import Portfolio from "@/pages/Portfolio";
-import Terms from "@/pages/Terms";
-import Privacy from "@/pages/Privacy";
-import DashboardLayout from "@/Layout/DashboardLayout";
-import Dashboard from "@/pages/Dashboard/Dashboard";
-import AdminLayout from "@/Layout/AdminLayout";
-import NewProposal from "@/pages/Dashboard/NewProposal";
-import { ProfileSettings } from "@/pages/ProfileSettings";
-import Media from "@/pages/Dashboard/Media";
-import Financials from "@/pages/Dashboard/Financials";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import NewsFeedDetails from "@/pages/NewsFeedDetails";
-import WorldProjectDetails from "@/pages/WorldProjectDetails";
-import VerifyEmail from "@/pages/VerifyEmail";
-import UserDashboard from "@/pages/UserDashboard";
-import Employees from "@/pages/Dashboard/Employees";
-import NewDynamicProposalPage from "@/pages/Dashboard/NewDynamicProposal";
-import Proposals from "@/pages/Dashboard/Proposals";
-import NewInquiryPage from "@/pages/Dashboard/NewInquiries";
-import NewInquiriesListPage from "@/pages/Dashboard/NewInquiriesList";
-import TimecardsPage from "@/pages/Dashboard/TimecardsPage";
-import Teams from "@/pages/Dashboard/Teams";
-import RefundRequests from "@/pages/Dashboard/RefundRequests";
-import ClientUsers from "@/pages/Dashboard/ClientUsers";
-// import ProfileSettings from "@/pages/ProfileSettings";
+import { Loader2 } from "lucide-react";
+
+// Lazy load page components
+const Home = lazy(() => import("../pages/Home"));
+const About = lazy(() => import("../pages/About"));
+const Contact = lazy(() => import("../pages/Contact"));
+const NotFound = lazy(() => import("../pages/NotFound"));
+const AdminDashboard = lazy(() => import("@/pages/Admin/AdminDashboard"));
+const Login = lazy(() => import("@/pages/Login"));
+const Signup = lazy(() => import("@/pages/Signup"));
+const Services = lazy(() => import("@/pages/Services"));
+const NewsFeed = lazy(() => import("@/pages/NewsFeed"));
+const WorldProject = lazy(() => import("@/pages/WorldProject"));
+const NewProject = lazy(() => import("@/pages/NewProject"));
+const Portfolio = lazy(() => import("@/pages/Portfolio"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const DashboardLayout = lazy(() => import("@/Layout/DashboardLayout"));
+const Dashboard = lazy(() => import("@/pages/Dashboard/Dashboard"));
+const AdminLayout = lazy(() => import("@/Layout/AdminLayout"));
+const NewProposal = lazy(() => import("@/pages/Dashboard/NewProposal"));
+const ProfileSettings = lazy(() => import("@/pages/ProfileSettings").then(module => ({ default: module.ProfileSettings })));
+const Media = lazy(() => import("@/pages/Dashboard/Media"));
+const Financials = lazy(() => import("@/pages/Dashboard/Financials"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const NewsFeedDetails = lazy(() => import("@/pages/NewsFeedDetails"));
+const WorldProjectDetails = lazy(() => import("@/pages/WorldProjectDetails"));
+const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const UserDashboard = lazy(() => import("@/pages/UserDashboard"));
+const Employees = lazy(() => import("@/pages/Dashboard/Employees"));
+const NewDynamicProposalPage = lazy(() => import("@/pages/Dashboard/NewDynamicProposal"));
+const Proposals = lazy(() => import("@/pages/Dashboard/Proposals"));
+const NewInquiryPage = lazy(() => import("@/pages/Dashboard/NewInquiries"));
+const NewInquiriesListPage = lazy(() => import("@/pages/Dashboard/NewInquiriesList"));
+const TimecardsPage = lazy(() => import("@/pages/Dashboard/TimecardsPage"));
+const Teams = lazy(() => import("@/pages/Dashboard/Teams"));
+const RefundRequests = lazy(() => import("@/pages/Dashboard/RefundRequests"));
+const ClientUsers = lazy(() => import("@/pages/Dashboard/ClientUsers"));
+
+// Loading component for Suspense
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+  </div>
+);
+
+const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<PageLoader />}>
+    {children}
+  </Suspense>
+);
 
 const routes = createBrowserRouter([
   {
@@ -46,124 +61,111 @@ const routes = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: <Home />,
+        element: <SuspenseWrapper><Home /></SuspenseWrapper>,
       },
       {
         path: "/newsFeed",
-        element: <NewsFeed />,
+        element: <SuspenseWrapper><NewsFeed /></SuspenseWrapper>,
       },
       {
         path: "/newsFeed/:id",
-        element: <NewsFeedDetails />,
+        element: <SuspenseWrapper><NewsFeedDetails /></SuspenseWrapper>,
       },
       {
         path: "/world-project",
-        element: <WorldProject />,
+        element: <SuspenseWrapper><WorldProject /></SuspenseWrapper>,
       },
       {
         path: "/world-project/:id",
-        element: <WorldProjectDetails />,
+        element: <SuspenseWrapper><WorldProjectDetails /></SuspenseWrapper>,
       },
       {
         path: "/new-project",
-        element: <NewProject />,
+        element: <SuspenseWrapper><NewProject /></SuspenseWrapper>,
       },
       {
         path: "/portfolio",
-        element: <Portfolio />,
+        element: <SuspenseWrapper><Portfolio /></SuspenseWrapper>,
       },
       {
         path: "/about",
-        element: <About />,
+        element: <SuspenseWrapper><About /></SuspenseWrapper>,
       },
       {
         path: "/contact",
-        element: <Contact />,
+        element: <SuspenseWrapper><Contact /></SuspenseWrapper>,
       },
       {
         path: "/services",
-        element: <Services />,
+        element: <SuspenseWrapper><Services /></SuspenseWrapper>,
       },
-      // {
-      //   path: "/form",
-      //   element: <Form />,
-      // },
       {
         path: "/terms",
-        element: <Terms />,
+        element: <SuspenseWrapper><Terms /></SuspenseWrapper>,
       },
       {
         path: "/privacy",
-        element: <Privacy />,
+        element: <SuspenseWrapper><Privacy /></SuspenseWrapper>,
       },
       {
         path: "/login",
-        element: <Login />,
+        element: <SuspenseWrapper><Login /></SuspenseWrapper>,
       },
       {
         path: "/signup",
-        element: <Signup />,
+        element: <SuspenseWrapper><Signup /></SuspenseWrapper>,
       },
       {
         path: "/forgotPassword",
-        element: <ForgotPassword />,
+        element: <SuspenseWrapper><ForgotPassword /></SuspenseWrapper>,
       },
       {
         path: "/resetPassword",
-        element: <ResetPassword />,
+        element: <SuspenseWrapper><ResetPassword /></SuspenseWrapper>,
       },
       {
         path: "/verify-email",
-        element: <VerifyEmail />,
+        element: <SuspenseWrapper><VerifyEmail /></SuspenseWrapper>,
       },
       {
         path: "/profile-settings",
-        element: <ProfileSettings />,
+        element: <SuspenseWrapper><ProfileSettings /></SuspenseWrapper>,
       },
       {
         path: "/user-dashboard",
-        element: <UserDashboard />,
+        element: <SuspenseWrapper><UserDashboard /></SuspenseWrapper>,
       },
-      // {
-      //   path: "/admin",
-      //   element: <AdminRoute />, // This will check if the user is an admin
-      //   children: [
-      //     { path: "", element: <AdminDashboard /> }, // Admin Dashboard
-      //   ],
-      // },
     ],
   },
   {
     path: "/dashboard",
-    // element: <AdminRoute />, // This will check if the user is an admin
-    element: <DashboardLayout />,
+    element: <SuspenseWrapper><DashboardLayout /></SuspenseWrapper>,
     children: [
-      { path: "", element: <Dashboard /> },
-      { path: "new-proposal", element: <NewProposal /> },
-      { path: "new-inquiries", element: <NewInquiryPage /> },
-      { path: "new-inquiries-list", element: <NewInquiriesListPage /> },
-      { path: "new-proposal/:id", element: <NewDynamicProposalPage /> },
-      { path: "media", element: <Media /> },
-      { path: "financials", element: <Financials /> },
-      { path: "employees", element: <Employees /> },
-      { path: "proposals", element: <Proposals /> },
-      { path: "timecards", element: <TimecardsPage /> },
-      { path: "teams", element: <Teams /> },
-      { path: "refund-requests", element: <RefundRequests /> },
-      { path: "client-users", element: <ClientUsers /> },
+      { path: "", element: <SuspenseWrapper><Dashboard /></SuspenseWrapper> },
+      { path: "new-proposal", element: <SuspenseWrapper><NewProposal /></SuspenseWrapper> },
+      { path: "new-inquiries", element: <SuspenseWrapper><NewInquiryPage /></SuspenseWrapper> },
+      { path: "new-inquiries-list", element: <SuspenseWrapper><NewInquiriesListPage /></SuspenseWrapper> },
+      { path: "new-proposal/:id", element: <SuspenseWrapper><NewDynamicProposalPage /></SuspenseWrapper> },
+      { path: "media", element: <SuspenseWrapper><Media /></SuspenseWrapper> },
+      { path: "financials", element: <SuspenseWrapper><Financials /></SuspenseWrapper> },
+      { path: "employees", element: <SuspenseWrapper><Employees /></SuspenseWrapper> },
+      { path: "proposals", element: <SuspenseWrapper><Proposals /></SuspenseWrapper> },
+      { path: "timecards", element: <SuspenseWrapper><TimecardsPage /></SuspenseWrapper> },
+      { path: "teams", element: <SuspenseWrapper><Teams /></SuspenseWrapper> },
+      { path: "refund-requests", element: <SuspenseWrapper><RefundRequests /></SuspenseWrapper> },
+      { path: "client-users", element: <SuspenseWrapper><ClientUsers /></SuspenseWrapper> },
     ],
   },
   {
     path: "/admin",
-    // element: <AdminRoute />, // This will check if the user is an admin
-    element: <AdminLayout />,
+    element: <SuspenseWrapper><AdminLayout /></SuspenseWrapper>,
     children: [
-      { path: "", element: <AdminDashboard /> }, // Admin Dashboard
+      { path: "", element: <SuspenseWrapper><AdminDashboard /></SuspenseWrapper> },
     ],
   },
   {
     path: "*",
-    element: <NotFound />,
+    element: <SuspenseWrapper><NotFound /></SuspenseWrapper>,
   },
 ]);
 

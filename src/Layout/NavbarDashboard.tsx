@@ -1,4 +1,3 @@
-import UserAvatar from "@/ui/UserAvatar";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
@@ -20,6 +19,7 @@ export default function NavbarDashboard() {
   const [isOpen, setIsOpen] = useState(false);
   const [showTimecardDialog, setShowTimecardDialog] = useState(false); //  for time card dialog
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const user = useAppSelector(selectCurrentUser);
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -32,7 +32,12 @@ export default function NavbarDashboard() {
   // Close mobile menu on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -83,17 +88,18 @@ export default function NavbarDashboard() {
                   Financials
                 </NavLink>
 
-                <NavLink
-                  to="/dashboard/teams"
-                  className={({ isActive }) =>
-                    `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
-                    }`
-                  }
-                >
-                  Teams
-                </NavLink>
+
               </>
             )}
+            <NavLink
+              to="/dashboard/teams"
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                }`
+              }
+            >
+              Teams
+            </NavLink>
             {/* <NavLink
               to="/dashboard/employees"
               className={({ isActive }) =>
@@ -187,6 +193,7 @@ export default function NavbarDashboard() {
           <div className="md:hidden flex items-center space-x-3">
             {/* Hamburger */}
             <button
+              ref={buttonRef}
               onClick={toggleMenu}
               type="button"
               className="text-black hover:text-gray-700 focus:outline-none"
@@ -218,7 +225,17 @@ export default function NavbarDashboard() {
             {/* User Avatar */}
             <Popover>
               <PopoverTrigger className="cursor-pointer">
-                <UserAvatar userName="Shaikot mr9" />
+                <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
+                  {user?.imagUrl ? (
+                    <img
+                      src={user.imagUrl}
+                      alt={user.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    user?.name?.charAt(0)?.toUpperCase()
+                  )}
+                </div>
               </PopoverTrigger>
               <PopoverContent className="mr-3 bg-white border-none text-white">
                 <Button
@@ -283,7 +300,7 @@ export default function NavbarDashboard() {
             >
               Media
             </NavLink>
-            {(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER") && (
+            {(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
               <>
                 <NavLink
                   to="/dashboard/financials"

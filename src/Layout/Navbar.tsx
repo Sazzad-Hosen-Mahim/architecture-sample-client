@@ -114,12 +114,47 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile Menu Button & Avatar */}
+          <div className="md:hidden flex items-center gap-3">
+            {user && (
+              <Popover>
+                <PopoverTrigger className="cursor-pointer">
+                  <div className="h-8 w-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
+                    {user?.imagUrl ? (
+                      <img
+                        src={user.imagUrl}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      user?.name?.charAt(0)?.toUpperCase()
+                    )}
+                  </div>
+                </PopoverTrigger>
+
+                <PopoverContent className="mr-3 bg-white border border-gray-200 shadow-md text-black space-y-2 p-2 rounded-xl z-[60]">
+                  <Button
+                    onClick={() => {
+                      navigate(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE" || user?.role === "DRAFTER" || user?.role === "EMPLOYEE" ? "/dashboard" : "/user-dashboard");
+                    }}
+                    className="bg-black text-white hover:bg-gray-800 w-full cursor-pointer rounded-lg text-xs"
+                  >
+                    Dashboard
+                  </Button>
+                  <Button
+                    onClick={handleLogout}
+                    className="bg-gray-100 text-black hover:bg-gray-200 w-full cursor-pointer rounded-lg text-xs"
+                  >
+                    Logout
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            )}
+
             <button
               onClick={toggleMenu}
               type="button"
-              className="text-white hover:text-gray-300 focus:outline-none"
+              className="text-black hover:text-gray-600 focus:outline-none"
             >
               <svg
                 className="h-6 w-6"
@@ -150,29 +185,33 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        <div className="md:hidden bg-white border-b border-gray-200 shadow-sm">
+          <div className="px-2 pt-2 pb-4 space-y-1 sm:px-3">
             <Link
               to="/"
-              className="text-white block hover:bg-purple-700 px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsOpen(false)}
+              className="text-gray-700 hover:text-black block hover:bg-gray-50 px-3 py-2 rounded-md text-base font-semibold transition-all"
             >
               Home
             </Link>
             <Link
               to="/about"
-              className="text-white block hover:bg-purple-700 px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsOpen(false)}
+              className="text-gray-700 hover:text-black block hover:bg-gray-50 px-3 py-2 rounded-md text-base font-semibold transition-all"
             >
               About
             </Link>
             <Link
               to="/services"
-              className="text-white block hover:bg-purple-700 px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsOpen(false)}
+              className="text-gray-700 hover:text-black block hover:bg-gray-50 px-3 py-2 rounded-md text-base font-semibold transition-all"
             >
               Services
             </Link>
             <Link
               to="/contact"
-              className="text-white block hover:bg-purple-700 px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsOpen(false)}
+              className="text-gray-700 hover:text-black block hover:bg-gray-50 px-3 py-2 rounded-md text-base font-semibold transition-all"
             >
               Contact
             </Link>

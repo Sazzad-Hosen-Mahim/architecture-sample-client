@@ -1,5 +1,4 @@
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,13 +11,21 @@ import {
   User,
   UserCog,
   Archive,
+  Loader2,
 } from "lucide-react";
-import { OwnerControlsTab } from "@/components/ProfileSetting/OwnerControlsTab";
-import { ArchivedProjectsTab } from "@/components/ProfileSetting/ArchivedProjectsTab";
-import { NotificationSettingsTab } from "@/components/ProfileSetting/NotificationSettingsTab";
-import { SecuritySettingsCard } from "@/components/ProfileSetting/SecuritySettingsCard";
-import MasterContractTab from "@/components/ProfileSetting/MasterContractTab";
-import AmendmentContractTab from "@/components/ProfileSetting/AmendmentContractTab";
+
+const OwnerControlsTab = lazy(() => import("@/components/ProfileSetting/OwnerControlsTab").then(module => ({ default: module.OwnerControlsTab })));
+const ArchivedProjectsTab = lazy(() => import("@/components/ProfileSetting/ArchivedProjectsTab").then(module => ({ default: module.ArchivedProjectsTab })));
+const NotificationSettingsTab = lazy(() => import("@/components/ProfileSetting/NotificationSettingsTab").then(module => ({ default: module.NotificationSettingsTab })));
+const SecuritySettingsCard = lazy(() => import("@/components/ProfileSetting/SecuritySettingsCard").then(module => ({ default: module.SecuritySettingsCard })));
+const MasterContractTab = lazy(() => import("@/components/ProfileSetting/MasterContractTab"));
+const AmendmentContractTab = lazy(() => import("@/components/ProfileSetting/AmendmentContractTab"));
+
+const TabLoader = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+  </div>
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -329,6 +336,7 @@ export function ProfileSettings() {
             </div>
           </div>
 
+          <Suspense fallback={<TabLoader />}>
           {/* Profile Tab */}
           {activeTab === "profile" && (
             <Card>
@@ -441,6 +449,7 @@ export function ProfileSettings() {
 
           {/* Archived Projects Tab - Only visible to staff */}
           {isStaff && activeTab === "archives" && <ArchivedProjectsTab />}
+          </Suspense>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,20 +42,54 @@ export function ProjectManagementTab() {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [projectToArchive, setProjectToArchive] = useState<ProjectRequest | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Fetch ALL project requests (for "All Projects" filter)
+  const scrollTabs = (direction: "left" | "right") => {
+    if (tabsContainerRef.current) {
+      const scrollAmount = 150;
+      tabsContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const { data: allProjectsData, isLoading: isLoadingAll, isError: isErrorAll } = useGetProjectRequestsQuery();
-  // Fetch only assigned project requests (for "Assigned Projects" filter)
   const { data: myProjectsData, isLoading: isLoadingMy, isError: isErrorMy } = useGetMyProjectRequestsQuery();
   const [archiveProject] = useArchiveProjectMutation();
 
-  // Select the correct data source based on filter
   const data = assignedFilter === "assigned" ? myProjectsData : allProjectsData;
   const isLoading = assignedFilter === "assigned" ? isLoadingMy : isLoadingAll;
   const isError = assignedFilter === "assigned" ? isErrorMy : isErrorAll;
 
-  const handleArchive = async () => {
+  // Memoize non-archived projects base data
+  const nonArchivedProjects = useMemo(() => {
+    return data?.data?.filter((p: ProjectRequest) => !p.isArchived) || [];
+  }, [data]);
+
+  // Memoize filtered projects by stage
+  const projectsByStage = useMemo(() => {
+    const stages = ["all", "inquiry", "scheduled", "active", "completed"];
+    const result: Record<string, ProjectRequest[]> = {};
+
+    stages.forEach(stage => {
+      if (stage === "all") {
+        result[stage] = nonArchivedProjects;
+      } else if (stage === "inquiry") {
+        result[stage] = nonArchivedProjects.filter(
+          (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
+        );
+      } else {
+        result[stage] = nonArchivedProjects.filter(
+          (p) => p.status.toLowerCase() === stage
+        );
+      }
+    });
+    return result;
+  }, [nonArchivedProjects]);
+
+  const handleArchive = useCallback(async () => {
     if (!projectToArchive) return;
     try {
       await archiveProject(projectToArchive.id).unwrap();
@@ -66,30 +100,29 @@ export function ProjectManagementTab() {
       console.error("Failed to archive project:", error);
       toast.error("Failed to archive project");
     }
-  };
+  }, [projectToArchive, archiveProject]);
 
-  const openModal = (project: ProjectRequest) => {
+  const openModal = useCallback((project: ProjectRequest) => {
     setSelectedProject(project);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedProject(null);
-  };
+  }, []);
 
-  // Helper function to format date
-  const formatDate = (dateString: string) => {
+  // Helper functions
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
-  };
+  }, []);
 
-  // Helper function to get stage badge color
-  const getStageBadgeClass = (status: string) => {
+  const getStageBadgeClass = useCallback((status: string) => {
     switch (status) {
       case "PENDING":
         return "bg-yellow-100 text-yellow-800 border-amber-300 rounded-full hover:bg-yellow-100 font-medium text-xs";
@@ -104,10 +137,9 @@ export function ProjectManagementTab() {
       default:
         return "bg-gray-100 text-gray-800 border-gray-300 rounded-full hover:bg-gray-100 font-medium text-xs";
     }
-  };
+  }, []);
 
-  // Helper function to map API status to user-friendly labels
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = useCallback((status: string) => {
     switch (status) {
       case "PENDING": return "Initial";
       case "REVIEWED": return "Inquiry";
@@ -116,10 +148,9 @@ export function ProjectManagementTab() {
       case "COMPLETED": return "Completed";
       default: return status;
     }
-  };
+  }, []);
 
-  // Helper function to calculate progress based on status
-  const getProgress = (status: string) => {
+  const getProgress = useCallback((status: string) => {
     switch (status) {
       case "PENDING": return 25;
       case "REVIEWED": return 50;
@@ -128,39 +159,7 @@ export function ProjectManagementTab() {
       case "COMPLETED": return 100;
       default: return 0;
     }
-  };
-
-  const getFilteredProjects = (stage: string) => {
-    if (!data?.data) return [];
-
-    let filtered = data.data.filter((p: ProjectRequest) => !p.isArchived);
-
-    if (stage === "all") return filtered;
-
-    // Inquiry tab shows both PENDING and REVIEWED
-    if (stage === "inquiry") {
-      return filtered.filter(
-        (p: ProjectRequest) => (p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed")
-      );
-    }
-
-    return filtered.filter(
-      (p: ProjectRequest) => p.status.toLowerCase() === stage.toLowerCase()
-    );
-  };
-
-  const getStageCount = (stage: string) => {
-    if (!data?.data) return 0;
-    const nonArchived = data.data.filter((p: ProjectRequest) => !p.isArchived);
-    if (stage === "all") return nonArchived.length;
-    // Inquiry tab shows both PENDING and REVIEWED
-    if (stage === "inquiry") {
-      return nonArchived.filter(
-        (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
-      ).length;
-    }
-    return nonArchived.filter((p) => p.status.toLowerCase() === stage.toLowerCase()).length;
-  };
+  }, []);
 
   const renderProjectTable = (filteredProjects: ProjectRequest[]) => {
     const totalPages = Math.ceil(filteredProjects.length / PROJECTS_PER_PAGE);
@@ -196,99 +195,99 @@ export function ProjectManagementTab() {
         ) : (
           <>
             <div className="overflow-x-auto">
-            <Table className="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Location</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Client</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Assigned Manager</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Appointment Date</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Progress</TableHead>
-                  <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedProjects.map((project) => (
-                  <TableRow
-                    key={project.id}
-                    className="hover:bg-gray-100 cursor-pointer"
-                  >
-                    <TableCell>
-                      <div>
-                        <div className="text-xs font-semibold">{project.projectName}</div>
-                        <div className="text-xs text-gray-400">{project.companyName}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {project.projectCity}, {project.projectState}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {project.clientFirstName} {project.clientLastName}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {project.assignedManager?.name || "Unassigned"}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {formatDate(project.appointmentDate)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={getStageBadgeClass(project.status)}
-                      >
-                        {getStatusLabel(project.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-2 bg-green-500 rounded-full"
-                            style={{ width: `${getProgress(project.status)}%` }}
-                          ></div>
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Location</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Client</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Assigned Manager</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Appointment Date</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Progress</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedProjects.map((project) => (
+                    <TableRow
+                      key={project.id}
+                      className="hover:bg-gray-100 cursor-pointer"
+                    >
+                      <TableCell>
+                        <div>
+                          <div className="text-xs font-semibold">{project.projectName}</div>
+                          <div className="text-xs text-gray-400">{project.companyName}</div>
                         </div>
-                        <span className="text-xs">{getProgress(project.status)}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
-                          onClick={() => openModal(project)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {project.projectCity}, {project.projectState}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {project.clientFirstName} {project.clientLastName}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {project.assignedManager?.name || "Unassigned"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {formatDate(project.appointmentDate)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={getStageBadgeClass(project.status)}
                         >
-                          View Details
-                        </Button>
-                        {project.status === "COMPLETED" && (
+                          {getStatusLabel(project.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-2 bg-green-500 rounded-full"
+                              style={{ width: `${getProgress(project.status)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs">{getProgress(project.status)}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="bg-transparent text-xs text-amber-600 border-amber-200 hover:bg-amber-600 hover:text-white cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProjectToArchive(project);
-                              setArchiveModalOpen(true);
-                            }}
-                            title="Archive Project"
+                            className="bg-transparent text-xs hover:bg-gray-800 hover:text-white cursor-pointer"
+                            onClick={() => openModal(project)}
                           >
-                            <Archive className="h-3.5 w-3.5" />
+                            View Details
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          {project.status === "COMPLETED" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-transparent text-xs text-amber-600 border-amber-200 hover:bg-amber-600 hover:text-white cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProjectToArchive(project);
+                                setArchiveModalOpen(true);
+                              }}
+                              title="Archive Project"
+                            >
+                              <Archive className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Pagination UI */}
@@ -354,78 +353,105 @@ export function ProjectManagementTab() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-2">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 bg-gray-100 py-0.5 overflow-x-auto">
-          <TabsList className="flex-1 cursor-pointer gap-1 sm:gap-2 w-full overflow-x-auto scrollbar-hide">
-            <TabsTrigger
-              value="all"
-              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "all"
-                ? "border-b-gray-800 py-4 cursor-pointer"
-                : "border-b-transparent"
-                }`}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-gray-100 py-1 px-2 rounded-xl">
+          <div className="relative flex items-center w-full flex-1 min-w-0">
+            {/* Left Scroll Indicator Button */}
+            <button
+              onClick={() => scrollTabs("left")}
+              className="absolute -left-2 lg:left-0 z-10 p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all md:hidden"
+              aria-label="Scroll left"
             >
-              All ({getStageCount("all")})
-            </TabsTrigger>
-            <TabsTrigger
-              value="inquiry"
-              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "inquiry"
-                ? "border-b-gray-800 py-4 cursor-pointer"
-                : "border-b-transparent"
-                }`}
+              <ChevronLeft size={14} />
+            </button>
+
+            <div
+              ref={tabsContainerRef}
+              className="flex-1 overflow-x-auto scrollbar-hide w-full px-6 mr-3 md:mr-0 md:px-0"
             >
-              Inquiry ({getStageCount("inquiry")})
-            </TabsTrigger>
-            <TabsTrigger
-              value="scheduled"
-              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "scheduled"
-                ? "border-b-gray-800 py-4 cursor-pointer"
-                : "border-b-transparent"
-                }`}
+              <TabsList className="flex items-center justify-start gap-1 md:gap-2 w-full bg-transparent border-none">
+                <TabsTrigger
+                  value="all"
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "all"
+                    ? "border-b-gray-800 text-gray-900 font-bold"
+                    : "border-b-transparent text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                  All ({projectsByStage["all"]?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="inquiry"
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "inquiry"
+                    ? "border-b-gray-800 text-gray-900 font-bold"
+                    : "border-b-transparent text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                  Inquiry ({projectsByStage["inquiry"]?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="scheduled"
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "scheduled"
+                    ? "border-b-gray-800 text-gray-900 font-bold"
+                    : "border-b-transparent text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                  Bidding ({projectsByStage["scheduled"]?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="active"
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "active"
+                    ? "border-b-gray-800 text-gray-900 font-bold"
+                    : "border-b-transparent text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                  Active ({projectsByStage["active"]?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="completed"
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "completed"
+                    ? "border-b-gray-800 text-gray-900 font-bold"
+                    : "border-b-transparent text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                  Completed ({projectsByStage["completed"]?.length || 0})
+                </TabsTrigger>
+                {/* Spacer to prevent scroll layout overlap with absolute right chevron on mobile */}
+                <div className="w-16 shrink-0 md:hidden" />
+              </TabsList>
+            </div>
+
+            {/* Right Scroll Indicator Button */}
+            <button
+              onClick={() => scrollTabs("right")}
+              className="absolute -right-2 lg:right-0 z-10 p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all md:hidden"
+              aria-label="Scroll right"
             >
-              Bidding ({getStageCount("scheduled")})
-            </TabsTrigger>
-            <TabsTrigger
-              value="active"
-              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "active"
-                ? "border-b-gray-800 py-4 cursor-pointer"
-                : "border-b-transparent"
-                }`}
-            >
-              Active ({getStageCount("active")})
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
-              className={`flex-1 font-medium text-xs sm:text-sm border-b-2 whitespace-nowrap ${activeTab === "completed"
-                ? "border-b-gray-800 py-4 cursor-pointer"
-                : "border-b-transparent"
-                }`}
-            >
-              Completed ({getStageCount("completed")})
-            </TabsTrigger>
-          </TabsList>
+              <ChevronRight size={14} />
+            </button>
+          </div>
           <Button
             onClick={() => navigate("/dashboard/new-inquiries")}
-            className="bg-black cursor-pointer text-white hover:bg-gray-800 shrink-0 font-medium"
+            className="bg-black cursor-pointer text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
           >
             <span className="text-white"><BsFillClipboard2PlusFill /></span> New Inquiry
           </Button>
         </div>
 
         <TabsContent value="all">
-          {renderProjectTable(getFilteredProjects("all"))}
+          {renderProjectTable(projectsByStage["all"] || [])}
         </TabsContent>
         <TabsContent value="inquiry">
-          {renderProjectTable(getFilteredProjects("inquiry"))}
+          {renderProjectTable(projectsByStage["inquiry"] || [])}
         </TabsContent>
         <TabsContent value="scheduled">
-          {renderProjectTable(getFilteredProjects("scheduled"))}
+          {renderProjectTable(projectsByStage["scheduled"] || [])}
         </TabsContent>
         <TabsContent value="active">
-          {renderProjectTable(getFilteredProjects("active"))}
+          {renderProjectTable(projectsByStage["active"] || [])}
         </TabsContent>
         <TabsContent value="completed">
-          {renderProjectTable(getFilteredProjects("completed"))}
+          {renderProjectTable(projectsByStage["completed"] || [])}
         </TabsContent>
       </Tabs>
     </div>
