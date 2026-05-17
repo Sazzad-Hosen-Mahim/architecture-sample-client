@@ -84,12 +84,20 @@ function Hero() {
 
         {/* Bottom Details Section */}
         <div className="absolute bottom-6 sm:bottom-12 left-0 right-0 px-4 sm:px-12 flex justify-between items-end text-white/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium">
-          <div className="mb-0 space-y-1 sm:space-y-2 text-left max-w-[45%]">
-            <p className="truncate"><span className="text-white/30 mr-2">Architect:</span> {latestMedia?.architect || "N/A"}</p>
-            <p className="truncate"><span className="text-white/30 mr-2">Photographer:</span> {latestMedia?.photographer || "N/A"}</p>
+          <div className="mb-12 md:mb-5 flex flex-col space-y-1 sm:space-y-2 text-left max-w-[45%] backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl px-2 md:px-5 py-4 
+                   text-white/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium">
+            <div className="flex flex-col md:flex-row gap-2">
+              <p className="text-white/30 mr-2">Architect:</p>
+              <p className="truncate"> {latestMedia?.architect || "N/A"}</p>
+            </div>
+            <div className="flex flex-col md:flex-row  gap-2">
+              <p className="text-white/30 mr-2">Photographer:</p>
+              <p className="truncate"> {latestMedia?.photographer || "N/A"}</p>
+            </div>
           </div>
 
-          <div className="mb-0 space-y-1 sm:space-y-2 text-right max-w-[45%]">
+          <div className="mb-16 md:mb-5 space-y-1 sm:space-y-2 text-right backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl px-2 md:px-5 py-4 
+                  max-w-[50%] text-white/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium">
             <p className="truncate">{latestMedia?.location || "Earth"}</p>
             <p className="text-white/50 truncate">{latestMedia?.projectYear || "2024"}</p>
           </div>
