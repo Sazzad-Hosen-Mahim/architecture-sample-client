@@ -22,8 +22,19 @@ import ContractReviewModal from "../ContractReviewModal";
 import {
     Amendment,
     useGetAmendmentsByProjectQuery,
+    useReviewAmendmentMutation,
+    useCreateProposalFromAmendmentMutation,
 } from "@/redux/api/amendmentApi";
+import CreateProposalFromAmendmentModal, {
+    AmendmentProposalForm,
+} from "../CreateProposalFromAmendmentModal";
 import { toast } from "sonner";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 type ContractsTabProps = {
     project: ProjectRequest;
@@ -46,6 +57,55 @@ export default function ContractsTab({ project }: ContractsTabProps) {
     // Fetch proposals related to this project
     const { data: proposalsData, isLoading } = useGetProposalsByProjectRequestQuery(project.id);
     const { data: amendmentsData } = useGetAmendmentsByProjectQuery({ projectId: project.id });
+
+    // Amendment review + proposal creation now happen here rather than on the
+    // separate /dashboard/proposals page.
+    const [reviewAmendment, { isLoading: isReviewing }] = useReviewAmendmentMutation();
+    const [createProposalFromAmendment, { isLoading: isCreatingFromAmendment }] =
+        useCreateProposalFromAmendmentMutation();
+    const [reviewingId, setReviewingId] = useState<string | null>(null);
+    const [proposalAmendment, setProposalAmendment] = useState<Amendment | null>(null);
+
+    const handleReviewAmendment = async (
+        amendment: Amendment,
+        action: "APPROVED" | "REJECTED"
+    ) => {
+        setReviewingId(amendment.id);
+        try {
+            await reviewAmendment({
+                amendmentId: amendment.id,
+                action,
+                reviewNotes: "",
+            }).unwrap();
+            toast.success(
+                action === "APPROVED" ? "Amendment request accepted." : "Amendment request rejected."
+            );
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to review amendment request");
+        } finally {
+            setReviewingId(null);
+        }
+    };
+
+    const handleCreateProposalFromAmendment = async (form: AmendmentProposalForm) => {
+        if (!proposalAmendment) return;
+        try {
+            const res: any = await createProposalFromAmendment({
+                amendmentId: proposalAmendment.id,
+                ...form,
+            }).unwrap();
+            toast.success("Amendment proposal created. Add services to continue.");
+            setProposalAmendment(null);
+
+            // Continue in the proposal wizard exactly like a normal draft.
+            const newProposalId = res?.data?.id;
+            if (newProposalId) {
+                navigate(`/dashboard/new-proposal/${project.id}?proposalId=${newProposalId}`);
+            }
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to create proposal from amendment");
+        }
+    };
 
     const allProposals: Proposal[] = proposalsData?.data || [];
 
@@ -242,7 +302,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
 
                 <button
                     onClick={() => navigate(`/dashboard/new-proposal/${project.id}`)}
-                    className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
+                    className="inline-flex items-center cursor-pointer gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
                 >
                     <PlusIcon className="w-4 h-4" />
                     Make New Proposal
@@ -337,6 +397,15 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                                             Awaiting Response
                                         </span>
                                     )}
+                                    {proposal.status === "DRAFT" && (
+                                        <button
+                                            onClick={() => navigate(`/dashboard/new-proposal/${project.id}?proposalId=${proposal.id}`)}
+                                            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <FileTextIcon className="w-3.5 h-3.5" />
+                                            Continue Draft
+                                        </button>
+                                    )}
                                     {/* Delete button */}
                                     <button
                                         onClick={() => handleOpenDeleteConfirm(proposal)}
@@ -386,20 +455,33 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                                         </p>
 
                                         <div className="flex flex-col gap-2 bg-white/60 p-3 rounded-lg border border-amber-100/50">
-                                            <div className="flex items-start gap-2">
-                                                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-20 flex-shrink-0 pt-0.5">
-                                                    Services:
-                                                </span>
-                                                <p className="text-xs text-gray-700">{amendment.services}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-20 flex-shrink-0">
-                                                    Urgency:
-                                                </span>
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${amendment.urgency === 'URGENT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                    {amendment.urgency}
-                                                </span>
-                                            </div>
+                                            {amendment.squareFootage && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-24 flex-shrink-0">
+                                                        Area:
+                                                    </span>
+                                                    <p className="text-xs text-gray-700">
+                                                        {amendment.squareFootage}{" "}
+                                                        {amendment.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {amendment.budgetRange && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-24 flex-shrink-0">
+                                                        Budget:
+                                                    </span>
+                                                    <p className="text-xs text-gray-700">{amendment.budgetRange}</p>
+                                                </div>
+                                            )}
+                                            {amendment.services && (
+                                                <div className="flex items-start gap-2">
+                                                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider w-24 flex-shrink-0 pt-0.5">
+                                                        Services:
+                                                    </span>
+                                                    <p className="text-xs text-gray-700">{amendment.services}</p>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="mt-3 flex items-center gap-4 text-[10px] text-gray-400">
@@ -410,17 +492,30 @@ export default function ContractsTab({ project }: ContractsTabProps) {
 
                                     {/* Actions */}
                                     <div className="flex flex-col gap-2 flex-shrink-0">
-                                        {amendment.status === "PENDING" && (
-                                            <button
-                                                onClick={() => navigate(`/dashboard/proposals`)} // Redirect to main proposals for full review flow
-                                                className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
-                                            >
-                                                Review Request
-                                            </button>
+                                        {(amendment.status === "PENDING" ||
+                                            amendment.status === "UNDER_REVIEW") && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleReviewAmendment(amendment, "APPROVED")}
+                                                    disabled={isReviewing && reviewingId === amendment.id}
+                                                    className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                                                >
+                                                    {isReviewing && reviewingId === amendment.id
+                                                        ? "Working..."
+                                                        : "Accept Request"}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReviewAmendment(amendment, "REJECTED")}
+                                                    disabled={isReviewing && reviewingId === amendment.id}
+                                                    className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all active:scale-95 disabled:opacity-50"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </>
                                         )}
                                         {amendment.status === "APPROVED" && !amendment.amendmentProposalId && (
                                             <button
-                                                onClick={() => navigate(`/dashboard/proposals`)} // Redirect to main proposals for full review flow
+                                                onClick={() => setProposalAmendment(amendment)}
                                                 className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 shadow-sm"
                                             >
                                                 Create Proposal
@@ -447,65 +542,81 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                 proposalId={contractProposalId}
             />
 
+            {/* Create a proposal straight from an approved amendment request */}
+            <CreateProposalFromAmendmentModal
+                isOpen={!!proposalAmendment}
+                isLoading={isCreatingFromAmendment}
+                amendment={proposalAmendment}
+                onClose={() => setProposalAmendment(null)}
+                onSubmit={handleCreateProposalFromAmendment}
+            />
+
             {/* Delete Confirmation Modal */}
-            {deleteConfirmOpen && deleteTarget && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-5">
-                        <div className="text-center">
-                            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
-                                <Trash2 className="w-6 h-6 text-red-600" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900">Delete Proposal</h3>
-                            <p className="text-sm text-gray-500 mt-2">
-                                Are you sure you want to delete proposal{" "}
-                                <span className="font-semibold text-gray-700">{deleteTarget.proposalNumber}</span>?
-                                This action cannot be undone.
-                            </p>
+            <Dialog
+                open={deleteConfirmOpen && !!deleteTarget}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteConfirmOpen(false);
+                        setDeleteTarget(null);
+                        setDeleteConfirmText("");
+                    }
+                }}
+            >
+                <DialogContent className="max-w-md space-y-5">
+                    <DialogHeader className="items-center text-center">
+                        <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-1">
+                            <Trash2 className="w-6 h-6 text-red-600" />
                         </div>
+                        <DialogTitle>Delete Proposal</DialogTitle>
+                        <p className="text-sm text-gray-500">
+                            Are you sure you want to delete proposal{" "}
+                            <span className="font-semibold text-gray-700">{deleteTarget?.proposalNumber}</span>?
+                            This action cannot be undone.
+                        </p>
+                    </DialogHeader>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Type <span className="font-bold text-red-600">"Delete"</span> to confirm
-                            </label>
-                            <input
-                                type="text"
-                                value={deleteConfirmText}
-                                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                placeholder="Delete"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                autoFocus
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => {
-                                    setDeleteConfirmOpen(false);
-                                    setDeleteTarget(null);
-                                    setDeleteConfirmText("");
-                                }}
-                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleConfirmDelete}
-                                disabled={deleteConfirmText !== "Delete" || isDeleting}
-                                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                            >
-                                {isDeleting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Deleting...
-                                    </>
-                                ) : (
-                                    "Delete Proposal"
-                                )}
-                            </button>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Type <span className="font-bold text-red-600">"Delete"</span> to confirm
+                        </label>
+                        <input
+                            type="text"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="Delete"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            autoFocus
+                        />
                     </div>
-                </div>
-            )}
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                setDeleteConfirmOpen(false);
+                                setDeleteTarget(null);
+                                setDeleteConfirmText("");
+                            }}
+                            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmDelete}
+                            disabled={deleteConfirmText !== "Delete" || isDeleting}
+                            className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                "Delete Proposal"
+                            )}
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

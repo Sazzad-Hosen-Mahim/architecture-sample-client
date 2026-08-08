@@ -6,15 +6,9 @@ import { PendingApprovalsPayroll } from "./PendingApprovalsPayroll";
 export default function PayrollManagementTab() {
   return (
     <CommonWrapper>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-24 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-24 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* 1. Business Accounts Section */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-1 h-6 bg-blue-600 rounded-full" />
-            <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Business Accounts</h2>
-          </div>
-          <BusinessAccounts />
-        </section>
+
 
         {/* 2. Pending Approvals & Payroll Section */}
         <section className="space-y-4">
@@ -26,12 +20,19 @@ export default function PayrollManagementTab() {
         </section>
 
         {/* 3. Accountant's Desk (Global Controls) */}
-        <section className="space-y-4  md:col-span-2">
+        <section className="space-y-4 ">
           <div className="flex items-center gap-3 px-2">
             <div className="w-1 h-6 bg-black rounded-full" />
             <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Accountant's Central Controls</h2>
           </div>
           <AccountantDesk />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 px-2">
+              <div className="w-1 h-6 bg-blue-600 rounded-full" />
+              <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Business Accounts</h2>
+            </div>
+            <BusinessAccounts />
+          </div>
         </section>
 
         {/* Instructional Footer */}

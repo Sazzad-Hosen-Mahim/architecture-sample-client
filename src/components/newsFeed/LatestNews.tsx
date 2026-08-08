@@ -13,7 +13,7 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
             className="border border-gray-200 rounded-lg shadow-sm bg-white"
           >
             <div className="p-4 sm:p-6">
-              <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex flex-col md:flex-row md:items-start gap-4">
                 {/* Image */}
                 <div className="w-full md:w-32">
                   <img
@@ -25,17 +25,25 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
 
                 {/* Text content */}
                 <div className="flex-1">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-                    <h2 className="text-sm sm:text-base font-semibold">
-                      {news.title}
-                    </h2>
-                    <span className="font-bold text-sm text-gray-500 mt-1 md:mt-0">
-                      Published date: {news.date}
+                  <div className="flex flex-col md:flex-col mb-2">
+                    <div className="flex justify-between">
+                      <h2 className="text-sm sm:text-base font-semibold">
+                        {news.title}
+                      </h2>
+                      <p className="font-bold text-sm text-gray-500 mt-2 md:mt-3">
+                        Published date: {news.date}
+                      </p>
+                    </div>
+                    <span className="text-sm sm:text-sm text-gray-500">
+                      <span className="font-semibold">Photographer:</span> {news.photographer}
+                    </span>
+                    <span className="text-sm sm:text-sm text-gray-500">
+                      <span className="font-semibold">Author:</span> {news.source}
                     </span>
                   </div>
 
                   <p className="text-gray-600 text-xs sm:text-sm mb-4 line-clamp-2 md:w-[70%]">
-                    {news.summary}
+                    <span className="font-semibold">Description:</span> {news.summary}
                   </p>
 
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -45,9 +53,7 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
                     >
                       Read Full Article
                     </Link>
-                    <span className="text-xs sm:text-sm text-gray-500">
-                      Author: {news.source}
-                    </span>
+
                   </div>
                 </div>
               </div>

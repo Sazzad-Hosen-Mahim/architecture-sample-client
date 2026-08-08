@@ -1,26 +1,42 @@
-// export default function NewProposal() {
-//   return <div> iam the NewProposal pages </div>;
-// }
-
 import type React from "react";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SignatureCanvas from "react-signature-canvas";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import Cookies from "js-cookie";
 
 import ClientTabFrom from "@/components/NewProposalTabContent/ClientTabFrom";
 import ProjectTabForm from "@/components/NewProposalTabContent/ProjectTabForm";
 import ServicesTabForm from "@/components/NewProposalTabContent/ServicesTabForm";
 import SignProposalTab from "@/components/NewProposalTabContent/SignProposalTab";
-import { useGetProposalInfoQuery } from "@/redux/api/adminDashboard/proposalApi";
+import { useGetProposalInfoQuery, useGetProposalFullQuery } from "@/redux/api/adminDashboard/proposalApi";
+import { isLumpSum } from "@/utils/paymentPlan";
 import { toast } from "sonner";
 
 export interface NewDynamicProposalPageProps {
     projectData?: any;
     onProposalCreated?: (proposalData: any) => void;
 }
+
+export interface Objective {
+    id: string;
+    label: string;
+    /** Phases added via "+ Add Phase" — renamable and removable. */
+    custom?: boolean;
+}
+
+const DEFAULT_OBJECTIVES: Objective[] = [
+    { id: "assemble", label: "Assemble Information" },
+    { id: "schematic", label: "Schematic Design" },
+    { id: "development", label: "Design Development" },
+    { id: "construction", label: "Construction Documents" },
+    { id: "approval", label: "AHJ Approval" },
+    { id: "bidding", label: "Bidding Support" },
+    { id: "construction-support", label: "Construction Support" },
+    { id: "record", label: "Record Drawings" },
+];
 
 export default function NewDynamicProposalPage({
     onProposalCreated,
@@ -33,6 +49,9 @@ export default function NewDynamicProposalPage({
     const clientSignatureRef = useRef<SignatureCanvas | null>(null);
     const architectSignatureRef = useRef<SignatureCanvas | null>(null);
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
+    const draftProposalId = searchParams.get("proposalId");
+    const [draftHydrated, setDraftHydrated] = useState(false);
 
     // Form state
     const [clientInfo, setClientInfo] = useState({
@@ -45,6 +64,7 @@ export default function NewDynamicProposalPage({
         city: "",
         state: "",
         zip: "",
+        aptSuiteUnit: "",
         country: "United States",
         additionalNotes: "",
     });
@@ -62,6 +82,7 @@ export default function NewDynamicProposalPage({
         serviceType: "New Construction",
         projectType: "",
         squareFootage: "",
+        projectSizeUnit: "sqf",
         budgetRange: "",
         timeline: "",
         googleDriveLink: "",
@@ -95,16 +116,61 @@ export default function NewDynamicProposalPage({
         record: 0,
     });
 
-    const objectives = [
-        { id: "assemble", label: "Assemble Information" },
-        { id: "schematic", label: "Schematic Design" },
-        { id: "development", label: "Design Development" },
-        { id: "construction", label: "Construction Documents" },
-        { id: "approval", label: "AHJ Approval" },
-        { id: "bidding", label: "Bidding Support" },
-        { id: "construction-support", label: "Construction Support" },
-        { id: "record", label: "Record Drawings" },
-    ];
+    const [objectives, setObjectives] = useState<Objective[]>(DEFAULT_OBJECTIVES);
+
+    // Display position per service. The PM edits these in the Scope of Services
+    // step and every downstream view renders in this order.
+    const [objectiveOrders, setObjectiveOrders] = useState<Record<string, number>>(
+        () =>
+            Object.fromEntries(
+                DEFAULT_OBJECTIVES.map((o, idx) => [o.id, idx + 1])
+            )
+    );
+
+    const sortByOrder = (ids: string[]) =>
+        [...ids].sort(
+            (a, b) =>
+                (objectiveOrders[a] ?? Number.MAX_SAFE_INTEGER) -
+                (objectiveOrders[b] ?? Number.MAX_SAFE_INTEGER)
+        );
+
+    const handleOrderChange = (id: string, value: string) => {
+        const parsed = Number.parseInt(value, 10);
+        setObjectiveOrders((prev) => ({
+            ...prev,
+            [id]: Number.isFinite(parsed) && parsed > 0 ? parsed : 0,
+        }));
+    };
+
+    const addCustomPhase = () => {
+        const newId = `custom-${Date.now()}`;
+        setObjectives((prev) => [...prev, { id: newId, label: "", custom: true }]);
+        setObjectiveCosts((prev) => ({ ...prev, [newId]: 0 }));
+        setObjectiveTimelines((prev) => ({ ...prev, [newId]: 0 }));
+        setObjectiveOrders((prev) => ({
+            ...prev,
+            [newId]: Math.max(0, ...Object.values(prev)) + 1,
+        }));
+    };
+
+    const updatePhaseLabel = (id: string, label: string) => {
+        setObjectives((prev) =>
+            prev.map((o) => (o.id === id ? { ...o, label } : o))
+        );
+    };
+
+    const removeCustomPhase = (id: string) => {
+        setObjectives((prev) => prev.filter((o) => o.id !== id));
+        setSelectedObjectives((prev) => prev.filter((sid) => sid !== id));
+        const drop = <T,>(rec: Record<string, T>) => {
+            const next = { ...rec };
+            delete next[id];
+            return next;
+        };
+        setObjectiveCosts(drop);
+        setObjectiveTimelines(drop);
+        setObjectiveOrders(drop);
+    };
 
     interface Credit {
         id: string;
@@ -145,6 +211,36 @@ export default function NewDynamicProposalPage({
                 return mapping[category] || category;
             };
 
+            // projectSize is stored as one string ("7520 sq ft"), but the form needs a
+            // bare number for the <Input type="number"> plus a separate unit.
+            const parseProjectSize = (size: string) => {
+                const raw = String(size || "").trim();
+                const amount = raw.match(/[\d.]+/)?.[0] || "";
+                const isMetric = /sq\.?\s*m|sqm|m²/i.test(raw);
+                return { squareFootage: amount, projectSizeUnit: isMetric ? "sqm" : "sqf" };
+            };
+
+            // The intake form stores slugs ("100k-250k"); this form's Select uses
+            // display labels ("$100k-$250k"). Older records already hold the label.
+            const formatBudgetRange = (budget: string) => {
+                const mapping: Record<string, string> = {
+                    'under-100k': 'Under $100k',
+                    '100k-250k': '$100k-$250k',
+                    '250k-500k': '$250k-$500k',
+                    '500k-1m': '$500k-$1M',
+                    'over-1m': 'Over $1M',
+                };
+                const options = Object.values(mapping);
+                const raw = String(budget || "").trim();
+                if (mapping[raw.toLowerCase()]) return mapping[raw.toLowerCase()];
+                if (options.includes(raw)) return raw;
+                return "";
+            };
+
+            const { squareFootage, projectSizeUnit } = parseProjectSize(
+                projectRequest.projectSize || ""
+            );
+
             setClientInfo({
                 firstName: projectRequest.clientFirstName || "",
                 lastName: projectRequest.clientLastName || "",
@@ -154,7 +250,8 @@ export default function NewDynamicProposalPage({
                 address: projectRequest.streetAddress || "",
                 city: projectRequest.city || "",
                 state: projectRequest.state || "",
-                zip: "",
+                zip: projectRequest.zipCode || "",
+                aptSuiteUnit: projectRequest.aptSuiteUnit || "",
                 country: projectRequest.country || "United States",
                 additionalNotes: projectRequest.additionalComments || "",
             });
@@ -171,13 +268,108 @@ export default function NewDynamicProposalPage({
                 sameAsMailingAddress: projectRequest.projectLocationSameAsClient || false,
                 serviceType: formatServiceType(projectRequest.serviceType || "New Construction"),
                 projectType: formatProjectCategory(projectRequest.projectCategory || ""),
-                squareFootage: projectRequest.projectSize || "",
-                budgetRange: projectRequest.budgetRange || "",
+                squareFootage,
+                projectSizeUnit,
+                budgetRange: formatBudgetRange(projectRequest.budgetRange || ""),
                 timeline: "",
                 googleDriveLink: projectRequest.driveLink || "",
             });
         }
     }, [projectRequest]);
+
+    // Resume an in-progress DRAFT proposal: reload its previously-added
+    // services/credits/payment method into this wizard's local state.
+    const { data: draftProposalData, isError: isDraftError } = useGetProposalFullQuery(
+        draftProposalId || "",
+        { skip: !draftProposalId }
+    );
+
+    useEffect(() => {
+        if (!draftProposalId) return;
+        const proposal = draftProposalData?.data;
+        if (!proposal) {
+            if (isDraftError) {
+                toast.error("Could not load the draft proposal. Starting a new one instead.");
+                setDraftHydrated(true);
+            }
+            return;
+        }
+
+        const services = proposal.services || [];
+
+        // Any saved service whose name doesn't match a built-in phase was added
+        // via "+ Add Phase" — recreate it so it survives resuming the draft.
+        const customPhases: Objective[] = services
+            .filter((s: any) => !DEFAULT_OBJECTIVES.some((o) => o.label === s.name))
+            .map((s: any) => ({
+                id: `custom-${s.id}`,
+                label: s.name,
+                custom: true,
+            }));
+
+        const allObjectives = [...DEFAULT_OBJECTIVES, ...customPhases];
+        setObjectives(allObjectives);
+
+        const idForService = (s: any) =>
+            allObjectives.find((o) => o.label === s.name)?.id;
+
+        const matchedObjectiveIds = services
+            .map(idForService)
+            .filter((v): v is string => Boolean(v));
+
+        const newCosts = { ...objectiveCosts };
+        const newTimelines = { ...objectiveTimelines };
+        const newOrders = Object.fromEntries(
+            DEFAULT_OBJECTIVES.map((o, idx) => [o.id, idx + 1])
+        ) as Record<string, number>;
+
+        services.forEach((s: any, idx: number) => {
+            const oid = idForService(s);
+            if (!oid) return;
+            newCosts[oid] = Number(s.amount) || 0;
+            newTimelines[oid] = Number(s.timelineWeeks) || 0;
+            newOrders[oid] = Number(s.order) || idx + 1;
+        });
+
+        setSelectedObjectives(matchedObjectiveIds);
+        setObjectiveCosts(newCosts);
+        setObjectiveTimelines(newTimelines);
+        setObjectiveOrders(newOrders);
+        const newTotalCost = matchedObjectiveIds.reduce((sum, oid) => sum + (newCosts[oid] || 0), 0);
+        setTotalCost(newTotalCost);
+        setTotalWeeks(
+            matchedObjectiveIds.reduce((sum, oid) => sum + (newTimelines[oid] || 0), 0)
+        );
+
+        const mappedCredits: Credit[] = (proposal.credits || []).map((c: any) => ({
+            id: c.id,
+            type: c.type === "DOLLAR_AMOUNT" ? "dollar" : "percentage",
+            amount: Number(c.amount) || 0,
+            description: c.description || "",
+        }));
+        setCredits(mappedCredits);
+
+        // Read both shapes — older rows only ever got `paymentType` written.
+        setPaymentMethod(isLumpSum(proposal) ? "lumpSum" : "installments");
+
+        // Seed the cookie downstream steps (Services/Sign) expect, so they
+        // keep writing to this same proposal instead of creating a new one.
+        Cookies.set(
+            "proposal_data",
+            JSON.stringify({
+                data: {
+                    id: draftProposalId,
+                    proposalNumber: proposal.proposalNumber,
+                    createdAt: proposal.createdAt,
+                },
+            }),
+            { expires: 7 }
+        );
+
+        setActiveStep("services");
+        setProgress(66);
+        setDraftHydrated(true);
+    }, [draftProposalId, draftProposalData, isDraftError]);
 
     const handleClientInfoChange = (field: string, value: string) => {
         setClientInfo((prev) => ({ ...prev, [field]: value }));
@@ -196,11 +388,11 @@ export default function NewDynamicProposalPage({
 
             // Calculate new totals
             const newTotalCost = newSelected.reduce(
-                (sum, id) => sum + objectiveCosts[id],
+                (sum, id) => sum + (objectiveCosts[id] || 0),
                 0
             );
             const newTotalWeeks = newSelected.reduce(
-                (sum, id) => sum + objectiveTimelines[id],
+                (sum, id) => sum + (objectiveTimelines[id] || 0),
                 0
             );
 
@@ -218,7 +410,7 @@ export default function NewDynamicProposalPage({
 
             // Recalculate total cost
             const newTotalCost = selectedObjectives.reduce(
-                (sum, objId) => sum + newCosts[objId],
+                (sum, objId) => sum + (newCosts[objId] || 0),
                 0
             );
             setTotalCost(newTotalCost);
@@ -234,7 +426,7 @@ export default function NewDynamicProposalPage({
 
             // Recalculate total timeline
             const newTotalWeeks = selectedObjectives.reduce(
-                (sum, objId) => sum + newTimelines[objId],
+                (sum, objId) => sum + (newTimelines[objId] || 0),
                 0
             );
             setTotalWeeks(newTotalWeeks);
@@ -296,7 +488,12 @@ export default function NewDynamicProposalPage({
         try {
             const proposalData = {
                 clientInfo,
-                projectInfo,
+                projectInfo: {
+                    ...projectInfo,
+                    squareFootage: projectInfo.squareFootage
+                        ? `${projectInfo.squareFootage} ${projectInfo.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}`
+                        : "",
+                },
                 selectedObjectives: selectedObjectives.map((id) => ({
                     id,
                     name: objectives.find((o) => o.id === id)?.label,
@@ -484,6 +681,15 @@ export default function NewDynamicProposalPage({
         }
     };
 
+    if (draftProposalId && !draftHydrated) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+                <p className="text-sm text-gray-500">Loading your draft proposal...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-white ">
             {/* Header */}
@@ -503,7 +709,7 @@ export default function NewDynamicProposalPage({
                         <div className="flex items-center space-x-4 overflow-x-auto md:overflow-x-visible">
                             <Button
                                 variant={activeStep === "client" ? "default" : "outline"}
-                                className="rounded-full"
+                                className={`${activeStep === "client" ? "rounded-full bg-black text-white" : "rounded-full text-black"}`}
                                 onClick={() => setActiveStep("client")}
                             >
                                 <FileText className="h-4 w-4 mr-2" />
@@ -511,7 +717,7 @@ export default function NewDynamicProposalPage({
                             </Button>
                             <Button
                                 variant={activeStep === "services" ? "default" : "outline"}
-                                className="rounded-full"
+                                className={`${activeStep === "services" ? "rounded-full bg-black text-white" : "rounded-full text-black"}`}
                                 onClick={() => setActiveStep("services")}
                             >
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -519,7 +725,7 @@ export default function NewDynamicProposalPage({
                             </Button>
                             <Button
                                 variant={activeStep === "sign" ? "default" : "outline"}
-                                className="rounded-full"
+                                className={`${activeStep === "sign" ? "rounded-full bg-black text-white" : "rounded-full text-black"}`}
                                 onClick={() => setActiveStep("sign")}
                             >
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -627,6 +833,11 @@ export default function NewDynamicProposalPage({
                         objectiveTimelines={objectiveTimelines}
                         handleCostChange={handleCostChange}
                         handleTimelineChange={handleTimelineChange}
+                        objectiveOrders={objectiveOrders}
+                        handleOrderChange={handleOrderChange}
+                        addCustomPhase={addCustomPhase}
+                        updatePhaseLabel={updatePhaseLabel}
+                        removeCustomPhase={removeCustomPhase}
                         credits={credits}
                         setCredits={setCredits}
                         calculateTotalCredits={calculateTotalCredits}
@@ -645,9 +856,10 @@ export default function NewDynamicProposalPage({
                     <SignProposalTab
                         clientInfo={clientInfo}
                         projectInfo={projectInfo}
-                        selectedObjectives={selectedObjectives}
+                        selectedObjectives={sortByOrder(selectedObjectives)}
                         objectives={objectives}
                         objectiveCosts={objectiveCosts}
+                        objectiveOrders={objectiveOrders}
                         credits={credits}
                         paymentMethod={paymentMethod}
                         totalCost={totalCost}

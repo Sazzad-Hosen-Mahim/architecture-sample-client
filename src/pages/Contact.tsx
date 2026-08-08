@@ -1,14 +1,14 @@
-import { ArrowLeft, Mail, MapPin, Phone } from "lucide-react";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
+import { Loader2, Mail } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useSendContactMessageMutation } from "@/redux/api/contactApi";
+
+const EMPTY_FORM = { name: "", email: "", message: "", website: "" };
 
 const Contact = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    message: "",
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [sendContactMessage, { isLoading }] = useSendContactMessageMutation();
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -20,24 +20,46 @@ const Contact = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Form submitted:", formData);
+
+    if (formData.message.trim().length < 10) {
+      toast.error("Please write a little more so we can help you properly.");
+      return;
+    }
+
+    try {
+      const res = await sendContactMessage({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        message: formData.message.trim(),
+        website: formData.website,
+      }).unwrap();
+
+      toast.success(res?.message || "Thanks for reaching out!");
+      setFormData(EMPTY_FORM);
+    } catch (error: any) {
+      const detail = error?.data?.message;
+      toast.error(
+        Array.isArray(detail)
+          ? detail[0]?.constraints?.[0] || "Please check the form and try again."
+          : detail || "Could not send your message. Please try again."
+      );
+    }
   };
 
   return (
     <div>
-      <div className="max-w-7xl mx-auto px-4 mt-4">
+      {/* <div className="max-w-7xl mx-auto px-4 mt-4">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-full hover:bg-gray-100 cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-black" />
         </button>
-      </div>
+      </div> */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-light mb-4">Contact Us</h1>
+        <h1 className="text-3xl font-semibold text-center mb-4 md:mb-8">Contact Us</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -92,11 +114,30 @@ const Contact = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md  focus:outline-none focus:ring-1 focus-border-black resize-vertical"
                 />
               </div>
+              {/* Honeypot — hidden from real users, catches naive bots. */}
+              <input
+                type="text"
+                name="website"
+                value={formData.website}
+                onChange={handleInputChange}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="hidden"
+              />
               <button
                 type="submit"
-                className="w-1/2 bg-black hover:bg-gray-800  cursor-pointer text-white py-2 px-4 rounded-md  focus:outline-none focus:ring-2  transition-colors duration-200"
+                disabled={isLoading}
+                className="w-1/2 bg-black hover:bg-gray-800 cursor-pointer text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                Send Message
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Message"
+                )}
               </button>
             </form>
           </div>
@@ -107,7 +148,7 @@ const Contact = () => {
                   Contact Information
                 </h2>
                 <div className="space-y-4">
-                  <div className="flex items-center">
+                  {/* <div className="flex items-center">
                     <MapPin className="w-5 h-5 mr-3 text-gray-400" />
                     <span className="text-gray-500">
                       1222 Market St. Suite 400, Oakland, CA 92101
@@ -116,18 +157,24 @@ const Contact = () => {
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 mr-3 text-gray-400" />
                     <span className="text-gray-500">(925) 922-4374</span>
-                  </div>
+                  </div> */}
                   <div className="flex items-center">
                     <Mail className="w-5 h-5 mr-3 text-gray-400" />
                     <span className="text-gray-500">
-                      info@architecturesimple.com
+                      contactus@architecturesimple.com
                     </span>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Please email the contact above. Additional contact information can be given through their response if necessary.</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+      <div className="mb-42 mt-12">
+        <HeroSocialMedia />
       </div>
     </div>
   );

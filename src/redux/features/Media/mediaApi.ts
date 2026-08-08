@@ -35,6 +35,16 @@ export const mediaApi = baseApi.injectEndpoints({
         method: "POST",
         body: formData,
       }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Media" as const, id }],
+    }),
+
+    //   DELETE single asset from media
+    deleteMediaAsset: builder.mutation<any, { mediaId: string; assetId: string }>({
+      query: ({ mediaId, assetId }) => ({
+        url: `/media/${mediaId}/assets/${assetId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { mediaId }) => [{ type: "Media" as const, id: mediaId }],
     }),
     //   TOGGLE like/vote
     toggleLike: builder.mutation<any, string>({
@@ -110,6 +120,7 @@ export const {
   useUpdateMediaMutation,
   useDeleteMediaMutation,
   useUploadMediaAssetsMutation,
+  useDeleteMediaAssetMutation,
   useGetMediaByIdOrSlugQuery,
   useToggleLikeMutation,
   useCreateCommentMutation,

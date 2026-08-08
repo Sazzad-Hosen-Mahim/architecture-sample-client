@@ -11,7 +11,7 @@ import { useAppDispatch } from "@/hooks/useRedux";
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
 import logo from "@/assets/logo.png";
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
-import { logout } from "@/redux/features/auth/authSlice";
+import { signOut } from "@/redux/features/auth/authActions";
 
 export default function NavbarAdminDashboard() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function NavbarAdminDashboard() {
   const toggleMenu = () => setIsOpen(!isOpen);
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(signOut());
     navigate("/login");
   };
 
@@ -97,7 +97,7 @@ export default function NavbarAdminDashboard() {
                   Time Card
                 </Button>
                 <Button className=" text-black w-full cursor-pointer hover:bg-gray-400">
-                  setting
+                  Setting
                 </Button>
                 <Button
                   onClick={handleLogout}

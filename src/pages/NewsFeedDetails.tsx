@@ -1,5 +1,5 @@
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useParams } from "react-router-dom";
+// import { ArrowLeft } from "lucide-react";
 import article1 from "@/assets/newsfeed/newsfeed-1.jpg";
 import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
 
@@ -20,13 +20,13 @@ const NewsFeedDetails = () => {
   if (!article || error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 mb-16">
-        <Link
+        {/* <Link
           to="/newsFeed"
           className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-6"
         >
           <ArrowLeft size={16} />
           Back to News Feed
-        </Link>
+        </Link> */}
         <p className="text-gray-500">
           {error ? (error as any)?.data?.message || "Error loading article." : "Article not found."}
         </p>
@@ -40,13 +40,13 @@ const NewsFeedDetails = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 mb-24">
-      <Link
+      {/* <Link
         to="/newsFeed"
         className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-6"
       >
         <ArrowLeft size={16} />
         Back to News Feed
-      </Link>
+      </Link> */}
 
       <img
         src={displayImage}

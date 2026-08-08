@@ -72,6 +72,7 @@ export default function NewProposalPage({
     serviceType: "New Construction",
     projectType: "",
     squareFootage: "",
+    projectSizeUnit: "sqf",
     budgetRange: "",
     timeline: "",
     googleDriveLink: "",

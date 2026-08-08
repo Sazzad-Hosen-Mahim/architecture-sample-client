@@ -17,10 +17,10 @@ const Layout: React.FC = () => {
     // </div>
 
     <div className="relative min-h-screen">
-      {/* 👇 Background grid pattern */}
+      {/*  Background grid pattern */}
       <GridpatternBg />
 
-      {/* 👇 Foreground content */}
+      {/* Foreground content */}
       <div className="relative z-10">
         <Navbar />
         <main>

@@ -20,11 +20,28 @@ export const refundApi = baseApi.injectEndpoints({
     // Get all refund requests (admin/finance)
     getRefundRequests: builder.query({
       query: () => '/refunds',
+      providesTags: ['Refund'],
+    }),
+
+    // Client bank details behind a specific refund, for actioning the payout
+    getRefundBankDetails: builder.query({
+      query: (id: string) => `/refunds/${id}/bank-details`,
+      providesTags: ['Refund'],
+    }),
+
+    // Confirm the approved refund has actually been paid out
+    markRefundProcessed: builder.mutation({
+      query: (id: string) => ({
+        url: `/refunds/${id}/processed`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Refund', 'Notification'],
     }),
 
     // Get my refund requests (user)
     getMyRefundRequests: builder.query({
       query: () => '/refunds/my',
+      providesTags: ['Refund'],
     }),
 
     // Approve a refund
@@ -33,6 +50,7 @@ export const refundApi = baseApi.injectEndpoints({
         url: `/refunds/${id}/approve`,
         method: 'PATCH',
       }),
+      invalidatesTags: ['Refund'],
     }),
 
     // Reject a refund
@@ -42,6 +60,7 @@ export const refundApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body: { rejectionReason },
       }),
+      invalidatesTags: ['Refund'],
     }),
   }),
 });
@@ -52,5 +71,7 @@ export const {
   useGetMyRefundRequestsQuery,
   useGetUserBankDetailsQuery,
   useApproveRefundMutation,
+  useGetRefundBankDetailsQuery,
+  useMarkRefundProcessedMutation,
   useRejectRefundMutation,
 } = refundApi;

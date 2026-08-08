@@ -1,5 +1,44 @@
 import { baseApi } from "@/redux/api/baseApi";
 
+export interface FinancialHistoryPoint {
+  month: string;
+  revenue: number;
+  laborCost: number;
+  overheadCost: number;
+  totalCost: number;
+  profit: number;
+  utilization: number;
+}
+
+/**
+ * Project-scoped totals behind the chart's stat cards. `null` for the
+ * firm-wide chart, which still shows a rolling 12 calendar months.
+ */
+export interface FinancialHistorySummary {
+  startDate: string;
+  endDate: string;
+  isStarted: boolean;
+  isCompleted: boolean;
+  totalDays: number;
+  totalMonths: number;
+  monthCount: number;
+  totalContract: number;
+  laborCost: number;
+  projectOverhead: number;
+  totalCost: number;
+  billableHours: number;
+  nonBillableHours: number;
+  avgMonthlyRevenue: number;
+  avgMonthlyCost: number;
+  avgMonthlyProfit: number;
+  utilization: number;
+}
+
+export interface FinancialHistoryResponse {
+  history: FinancialHistoryPoint[];
+  summary: FinancialHistorySummary | null;
+}
+
 export const financialApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // ═══════════════════════════════════════
@@ -52,8 +91,12 @@ export const financialApi = baseApi.injectEndpoints({
     // ═══════════════════════════════════════
     // FINANCIAL OVERVIEW
     // ═══════════════════════════════════════
-    getFinancialOverview: builder.query<any, void>({
-      query: () => ({ url: "/financial/overview", method: "GET" }),
+    getFinancialOverview: builder.query<any, { scope?: "all" | "year"; year?: number } | void>({
+      query: (params) => ({
+        url: "/financial/overview",
+        method: "GET",
+        params: params || undefined,
+      }),
       transformResponse: (response: any) => response.data,
       providesTags: ["FinancialOverview"],
     }),
@@ -149,7 +192,7 @@ export const financialApi = baseApi.injectEndpoints({
       invalidatesTags: ["Timecard"],
     }),
 
-    getAllTimecards: builder.query<any[], { status?: string } | void>({
+    getAllTimecards: builder.query<any[], { status?: string; includeArchived?: boolean } | void>({
       query: (params) => ({
         url: "/financial/timecards/all",
         method: "GET",
@@ -157,6 +200,40 @@ export const financialApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: any) => response.data,
       providesTags: ["Timecard"],
+    }),
+
+    archiveTimecards: builder.mutation<any, string[]>({
+      query: (ids) => ({
+        url: "/financial/timecards/archive",
+        method: "POST",
+        body: { ids },
+      }),
+      invalidatesTags: ["Timecard", "FinancialOverview"],
+    }),
+
+    unarchiveTimecards: builder.mutation<any, string[]>({
+      query: (ids) => ({
+        url: "/financial/timecards/unarchive",
+        method: "POST",
+        body: { ids },
+      }),
+      invalidatesTags: ["Timecard", "FinancialOverview"],
+    }),
+
+    // Anchor date for the bi-weekly pay period calendar.
+    getPayrollStartDate: builder.query<{ payrollStartDate: string }, void>({
+      query: () => ({ url: "/financial/payroll-start-date", method: "GET" }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["PayrollSettings"],
+    }),
+
+    setPayrollStartDate: builder.mutation<any, string>({
+      query: (payrollStartDate) => ({
+        url: "/financial/payroll-start-date",
+        method: "PATCH",
+        body: { payrollStartDate },
+      }),
+      invalidatesTags: ["PayrollSettings", "Timecard"],
     }),
 
     // Pay-period timecards (bi-weekly, 26 periods per year)
@@ -170,13 +247,21 @@ export const financialApi = baseApi.injectEndpoints({
       providesTags: ["Timecard"],
     }),
 
-    getFinancialHistory: builder.query<any[], string | void>({
-      query: (projectId) => ({
+    getFinancialHistory: builder.query<
+      FinancialHistoryResponse,
+      { projectId?: string; scope?: "all" | "year"; year?: number } | void
+    >({
+      query: (args) => ({
         url: "/financial/history",
         method: "GET",
-        params: projectId ? { projectId } : undefined,
+        params: args || undefined,
       }),
-      transformResponse: (response: any) => response.data,
+      transformResponse: (response: any): FinancialHistoryResponse => {
+        const data = response?.data;
+        // Older deployments returned a bare array with no summary.
+        if (Array.isArray(data)) return { history: data, summary: null };
+        return { history: data?.history || [], summary: data?.summary || null };
+      },
       providesTags: ["FinancialOverview"],
     }),
 
@@ -256,6 +341,10 @@ export const {
   useRejectTimecardMutation,
   useDeleteTimecardMutation,
   useGetAllTimecardsQuery,
+  useArchiveTimecardsMutation,
+  useUnarchiveTimecardsMutation,
+  useGetPayrollStartDateQuery,
+  useSetPayrollStartDateMutation,
   useGetTimecardsByPayPeriodQuery,
   useGetFinancialHistoryQuery,
   useGetBillingRateQuery,

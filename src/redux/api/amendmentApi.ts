@@ -24,8 +24,11 @@ export interface Amendment {
     proposalId: string;
     projectName: string;
     description: string;
-    services: string;
-    urgency: AmendmentUrgency;
+    squareFootage?: string | null;
+    projectSizeUnit?: string | null;
+    budgetRange?: string | null;
+    services?: string | null;
+    urgency?: AmendmentUrgency | null;
     status: AmendmentStatus;
     reviewNotes?: string | null;
     reviewedAt?: string | null;
@@ -43,8 +46,13 @@ export interface CreateAmendmentRequest {
     proposalId: string;
     projectName: string;
     description: string;
-    services: string;
-    urgency: AmendmentUrgency;
+    /** Numeric portion of the area estimate, e.g. "1200". */
+    squareFootage?: string;
+    projectSizeUnit?: "sqf" | "sqm";
+    budgetRange?: string;
+    /** Legacy intake fields — no longer collected from the client form. */
+    services?: string;
+    urgency?: AmendmentUrgency;
 }
 
 export interface ReviewAmendmentRequest {
@@ -56,11 +64,12 @@ export interface ReviewAmendmentRequest {
 export interface CreateProposalFromAmendmentRequest {
     amendmentId: string;
     name: string;
-    description: string;
-    budgetRange: string;
-    expectedTimeline: string;
-    taxRate: number;
-    notes: string;
+    description?: string;
+    budgetRange?: string;
+    expectedTimeline?: string;
+    /** Replaces the removed tax rate field. */
+    paymentType?: "PHASE_COMPLETION" | "LUMP_SUM";
+    notes?: string;
 }
 
 export interface AmendmentResponse {

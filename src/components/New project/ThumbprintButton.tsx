@@ -13,8 +13,12 @@ export default function ThumbprintButton({
 }: ThumbprintButtonProps) {
   const uniqueId = useId();
 
+  const LINE_HEIGHT = 17;
+
+
+
   const buttonClasses =
-    "w-18 h-24 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden";
+    "w-20 h-26 bg-black rounded-full shadow-lg cursor-pointer flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden";
 
   const gridBackground = (
     <div className="absolute inset-0 pointer-events-none opacity-30">
@@ -42,18 +46,18 @@ export default function ThumbprintButton({
 
   // Calculate font size based on word length
   const getFontSize = (word: string) => {
-    if (word.length <= 6) return "12px";
-    if (word.length <= 12) return "10px";
-    return "8px";
+    if (word.length <= 6) return "14px";
+    if (word.length <= 12) return "13px";
+    return "10px";
   };
 
   // Calculate y position for multi-word text to keep it centered
   const getYPos = (index: number, total: number) => {
-    if (total === 1) return 70;
-    if (total === 2) return index === 0 ? 60 : 80;
-    return 60 + index * 20; // for 3+ words
-  };
+    const centerY = 70;
+    const startY = centerY - ((total - 1) * LINE_HEIGHT) / 2;
 
+    return startY + index * LINE_HEIGHT;
+  };
   if (isSubmitButton) {
     return (
       <button onClick={onClick} className={buttonClasses}>
@@ -69,7 +73,7 @@ export default function ThumbprintButton({
               y="60"
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-white font-light tracking-[0.2em]"
+              className="fill-white font-bold tracking-[0.1em] cursor-pointer "
               style={{ fontSize: getFontSize("SUBMIT") }}
             >
               SUBMIT
@@ -79,7 +83,7 @@ export default function ThumbprintButton({
               y="80"
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-white font-light tracking-[0.2em]"
+              className="fill-white font-bold tracking-[0.1em] cursor-pointer"
               style={{ fontSize: getFontSize("PROJECT") }}
             >
               PROJECT
@@ -109,7 +113,7 @@ export default function ThumbprintButton({
                 y={getYPos(i, words.length)}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="fill-white font-light tracking-[0.2em] uppercase"
+                className="fill-white font-bold tracking-[0.1em]  cursor-pointer uppercase"
                 style={{ fontSize: getFontSize(word) }}
               >
                 {word}

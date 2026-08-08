@@ -1,4 +1,6 @@
-import { useGetMyNewInquiriesQuery, NewInquiry } from "@/redux/api/newInquiryApi";
+import { useGetMyNewInquiriesQuery, useAttachConsultationPaymentMutation, NewInquiry } from "@/redux/api/newInquiryApi";
+import { toExternalUrl } from "@/utils/externalUrl";
+import { useCreateConsultationIntentMutation } from "@/redux/api/paymentApi";
 import {
     Loader2,
     LayoutList,
@@ -7,8 +9,15 @@ import {
     ExternalLink,
     FileText,
     Clock,
+    CreditCard,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import StripeConsultationForm from "@/components/New project/StripeConsultationForm";
+import { toast } from "sonner";
+
+const stripePromise = loadStripe("pk_test_51SN4wpBw3rui1r0jfIlc5pU40gbKDEqp1EopPzfhZJWn8XptM48CmZmlNbBWffFErxAtalw8SqAnFIku3qwSoH5G000dmI9qmj");
 
 interface NewInquiriesClientTabProps {
     searchQuery?: string;
@@ -21,6 +30,37 @@ const NewInquiriesClientTab = ({ searchQuery = "" }: NewInquiriesClientTabProps)
     const [meetingModalOpen, setMeetingModalOpen] = useState(false);
     const [selectedInquiry, setSelectedInquiry] = useState<NewInquiry | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Consultation fee payment (for PM-created inquiries not yet paid)
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [payingInquiry, setPayingInquiry] = useState<NewInquiry | null>(null);
+    const [clientSecret, setClientSecret] = useState("");
+    const [createIntent, { isLoading: isCreatingIntent }] = useCreateConsultationIntentMutation();
+    const [attachPayment] = useAttachConsultationPaymentMutation();
+
+    const openPaymentModal = async (inquiry: NewInquiry) => {
+        setPayingInquiry(inquiry);
+        setClientSecret("");
+        setPaymentModalOpen(true);
+        try {
+            const result = await createIntent({}).unwrap();
+            setClientSecret(result.data.clientSecret);
+        } catch {
+            toast.error("Failed to initialize payment. Please try again.");
+        }
+    };
+
+    const handlePaymentSuccess = async (paymentIntentId: string) => {
+        if (!payingInquiry) return;
+        try {
+            await attachPayment({ projectRequestId: payingInquiry.id, paymentIntentId }).unwrap();
+            toast.success("Consultation fee paid! You can now request a meeting.");
+            setPaymentModalOpen(false);
+            setPayingInquiry(null);
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Payment succeeded but could not be confirmed. Please contact support.");
+        }
+    };
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -156,22 +196,35 @@ const NewInquiriesClientTab = ({ searchQuery = "" }: NewInquiriesClientTabProps)
                                             </button>
 
                                             {openDropdownId === inquiry.id && (
-                                                <div className="absolute right-6 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[160px]">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedInquiry(inquiry);
-                                                            setMeetingModalOpen(true);
-                                                            setOpenDropdownId(null);
-                                                        }}
-                                                        className="w-full text-left px-4 py-2.5 flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Calendar className="w-4 h-4 text-blue-500" />
-                                                        Set a Meeting
-                                                    </button>
+                                                <div className="absolute right-6 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
+                                                    {!inquiry.consultationPaymentId ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                openPaymentModal(inquiry);
+                                                                setOpenDropdownId(null);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2.5 flex items-center gap-2 text-sm text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                                                        >
+                                                            <CreditCard className="w-4 h-4 text-amber-500" />
+                                                            Pay Consultation Fee
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedInquiry(inquiry);
+                                                                setMeetingModalOpen(true);
+                                                                setOpenDropdownId(null);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2.5 flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                                                        >
+                                                            <Calendar className="w-4 h-4 text-blue-500" />
+                                                            Set a Meeting
+                                                        </button>
+                                                    )}
 
                                                     {latestMeeting && (
                                                         <a
-                                                            href={latestMeeting.meetingUrl}
+                                                            href={toExternalUrl(latestMeeting.meetingUrl) ?? undefined}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="w-full text-left px-4 py-2.5 flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
@@ -211,7 +264,7 @@ const NewInquiriesClientTab = ({ searchQuery = "" }: NewInquiriesClientTabProps)
                                             </p>
                                         </div>
                                         <a
-                                            href={meeting.meetingUrl}
+                                            href={toExternalUrl(meeting.meetingUrl) ?? undefined}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm active:scale-95"
@@ -252,7 +305,7 @@ const NewInquiriesClientTab = ({ searchQuery = "" }: NewInquiriesClientTabProps)
                                             <p className="text-sm font-medium">{meeting.title}</p>
                                             <p className="text-xs text-gray-500">{formatDate(meeting.scheduledAt)}</p>
                                             <a
-                                                href={meeting.meetingUrl}
+                                                href={toExternalUrl(meeting.meetingUrl) ?? undefined}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-xs text-blue-600 hover:underline mt-1 block"
@@ -282,6 +335,52 @@ const NewInquiriesClientTab = ({ searchQuery = "" }: NewInquiriesClientTabProps)
                             >
                                 Close
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Consultation Fee Payment Modal */}
+            {paymentModalOpen && payingInquiry && (
+                <div className="fixed inset-0 h-[50%] backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+                        <div className="bg-amber-600 px-6 py-5 rounded-t-xl flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <CreditCard className="w-5 h-5" />
+                                Pay Consultation Fee
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    setPaymentModalOpen(false);
+                                    setPayingInquiry(null);
+                                }}
+                                className="text-white/80 hover:text-white text-xl leading-none cursor-pointer"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="px-6 py-5 space-y-4">
+                            <p className="text-sm text-gray-600">
+                                Please pay the consultation fee for <strong>{payingInquiry.projectName}</strong> before
+                                requesting a meeting.
+                            </p>
+                            {clientSecret ? (
+                                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                                    <StripeConsultationForm
+                                        onSuccess={handlePaymentSuccess}
+                                        clientEmail={payingInquiry.email}
+                                    />
+                                </Elements>
+                            ) : isCreatingIntent ? (
+                                <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-xl bg-slate-50">
+                                    <Loader2 className="w-6 h-6 text-amber-500 animate-spin mb-2" />
+                                    <p className="text-sm text-slate-600">Initializing secure payment...</p>
+                                </div>
+                            ) : (
+                                <div className="p-4 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-100">
+                                    Please wait, initializing payment gateway...
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

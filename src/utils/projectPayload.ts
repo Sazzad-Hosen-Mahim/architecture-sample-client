@@ -72,26 +72,25 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
     state: formData.state || "",
     city: formData.city || "",
     streetAddress: formData.address || "",
+    aptSuiteUnit: formData.aptSuiteUnit || undefined,
+    zipCode: formData.zipCode || "",
     additionalComments: formData.additionalComments || undefined,
 
     projectName: formData.projectName || "",
-    projectLocationSameAsClient:
-      formData.country === formData.projectCountry &&
-      formData.state === formData.projectState &&
-      formData.city === formData.projectCity &&
-      formData.address === formData.projectStreetAddress,
+    projectLocationSameAsClient: formData.projectLocationSameAsClient === true,
 
     projectCountry: formData.projectCountry || "",
     projectState: formData.projectState || "",
     projectCity: formData.projectCity || "",
     projectStreetAddress: formData.projectStreetAddress || "",
+    projectAptSuiteUnit: formData.projectAptSuiteUnit || undefined,
     projectZipCode: formData.projectZipCode || "",
 
     serviceType: serviceType, // Now this is type-safe
     projectCategory: projectCategory, // Now this is type-safe
 
     projectSize: formData.squareFootage
-      ? `${formData.squareFootage} sq ft`
+      ? `${formData.squareFootage} ${formData.projectSizeUnit === 'sqm' ? 'sq m' : 'sq ft'}`
       : "",
     budgetRange: formData.budgetRange || "",
 

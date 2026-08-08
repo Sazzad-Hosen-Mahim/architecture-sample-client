@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/select";
 import { FileText } from "lucide-react";
 // import { useParams } from "react-router-dom";
-import { useAddServiceMutation } from "@/redux/api/adminDashboard/proposalApi";
+import {
+  useAddServiceMutation,
+  useReorderProposalServicesMutation,
+  useUpdateProposalPaymentPlanMutation,
+} from "@/redux/api/adminDashboard/proposalApi";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
 
@@ -26,6 +30,7 @@ interface Credit {
 interface Objective {
   id: string;
   label: string;
+  custom?: boolean;
 }
 
 interface ServicesFormProps {
@@ -36,6 +41,13 @@ interface ServicesFormProps {
   objectiveTimelines: Record<string, number>;
   handleCostChange: (id: string, value: string) => void; // changed to string
   handleTimelineChange: (id: string, value: string) => void; // changed to string
+  // Supplied by the project-linked proposal flow. The standalone blank-proposal
+  // page omits these, which hides the ordering/custom-phase controls.
+  objectiveOrders?: Record<string, number>;
+  handleOrderChange?: (id: string, value: string) => void;
+  addCustomPhase?: () => void;
+  updatePhaseLabel?: (id: string, label: string) => void;
+  removeCustomPhase?: (id: string) => void;
   credits: Credit[];
   setCredits: React.Dispatch<React.SetStateAction<Credit[]>>;
   calculateTotalCredits: () => number;
@@ -56,6 +68,11 @@ export default function ServicesTabForm({
   objectiveTimelines,
   handleCostChange,
   handleTimelineChange,
+  objectiveOrders,
+  handleOrderChange,
+  addCustomPhase,
+  updatePhaseLabel,
+  removeCustomPhase,
   credits,
   setCredits,
   calculateTotalCredits,
@@ -78,54 +95,137 @@ export default function ServicesTabForm({
   // const { id } = useParams();
 
   const proposalData = Cookies.get("proposal_data") || "";
-  const parsedProposalData = JSON.parse(proposalData);
-  console.log(parsedProposalData, "proposalData")
+  let parsedProposalData: any = null;
+  try {
+    parsedProposalData = proposalData ? JSON.parse(proposalData) : null;
+  } catch {
+    parsedProposalData = null;
+  }
   const id = parsedProposalData?.data?.id;
-  console.log(id, "id in service scope @@@@@@@@@@@@@@")
 
   const [addService] = useAddServiceMutation();
+  const [reorderServices] = useReorderProposalServicesMutation();
+  const [updatePaymentPlan] = useUpdateProposalPaymentPlanMutation();
+
+  // objective id -> the service row the backend created for it, so a later
+  // change to the Order box can still be pushed before moving on.
+  const [addedServiceIds, setAddedServiceIds] = useState<Record<string, string>>({});
+
+  const persistOrderThenContinue = async () => {
+    const items = Object.entries(addedServiceIds)
+      .map(([objectiveId, serviceId]) => ({
+        id: serviceId,
+        order: Number(objectiveOrders?.[objectiveId]) || 0,
+      }))
+      .filter((i) => i.order > 0);
+
+    if (id && items.length > 0) {
+      try {
+        await reorderServices({ id, items }).unwrap();
+      } catch {
+        toast.error("Could not save the service order. Please try again.");
+        return;
+      }
+    }
+
+    // The payment plan is chosen here but the proposal was created back on the
+    // Project step, so it has to be pushed explicitly. Without this the row
+    // keeps the backend's LUMP_SUM default no matter what the PM picked.
+    if (id) {
+      try {
+        await updatePaymentPlan({ id, paymentMethod }).unwrap();
+      } catch {
+        toast.error("Could not save the payment type. Please try again.");
+        return;
+      }
+    }
+
+    handleNext();
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold border-l-4 border-blue-600 pl-3">
-          Scope of Services
-        </h2>
-        <span className="ml-4 text-sm text-gray-500">
-          Selected: {selectedObjectives.length} / 8
-        </span>
-      </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold border-l-4 border-blue-600 pl-3">
+              Scope of Services
+            </h2>
+            {addCustomPhase && (
+              <button
+                type="button"
+                onClick={addCustomPhase}
+                className="text-white bg-teal-700 cursor-pointer hover:bg-teal-800 px-3 py-1 rounded"
+              >
+                + Add Phase
+              </button>
+            )}
+            {/* <span className="ml-4 text-sm text-gray-500">
+              Selected: {selectedObjectives.length} / 8
+            </span> */}
+          </div>
           {objectives.map((objective) => (
             <div
               key={objective.id}
-              className="mb-4 border rounded-md overflow-hidden"
+              className="mb-4 border border-gray-300 rounded-md overflow-hidden"
             >
               <div className="flex items-center p-3 bg-gray-50">
+                {handleOrderChange && (
+                  <div className="flex flex-col items-center mr-3">
+                    <span className="text-[10px] uppercase tracking-wide text-gray-400 mb-0.5">
+                      Order
+                    </span>
+                    <Input
+                      type="number"
+                      min="1"
+                      aria-label={`Display order for ${objective.label || "new phase"}`}
+                      value={objectiveOrders?.[objective.id]?.toString() || ""}
+                      onChange={(e) => handleOrderChange(objective.id, e.target.value)}
+                      className="w-14 h-8 text-sm text-center"
+                    />
+                  </div>
+                )}
                 <Checkbox
                   id={objective.id}
                   checked={selectedObjectives.includes(objective.id)}
                   onCheckedChange={() => toggleObjective(objective.id)}
                   className="mr-3"
                 />
-                <label
-                  htmlFor={objective.id}
-                  className="font-medium cursor-pointer flex-grow"
-                >
-                  {objective.label}
-                </label>
+                {objective.custom && updatePhaseLabel ? (
+                  <div className="flex items-center gap-2 flex-grow mr-2">
+                    <Input
+                      value={objective.label}
+                      onChange={(e) => updatePhaseLabel(objective.id, e.target.value)}
+                      placeholder="Phase name"
+                      className="h-8 text-sm font-medium"
+                    />
+                    {removeCustomPhase && (
+                      <button
+                        type="button"
+                        onClick={() => removeCustomPhase(objective.id)}
+                        aria-label="Remove phase"
+                        className="text-red-500 hover:text-red-700 px-1 cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <label
+                    htmlFor={objective.id}
+                    className="font-medium cursor-pointer flex-grow"
+                  >
+                    {objective.label}
+                  </label>
+                )}
                 <div className="flex items-center space-x-2">
                   <div className="flex items-center">
                     <span className="text-sm text-gray-500 mr-1">$</span>
                     <Input
                       type="number"
                       min="0"
-                      //   value={objectiveCosts[objective.id]?.toString() || "0"}
-                      //   onChange={(e) =>
-                      //     handleCostChange(objective.id, e.target.value)
-                      //   }
                       value={objectiveCosts[objective.id]?.toString() || "0"}
                       onChange={
                         (e) => handleCostChange(objective.id, e.target.value) // string
@@ -138,12 +238,6 @@ export default function ServicesTabForm({
                     <Input
                       type="number"
                       min="0"
-                      //   value={
-                      //     objectiveTimelines[objective.id]?.toString() || "0"
-                      //   }
-                      //   onChange={(e) =>
-                      //     handleTimelineChange(objective.id, e.target.value)
-                      //   }
                       value={
                         objectiveTimelines[objective.id]?.toString() || "0"
                       }
@@ -165,6 +259,12 @@ export default function ServicesTabForm({
                           return;
                         }
 
+                        const name = objective.label.trim();
+                        if (!name) {
+                          toast.error("Please give this phase a name before adding it");
+                          return;
+                        }
+
                         const cost = Number(objectiveCosts[objective.id]) || 0;
                         const timelineWeeks = Number(objectiveTimelines[objective.id]) || 0;
 
@@ -174,9 +274,10 @@ export default function ServicesTabForm({
                         }
 
                         const payload = {
-                          name: objective.label,
+                          name,
                           cost: cost,
                           timelineWeeks: timelineWeeks,
+                          order: Number(objectiveOrders?.[objective.id]) || undefined,
                           id: id
                         };
 
@@ -189,15 +290,21 @@ export default function ServicesTabForm({
                         console.log("ID type:", typeof payload.id, "Value:", payload.id);
 
                         try {
-                          const result = await addService(payload).unwrap();
-                          console.log("Service added successfully:", result);
-                          toast.success(`Service "${objective.label}" added successfully!`);
+                          const result: any = await addService(payload).unwrap();
+                          const createdId = result?.data?.id;
+                          if (createdId) {
+                            setAddedServiceIds((prev) => ({
+                              ...prev,
+                              [objective.id]: createdId,
+                            }));
+                          }
+                          toast.success(`Service "${name}" added successfully!`);
                         } catch (error) {
                           console.error("Failed to add service:", error);
                           toast.error("Failed to add service. Please try again.");
                         }
                       }}
-                      disabled={!id || (objectiveCosts[objective.id] || 0) === 0 || (objectiveTimelines[objective.id] || 0) === 0}
+                      disabled={!id || !objective.label.trim() || (objectiveCosts[objective.id] || 0) === 0 || (objectiveTimelines[objective.id] || 0) === 0}
                     >
                       Add
                     </button>
@@ -208,7 +315,7 @@ export default function ServicesTabForm({
           ))}
 
           {selectedObjectives.length === 0 && (
-            <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-md bg-gray-50">
+            <div className="flex flex-col items-center justify-center p-12 text-center border-gray-300 border-2 border-dashed rounded-md bg-gray-50">
               <div className="bg-gray-100 p-4 rounded-full mb-4">
                 <FileText className="h-8 w-8 text-gray-400" />
               </div>
@@ -223,7 +330,7 @@ export default function ServicesTabForm({
 
         <div>
           {/* Project Summary */}
-          <div className="border rounded-md p-4 mb-4">
+          <div className="border border-gray-300 rounded-md p-4 mb-4">
             <h3 className="font-medium text-lg mb-4 border-l-4 border-amber-500 pl-2">
               Project Summary
             </h3>
@@ -404,7 +511,7 @@ export default function ServicesTabForm({
             </div>
 
             {/* Final Cost */}
-            <div className="border-t pt-4 mb-4">
+            <div className="border-t border-gray-300 pt-4 mb-4">
               <p className="text-sm text-gray-500 mb-1">Final Cost </p>
               <p className="text-xl font-medium text-green-600">
                 ${finalCost.toLocaleString()}
@@ -418,24 +525,10 @@ export default function ServicesTabForm({
               )}
             </div>
 
-            {/* Payment Method */}
+            {/* Payment Type — the platform supports exactly these two. */}
             <div>
-              <p className="text-sm font-medium mb-2">Payment Method</p>
+              <p className="text-sm font-medium mb-2">Payment Type</p>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="lumpSum"
-                    name="paymentMethod"
-                    value="lumpSum"
-                    checked={paymentMethod === "lumpSum"}
-                    onChange={() => setPaymentMethod("lumpSum")}
-                    className="mr-2"
-                  />
-                  <label htmlFor="lumpSum" className="text-sm">
-                    Lump Sum Payment
-                  </label>
-                </div>
                 <div className="flex items-center">
                   <input
                     type="radio"
@@ -447,11 +540,27 @@ export default function ServicesTabForm({
                     className="mr-2"
                   />
                   <label htmlFor="installments" className="text-sm">
-                    Installment Payments (per objective)
+                    Pay by phase completion
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    id="lumpSum"
+                    name="paymentMethod"
+                    value="lumpSum"
+                    checked={paymentMethod === "lumpSum"}
+                    onChange={() => setPaymentMethod("lumpSum")}
+                    className="mr-2"
+                  />
+                  <label htmlFor="lumpSum" className="text-sm">
+                    Lump sum
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Client will pay the full amount upfront
+                  {paymentMethod === "lumpSum"
+                    ? "Client pays the full amount upfront."
+                    : "An installment falls due as each phase is completed, priced from that phase's service."}
                 </p>
               </div>
             </div>
@@ -468,7 +577,7 @@ export default function ServicesTabForm({
           Back
         </Button>
         <Button
-          onClick={handleNext}
+          onClick={persistOrderThenContinue}
           className="bg-gray-800 text-white cursor-pointer hover:bg-black"
         >
           Continue to Review

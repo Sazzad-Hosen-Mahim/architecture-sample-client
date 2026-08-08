@@ -1,4 +1,4 @@
-import { ProjectRequest, useGetProposalInfoQuery } from "@/redux/api/adminDashboard/proposalApi";
+import { ProjectRequest, useGetProposalInfoQuery, useDeleteProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   FileTextIcon,
@@ -8,6 +8,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  LinkIcon,
 } from "lucide-react";
 
 // Tab components
@@ -15,10 +16,13 @@ const ProjectInformationTab = lazy(() => import("./tabs/ProjectInformationTab"))
 const ContractsTab = lazy(() => import("./tabs/ContractsTab"));
 const ProjectMgmtTab = lazy(() => import("./tabs/ProjectMgmtTab"));
 const MeetingRequestTab = lazy(() => import("./tabs/MeetingRequestTab"));
+const AttachmentsTab = lazy(() => import("./tabs/AttachmentsTab"));
 
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { Loader } from "@/components/ui/loader";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const TabLoader = () => <Loader fullScreen={false} />;
 
@@ -27,16 +31,18 @@ type ProjectModalProps = {
   onClose: () => void;
   project: ProjectRequest | null;
   readOnly?: boolean;
+  /** Tab to land on, used by notification deep links. */
+  initialTab?: ModalTab | null;
 };
 
-type ModalTab = "information" | "contracts" | "management" | "meeting";
+type ModalTab = "information" | "contracts" | "management" | "meeting" | "attachments";
 
 const STATUS_OPTIONS = [
-  { value: "PENDING", label: "Initial" },
-  { value: "REVIEWED", label: "Inquiry" },
-  { value: "SCHEDULED", label: "Bidding" },
-  { value: "ACTIVE", label: "Active" },
-  { value: "COMPLETED", label: "Completed" },
+  { value: "PENDING", label: "PENDING" },
+  { value: "REVIEWED", label: "INQUIRY" },
+  { value: "SCHEDULED", label: "BIDDING" },
+  { value: "ACTIVE", label: "ACTIVE" },
+  { value: "COMPLETED", label: "COMPLETED" },
 ] as const;
 
 const getStatusLabel = (status: string) => {
@@ -48,11 +54,16 @@ export default function ProjectDetailsModal({
   onClose,
   project: initialProject,
   readOnly,
+  initialTab,
 }: ProjectModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<ModalTab>("information");
   const user = useAppSelector(selectCurrentUser);
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+
+  const [deletePasswordModalOpen, setDeletePasswordModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteProject, { isLoading: isDeletingProject }] = useDeleteProjectMutation();
 
   const scrollTabs = (direction: "left" | "right") => {
     if (tabsContainerRef.current) {
@@ -72,12 +83,12 @@ export default function ProjectDetailsModal({
   const project = refreshedProject || initialProject;
   const meetingLinks = project?.meetingLinks || [];
 
-  // Reset tab when project changes
+  // Reset tab when project changes, honouring a deep-linked tab if given.
   useEffect(() => {
     if (initialProject) {
-      setActiveTab("information");
+      setActiveTab(initialTab || "information");
     }
-  }, [initialProject]);
+  }, [initialProject, initialTab]);
 
   useEffect(() => {
     if (isOpen) {
@@ -90,29 +101,22 @@ export default function ProjectDetailsModal({
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      const isSelectDropdown =
-        target.closest("[data-radix-select-content]") ||
-        target.closest("[data-radix-popper-content-wrapper]");
-
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(target) &&
-        !isSelectDropdown
-      ) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+  /**
+   * Close only when the backdrop itself is pressed.
+   *
+   * This used to be a document-level mousedown listener that closed whenever
+   * the target sat outside the modal box. Radix layers (the assign-manager
+   * Select, the nested contract dialog) set `pointer-events: none` on <body>
+   * while they are open, so dismissing one made the event target <body> —
+   * outside the modal, matching none of the "is this a portal?" escape
+   * hatches, and the parent modal closed along with it. Checking the backdrop
+   * is the event target instead means portalled content can never reach here.
+   */
+  const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
     }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onClose]);
+  };
 
   const allTabs = [
     {
@@ -135,19 +139,37 @@ export default function ProjectDetailsModal({
       label: "Project Management",
       icon: <FolderKanban className="w-4 h-4" />,
     },
+    {
+      key: "attachments" as ModalTab,
+      label: "Attachments",
+      icon: <LinkIcon className="w-4 h-4" />,
+    },
   ];
 
   const isStaff = user?.role === "DRAFTER" || user?.role === "EMPLOYEE";
   const tabs = isStaff ? allTabs.filter(t => t.key === "information" || t.key === "management") : allTabs;
 
+  const handleDeleteProject = async () => {
+    if (!project || !deletePassword) return;
+    try {
+      await deleteProject({ id: project.id, password: deletePassword }).unwrap();
+      toast.success("Project permanently deleted");
+      setDeletePasswordModalOpen(false);
+      setDeletePassword("");
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to delete project");
+    }
+  };
+
   if (!isOpen || !project) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-none sm:rounded-2xl max-w-6xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-hidden flex flex-col relative"
-      >
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onMouseDown={handleBackdropMouseDown}
+    >
+      <div className="bg-white rounded-none sm:rounded-2xl max-w-6xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-hidden flex flex-col relative">
         {/* Header Section */}
         <div className="px-4 sm:px-8 pt-4 pb-0 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4">
@@ -178,18 +200,20 @@ export default function ProjectDetailsModal({
 
             {!readOnly && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                {project && project.meetingLinks && project.meetingLinks.filter(m => m.meetingUrl === "https://pending.request").length > 0 && (
+                {project && project.meetingLinks && project.meetingLinks.filter((m: any) => m.status === "PENDING_CLIENT_REQUEST").length > 0 && (
                   <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg border border-amber-200 font-bold animate-pulse flex items-center gap-2">
                     <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
                     NEW MEETING REQUEST
                   </div>
                 )}
-                <button
-                  onClick={onClose}
-                  className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-md"
-                >
-                  Delete Inquiry
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => setDeletePasswordModalOpen(true)}
+                    className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-md"
+                  >
+                    Delete Inquiry
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -251,6 +275,9 @@ export default function ProjectDetailsModal({
             {activeTab === "management" && (
               <ProjectMgmtTab project={{ ...project, meetingLinks }} readOnly={readOnly} />
             )}
+            {activeTab === "attachments" && (
+              <AttachmentsTab project={{ ...project, meetingLinks }} />
+            )}
           </Suspense>
         </div>
 
@@ -262,6 +289,68 @@ export default function ProjectDetailsModal({
           ×
         </button>
       </div>
+
+      {/* Delete Inquiry password confirmation */}
+      <Dialog
+        open={deletePasswordModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletePasswordModalOpen(false);
+            setDeletePassword("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Delete Inquiry</DialogTitle>
+            <p className="text-sm text-gray-500">
+              This will permanently delete{" "}
+              <span className="font-semibold text-gray-700">{project.projectName}</span> and
+              all related data. This action cannot be undone. Enter your password to confirm.
+            </p>
+          </DialogHeader>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Your password"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setDeletePasswordModalOpen(false);
+                setDeletePassword("");
+              }}
+              className="flex-1 px-4 py-2.5 text-sm cursor-pointer font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteProject}
+              disabled={!deletePassword || isDeletingProject}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {isDeletingProject ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 cursor-pointer animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Inquiry"
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

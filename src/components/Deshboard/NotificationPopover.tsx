@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -17,8 +17,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const NotificationPopover = () => {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   const { data, isLoading } = useGetNotificationsQuery();
   const [markAsRead] = useMarkAsReadMutation();
   const [markAllAsRead] = useMarkAllAsReadMutation();
@@ -56,14 +59,23 @@ const NotificationPopover = () => {
     }
   };
 
-  const handleMarkRead = async (id: string, isRead: boolean) => {
-    if (!isRead) {
-      await markAsRead(id);
+  /**
+   * Clicking a notification marks it read and follows its deep link. Links
+   * carry the target as query params (?project=&tab=&proposal=), which the
+   * destination dashboard uses to open the right modal on the right tab.
+   */
+  const handleNotificationClick = async (notification: any) => {
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
+    if (notification.link) {
+      setOpen(false);
+      navigate(notification.link);
     }
   };
 
   return (
-    <Popover >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative cursor-pointer bg-white hover:bg-slate-100 p-2 rounded-full transition-colors">
           <Bell className="size-6 text-slate-600" />
@@ -96,7 +108,7 @@ const NotificationPopover = () => {
               {data.data.map((notification) => (
                 <div
                   key={notification.id}
-                  onClick={() => handleMarkRead(notification.id, notification.isRead)}
+                  onClick={() => handleNotificationClick(notification)}
                   className={`group relative flex flex-col p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!notification.isRead ? "bg-slate-50/30" : ""
                     }`}
                 >

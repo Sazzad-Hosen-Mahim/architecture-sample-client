@@ -1,21 +1,18 @@
 import { useGetMyProjectRequestsQuery } from "@/redux/api/adminDashboard/proposalApi";
 import {
     Loader2,
-    ExternalLink,
+    // ExternalLink,
     CheckCircle2,
     Clock,
     LayoutList,
     MoreHorizontal,
-    CalendarPlus,
-    X
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ClientProjectDetailsModal from "./ClientProjectDetailsModal";
-import ProposalsModal from "./ProposalsModal";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { getProjectProgress } from "@/utils/projectProgress";
+import { useProjectDeepLink } from "@/hooks/useProjectDeepLink";
 import { toast } from "sonner";
-import { useRequestMeetingMutation } from "@/redux/api/meetingApi";
 
 interface ProjectDataTableProps {
     searchQuery?: string;
@@ -24,42 +21,28 @@ interface ProjectDataTableProps {
 const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
     const { data: response, isLoading } = useGetMyProjectRequestsQuery();
 
-    const projects = response?.data || [];
+    const projects = useMemo(() => response?.data || [], [response]);
     const [selectedProject, setSelectedProject] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isProposalsModalOpen, setIsProposalsModalOpen] = useState(false);
-    const [selectedProposalsProject, setSelectedProposalsProject] = useState<any | null>(null);
 
-    // Meeting request state
-    const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
-    const [meetingProject, setMeetingProject] = useState<any | null>(null);
-    const [meetingForm, setMeetingForm] = useState({ scheduledAt: "", notes: "" });
-    const [requestMeeting, { isLoading: isRequestingMeeting }] = useRequestMeetingMutation();
+    // Notification deep links land here as ?project=&tab=&proposal=
+    const deepLink = useProjectDeepLink();
+    useEffect(() => {
+        if (!deepLink.projectId || isLoading) return;
+        const match = projects.find((p: any) => p.id === deepLink.projectId);
+        if (match) {
+            setSelectedProject(match);
+            setIsModalOpen(true);
+        } else {
+            toast.error("That project is no longer available.");
+        }
+        // Not cleared here — the modal still needs tab/proposal on this render.
+    }, [deepLink, isLoading, projects]);
 
     const filteredProjects = projects.filter((project) =>
         project.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.serviceType.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    const handleRequestMeeting = async () => {
-        if (!meetingForm.scheduledAt) {
-            toast.error("Please select a preferred date and time");
-            return;
-        }
-        try {
-            await requestMeeting({
-                projectRequestId: meetingProject.id,
-                scheduledAt: meetingForm.scheduledAt,
-                notes: meetingForm.notes,
-            }).unwrap();
-            toast.success("Meeting request sent! The project manager will get back to you.");
-            setIsMeetingDialogOpen(false);
-            setMeetingProject(null);
-            setMeetingForm({ scheduledAt: "", notes: "" });
-        } catch (error: any) {
-            toast.error(error?.data?.message || "Failed to send meeting request");
-        }
-    };
 
     if (isLoading) {
         return (
@@ -89,7 +72,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                         <th className="px-6 py-4 text-left font-semibold">Service</th>
                         <th className="px-6 py-4 text-left font-semibold">Overall Progress</th>
                         <th className="px-6 py-4 text-left font-semibold">Latest Phase</th>
-                        <th className="px-6 py-4 text-center font-semibold">Deliverables</th>
+                        {/* <th className="px-6 py-4 text-center font-semibold">Deliverables</th> */}
                         <th className="px-6 py-4 text-center font-semibold">Status</th>
                         <th className="px-6 py-4 text-right font-semibold">Action</th>
                     </tr>
@@ -99,9 +82,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                     {filteredProjects.map((project: any) => {
                         const stages = project.stages || [];
                         const completedStages = stages.filter((s: any) => s.status === "COMPLETED");
-                        const progress = stages.length > 0
-                            ? Math.round((completedStages.length / stages.length) * 100)
-                            : 0;
+                        const progress = getProjectProgress(project.status, completedStages.length, stages.length);
 
                         const currentStage = stages.find((s: any) => s.status !== "COMPLETED") || stages[stages.length - 1];
 
@@ -145,7 +126,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                         <span className="text-gray-300 italic text-xs">Waiting for contract...</span>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 text-center">
+                                {/* <td className="px-6 py-4 text-center">
                                     {stages.some((s: any) => s.driveLink) ? (
                                         <div className="flex flex-col items-center gap-1">
                                             <a
@@ -166,7 +147,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                     ) : (
                                         <span className="text-[10px] text-gray-400 italic">No files yet</span>
                                     )}
-                                </td>
+                                </td> */}
                                 <td className="px-6 py-4 text-center">
                                     <StatusBadge status={project.status} />
                                 </td>
@@ -175,7 +156,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                            className="h-8 px-2 text-blue-600 cursor-pointer hover:text-blue-700 hover:bg-blue-50"
                                             onClick={() => {
                                                 setSelectedProject(project);
                                                 setIsModalOpen(true);
@@ -185,35 +166,6 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                             <span className="text-xs font-bold uppercase">Details</span>
                                         </Button>
 
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                            onClick={() => {
-                                                if (!project.proposals || project.proposals.length === 0) {
-                                                    toast.error("No proposals found for this project");
-                                                    return;
-                                                }
-                                                setSelectedProposalsProject(project);
-                                                setIsProposalsModalOpen(true);
-                                            }}
-                                        >
-                                            <FileText className="w-4 h-4 mr-1" />
-                                            <span className="text-xs font-bold uppercase">Proposals</span>
-                                        </Button>
-
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                            onClick={() => {
-                                                setMeetingProject(project);
-                                                setIsMeetingDialogOpen(true);
-                                            }}
-                                        >
-                                            <CalendarPlus className="w-4 h-4 mr-1" />
-                                            <span className="text-xs font-bold uppercase">Request a Meeting</span>
-                                        </Button>
                                     </div>
                                 </td>
                             </tr>
@@ -228,93 +180,15 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                     onClose={() => {
                         setIsModalOpen(false);
                         setSelectedProject(null);
+                        // Drop the deep link so the next project opens normally.
+                        deepLink.clear();
                     }}
                     project={selectedProject}
+                    initialTab={deepLink.tab}
+                    initialProposalId={deepLink.proposalId}
                 />
             )}
 
-            {selectedProposalsProject && (
-                <ProposalsModal
-                    isOpen={isProposalsModalOpen}
-                    onClose={() => {
-                        setIsProposalsModalOpen(false);
-                        setSelectedProposalsProject(null);
-                    }}
-                    proposals={selectedProposalsProject.proposals || []}
-                    projectName={selectedProposalsProject.projectName}
-                />
-            )}
-
-            {/* Meeting Request Dialog */}
-            {isMeetingDialogOpen && meetingProject && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">Request a Meeting</h3>
-                                <p className="text-xs text-gray-500 mt-1">{meetingProject.projectName}</p>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setIsMeetingDialogOpen(false);
-                                    setMeetingProject(null);
-                                    setMeetingForm({ scheduledAt: "", notes: "" });
-                                }}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                            >
-                                <X className="w-4 h-4 text-gray-400" />
-                            </button>
-                        </div>
-                        <div className="px-6 py-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-1">
-                                    Preferred Date & Time <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    value={meetingForm.scheduledAt}
-                                    onChange={(e) => setMeetingForm((prev) => ({ ...prev, scheduledAt: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-1">Notes (optional)</label>
-                                <textarea
-                                    value={meetingForm.notes}
-                                    onChange={(e) => setMeetingForm((prev) => ({ ...prev, notes: e.target.value }))}
-                                    placeholder="What would you like to discuss?"
-                                    rows={3}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                                />
-                            </div>
-                        </div>
-                        <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
-                            <button
-                                onClick={() => {
-                                    setIsMeetingDialogOpen(false);
-                                    setMeetingProject(null);
-                                    setMeetingForm({ scheduledAt: "", notes: "" });
-                                }}
-                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleRequestMeeting}
-                                disabled={isRequestingMeeting}
-                                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
-                            >
-                                {isRequestingMeeting ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
-                                ) : (
-                                    <><CalendarPlus className="w-4 h-4 mr-2" /> Send Request</>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

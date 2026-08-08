@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
+import { toExternalUrl } from "@/utils/externalUrl";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import {
@@ -10,8 +11,7 @@ import {
     useCompleteStageMutation,
     useUpdateStageMutation,
     useAddStageNoteMutation,
-    useStartPhaseTimerMutation,
-    useStopPhaseTimerMutation,
+    useStartProjectMutation,
 } from "@/redux/api/adminDashboard/proposalApi";
 import {
     Loader2,
@@ -30,9 +30,7 @@ import {
     Calendar,
     X,
     Play,
-    Square,
     TrendingUp,
-    Clock as ClockIcon,
     AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -86,63 +84,93 @@ const formatDuration = (seconds: number) => {
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
-// Subcomponent for the per-phase timer
-function PhaseTimer({ stage, readOnly }: { stage: any; readOnly?: boolean }) {
-    const [startTimer] = useStartPhaseTimerMutation();
-    const [stopTimer] = useStopPhaseTimerMutation();
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+/** Average number of days per month - the constant used for project duration. */
+const DAYS_PER_MONTH = 30.44;
+
+// Single project-level timer/duration control, shown once in the project
+// header bar (never per proposal or per phase).
+//   Start Date = when the timer is pressed (isProjectStarted / projectStartedAt)
+//   End Date   = when every phase is marked complete - captured automatically by
+//                the backend completeStage auto-complete, which stops the timer
+//   Total Time = (End - Start) rounded up to whole days, / 30.44 for months
+function ProjectTimer({ project, readOnly }: { project: ProjectRequest; readOnly?: boolean }) {
+    const [startProject, { isLoading: isStarting }] = useStartProjectMutation();
     const [elapsed, setElapsed] = useState(0);
 
-    useEffect(() => {
-        let interval: any;
-        if (stage.activeTimerStart) {
-            const start = new Date(stage.activeTimerStart).getTime();
-            interval = setInterval(() => {
-                const now = new Date().getTime();
-                const diff = Math.floor((now - start) / 1000);
-                setElapsed((stage.accumulatedTime || 0) + diff);
-            }, 1000);
-        } else {
-            setElapsed(stage.accumulatedTime || 0);
-        }
-        return () => clearInterval(interval);
-    }, [stage.activeTimerStart, stage.accumulatedTime]);
+    const isStarted = !!project.isProjectStarted;
+    const isCompleted = !!project.projectCompletedAt;
 
-    const handleToggleTimer = async () => {
+    useEffect(() => {
+        if (!isStarted || !project.projectStartedAt) return;
+
+        const start = new Date(project.projectStartedAt).getTime();
+
+        if (isCompleted && project.projectCompletedAt) {
+            const end = new Date(project.projectCompletedAt).getTime();
+            setElapsed(Math.floor((end - start) / 1000));
+            return;
+        }
+
+        const tick = () => setElapsed(Math.floor((new Date().getTime() - start) / 1000));
+        tick();
+        const interval = setInterval(tick, 1000);
+        return () => clearInterval(interval);
+    }, [isStarted, isCompleted, project.projectStartedAt, project.projectCompletedAt]);
+
+    const handleStart = async (e: MouseEvent) => {
+        e.stopPropagation();
         try {
-            if (stage.activeTimerStart) {
-                await stopTimer(stage.id).unwrap();
-                toast.success("Timer stopped. Time saved.");
-            } else {
-                await startTimer(stage.id).unwrap();
-                toast.success("Timer started!");
-            }
+            await startProject(project.id).unwrap();
+            toast.success("Project started!");
         } catch (error: any) {
-            toast.error(error?.data?.message || "Failed to toggle timer");
+            toast.error(error?.data?.message || "Failed to start project");
         }
     };
 
-    const isActive = !!stage.activeTimerStart;
+    if (!isStarted) {
+        return readOnly ? null : (
+            <button
+                onClick={handleStart}
+                disabled={isStarting}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black text-white text-xs font-bold hover:bg-gray-800 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                title="Start Project"
+            >
+                {isStarting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                Start Project
+            </button>
+        );
+    }
+
+    const startDate = new Date(project.projectStartedAt as string);
+    const endDate = isCompleted ? new Date(project.projectCompletedAt as string) : new Date();
+    const totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / MS_PER_DAY));
+    const totalMonths = totalDays / DAYS_PER_MONTH;
 
     return (
-        <div className="flex flex-col items-end gap-1">
-            <div className={`text-[10px] font-black tracking-widest uppercase ${isActive ? "text-green-600 animate-pulse" : "text-gray-400"}`}>
-                {isActive ? "Timer Running" : "Final Duration"}
-            </div>
-            <div className="flex items-center gap-3">
-                <div className={`font-mono text-sm font-bold bg-gray-50 px-2 py-1 rounded border ${isActive ? "border-green-200 text-green-700" : "border-gray-100 text-gray-500"}`}>
+        <div className="flex flex-col items-start sm:items-end gap-2">
+            <div className="flex items-center gap-2">
+                <div className={`text-[10px] font-black tracking-widest uppercase ${isCompleted ? "text-gray-400" : "text-green-600 animate-pulse"}`}>
+                    {isCompleted ? "Final Duration" : "Timer Running"}
+                </div>
+                <div className={`font-mono text-sm font-bold bg-white px-2 py-1 rounded border ${isCompleted ? "border-gray-100 text-gray-500" : "border-green-200 text-green-700"}`}>
                     {formatDuration(elapsed)}
                 </div>
-                {!readOnly && (
-                    <button
-                        onClick={handleToggleTimer}
-                        className={`p-2 rounded-full transition-all shadow-sm ${isActive
-                            ? "bg-red-500 text-white hover:bg-red-600 active:scale-95"
-                            : "bg-black text-white hover:bg-gray-800 active:scale-95"}`}
-                        title={isActive ? "Stop Phase" : "Start Phase"}
-                    >
-                        {isActive ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-                    </button>
-                )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-semibold text-gray-500">
+                <span>
+                    <span className="text-gray-400 uppercase tracking-wider">Start</span>{" "}
+                    {formatDeadlineDate(project.projectStartedAt)}
+                </span>
+                <span>
+                    <span className="text-gray-400 uppercase tracking-wider">End</span>{" "}
+                    {isCompleted ? formatDeadlineDate(project.projectCompletedAt) : "In progress"}
+                </span>
+                <span className="text-gray-700">
+                    <span className="text-gray-400 uppercase tracking-wider">Total</span>{" "}
+                    {totalDays} {totalDays === 1 ? "day" : "days"} &middot; {totalMonths.toFixed(2)} months
+                </span>
             </div>
         </div>
     );
@@ -368,13 +396,6 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-2 sm:gap-8">
-                                            {/* Task 2: Timer Integration */}
-                                            {!isCompleted && (
-                                                <div className="hidden md:block">
-                                                    <PhaseTimer stage={stage} readOnly={readOnly} />
-                                                </div>
-                                            )}
-
                                             {/* Deadline add buttons - only for authorized users */}
                                             {!readOnly && !isCompleted && userCanManageDeadlines && (
                                                 <div className="flex items-center gap-1 flex-shrink-0 flex-wrap">
@@ -384,7 +405,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                                                 ...prev,
                                                                 [stage.id]: prev[stage.id] === "internal" ? null : "internal",
                                                             }))}
-                                                            className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-2 py-1 rounded border transition-colors ${activeDeadlineInput === "internal"
+                                                            className={`inline-flex cursor-pointer items-center gap-0.5 text-[10px] font-medium px-2 py-1 rounded border transition-colors ${activeDeadlineInput === "internal"
                                                                 ? "bg-orange-100 border-orange-300 text-orange-700"
                                                                 : "bg-white border-gray-200 text-gray-500 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600"
                                                                 }`}
@@ -400,7 +421,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                                                 ...prev,
                                                                 [stage.id]: prev[stage.id] === "external" ? null : "external",
                                                             }))}
-                                                            className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-2 py-1 rounded border transition-colors ${activeDeadlineInput === "external"
+                                                            className={`inline-flex cursor-pointer items-center gap-0.5 text-[10px] font-medium px-2 py-1 rounded border transition-colors ${activeDeadlineInput === "external"
                                                                 ? "bg-blue-100 border-blue-300 text-blue-700"
                                                                 : "bg-white border-gray-200 text-gray-500 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
                                                                 }`}
@@ -543,14 +564,14 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                                         <button
                                                             onClick={() => handleAddInternalNote(stage.id)}
                                                             disabled={isAddingNote}
-                                                            className="px-3 py-1.5 text-[10px] font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1"
+                                                            className="px-3 cursor-pointer py-1.5 text-[10px] font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1"
                                                         >
                                                             {isAddingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
                                                             Post Internal Note
                                                         </button>
                                                         <button
                                                             onClick={() => setShowNotesInput(prev => ({ ...prev, [stage.id]: false }))}
-                                                            className="px-3 py-1.5 text-[10px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                                                            className="px-3 py-1.5 cursor-pointer text-[10px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
                                                         >
                                                             Cancel
                                                         </button>
@@ -559,7 +580,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                             ) : (
                                                 <button
                                                     onClick={() => setShowNotesInput(prev => ({ ...prev, [stage.id]: true }))}
-                                                    className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-all"
+                                                    className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-all"
                                                 >
                                                     <MessageSquare className="w-3.5 h-3.5" />
                                                     {stage.notes ? "Add Another Note" : "Add Internal Note"}
@@ -584,7 +605,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                     {stage.driveLink && !isEditing && (
                                         <div className="flex items-center gap-2 mt-2">
                                             <a
-                                                href={stage.driveLink}
+                                                href={toExternalUrl(stage.driveLink) ?? undefined}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium truncate"
@@ -596,7 +617,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                                 <div className="flex items-center gap-1 flex-shrink-0">
                                                     <button
                                                         onClick={() => handleEditDriveLink(stage.id, stage.driveLink)}
-                                                        className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                                                        className="inline-flex cursor-pointer items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
                                                     >
                                                         <Pencil className="w-2.5 h-2.5" />
                                                         Edit
@@ -604,7 +625,7 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                                     <button
                                                         onClick={() => handleDeleteDriveLink(stage.id)}
                                                         disabled={isUpdating}
-                                                        className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
+                                                        className="inline-flex cursor-pointer items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
                                                     >
                                                         <Trash2 className="w-2.5 h-2.5" />
                                                     </button>
@@ -619,10 +640,10 @@ function ProposalStages({ proposal, readOnly }: { proposal: Proposal; readOnly?:
                                             onClick={() =>
                                                 setShowDriveLinkInput((prev) => ({ ...prev, [stage.id]: true }))
                                             }
-                                            className="inline-flex items-center gap-1 mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                                            className="inline-flex cursor-pointer items-center gap-1 mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
                                         >
                                             <LinkIcon className="w-3 h-3" />
-                                            Add Google Drive Link
+                                            Add Project Drive Link
                                         </button>
                                     )}
 
@@ -781,21 +802,12 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                 </div>
             )}
 
-            <div className="flex items-center justify-between bg-gray-50/50 p-4 rounded-xl border border-gray-100 mb-2">
+            {/* Project header - holds the one and only project timer */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100 mb-2">
                 <p className="text-xs text-gray-500 max-w-md">
-                    Manage project phases from signed contracts. Check phases and mark them as complete. Optionally add Google Drive links for client deliverables.
+                    Manage project phases from signed contracts. Check phases and mark them as complete. Optionally add Project Drive links for client deliverables.
                 </p>
-                {project.isProjectStarted && project.projectStartedAt && (
-                    <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Project Active For</p>
-                            <p className="text-lg font-mono font-bold text-black flex items-center gap-2">
-                                <ClockIcon className="w-5 h-5 text-blue-600" />
-                                {Math.floor((new Date().getTime() - new Date(project.projectStartedAt).getTime()) / (1000 * 60 * 60 * 24))} Days
-                            </p>
-                        </div>
-                    </div>
-                )}
+                <ProjectTimer project={project} readOnly={readOnly} />
             </div>
 
             {acceptedProposals.map((proposal) => {
@@ -809,9 +821,14 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                             }`}
                     >
                         {/* Proposal Header */}
-                        <button
+                        <div
+                            role="button"
+                            tabIndex={0}
                             onClick={() => toggleProposal(proposal.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isAmendment
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") toggleProposal(proposal.id);
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer ${isAmendment
                                 ? "bg-purple-50 hover:bg-purple-100"
                                 : "bg-gray-50 hover:bg-gray-100"
                                 }`}
@@ -836,7 +853,7 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                                 <span className="text-xs text-gray-400 font-mono">{proposal.proposalNumber}</span>
                             </div>
 
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-3 flex-shrink-0">
                                 <span className="text-xs text-gray-500 font-medium">
                                     {proposal.services?.length || 0} services
                                 </span>
@@ -844,7 +861,7 @@ export default function ProjectMgmtTab({ project, readOnly }: ProjectMgmtTabProp
                                     ${Number(proposal.totalAmount || 0).toLocaleString()}
                                 </span>
                             </div>
-                        </button>
+                        </div>
 
                         {/* Expanded: Stages */}
                         {isExpanded && (

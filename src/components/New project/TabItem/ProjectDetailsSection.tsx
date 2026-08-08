@@ -13,6 +13,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { countries } from "@/data/countries-states";
+import ThumbprintButton from "../ThumbprintButton";
 
 interface ProjectDetailsSectionProps {
   formData: any;
@@ -44,9 +45,11 @@ export default function ProjectDetailsSection({
     specialRequirements: formData?.specialRequirements || "",
     serviceTypeOther: formData?.serviceTypeOther || "",
     projectTypeOther: formData?.projectTypeOther || "",
+    projectSizeUnit: formData?.projectSizeUnit || "sqf",
 
     // ----- address fields (the ones we make dynamic) -----
     projectStreetAddress: formData?.projectStreetAddress || "",
+    projectAptSuiteUnit: formData?.projectAptSuiteUnit || "",
     projectCity: formData?.projectCity || "",
     projectState: formData?.projectState || "",
     projectZipCode: formData?.projectZipCode || "",
@@ -61,12 +64,15 @@ export default function ProjectDetailsSection({
   /* ------------------------------------------------------------------ */
   /* 2. “Same as mailing address” logic                                   */
   /* ------------------------------------------------------------------ */
-  const [sameAsMailingAddress, setSameAsMailingAddress] = useState(false);
+  const [sameAsMailingAddress, setSameAsMailingAddress] = useState(
+    formData?.projectLocationSameAsClient ?? false
+  );
 
   const copyMailingToProject = () => {
     setLocalFormData((prev) => ({
       ...prev,
       projectStreetAddress: formData.address || "",
+      projectAptSuiteUnit: formData.aptSuiteUnit || "",
       projectCity: formData.city || "",
       projectState: formData.state || "",
       projectZipCode: formData.zipCode || "",
@@ -188,13 +194,16 @@ export default function ProjectDetailsSection({
   /* ------------------------------------------------------------------ */
   /* 5. Navigation                                                       */
   /* ------------------------------------------------------------------ */
-  const goNext = () => {
-    updateFormData(localFormData); // push everything to parent
-    goToNextSection();
-  };
+  // const goNext = () => {
+  //   updateFormData(localFormData); // push everything to parent
+  //   goToNextSection();
+  // };
 
   const goPrev = () => {
-    updateFormData(localFormData);
+    updateFormData({
+      ...localFormData,
+      projectLocationSameAsClient: sameAsMailingAddress,
+    });
     goToPreviousSection();
   };
 
@@ -204,9 +213,9 @@ export default function ProjectDetailsSection({
   return (
     <div className="space-y-6 pb-6">
       {/* --------------------------------------------------- Project Name */}
-      <div>
+      <div >
         <h2 className="text-base font-medium mb-4">Project Name</h2>
-        <Label htmlFor="projectName" className="text-xs font-normal">
+        <Label htmlFor="projectName" className="mb-2" >
           Name
         </Label>
         <Input
@@ -220,7 +229,7 @@ export default function ProjectDetailsSection({
       </div>
 
       {/* --------------------------------------------------- Project Location */}
-      <div>
+      <div className="space-y-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-medium">Project Location</h2>
           <div className="flex items-center space-x-2">
@@ -237,105 +246,9 @@ export default function ProjectDetailsSection({
           </div>
         </div>
 
-        {/* ----- Country ----- */}
-        <div className="space-y-2">
-          <Label htmlFor="projectCountry" className="text-xs font-normal">
-            Country
-          </Label>
-          <Select
-            value={localFormData.projectCountry}
-            onValueChange={(v) => handleSelectChange("projectCountry", v)}
-            disabled={sameAsMailingAddress}
-          >
-            <SelectTrigger className="mt-1 w-full">
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px] bg-white">
-              {countries.map((c) => (
-                <SelectItem key={c.code} value={c.name}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {/* ----- State ----- */}
-        <div className="mt-4">
-          <Label htmlFor="projectState" className="text-xs font-normal">
-            State / Province
-          </Label>
-          {loadingStates ? (
-            <p className="text-sm text-gray-500">Loading states…</p>
-          ) : states.length > 0 ? (
-            <Select
-              value={localFormData.projectState}
-              onValueChange={(v) => handleSelectChange("projectState", v)}
-              disabled={sameAsMailingAddress}
-            >
-              <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Select a state" />
-              </SelectTrigger>
-              <SelectContent className="bg-white max-h-[300px]">
-                {states.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id="projectState"
-              name="projectState"
-              value={localFormData.projectState}
-              onChange={handleInputChange}
-              placeholder="Enter state or province"
-              className="mt-1"
-              disabled={sameAsMailingAddress}
-            />
-          )}
-        </div>
-
-        {/* ----- City ----- */}
-        <div className="mt-4">
-          <Label htmlFor="projectCity" className="text-xs font-normal">
-            City
-          </Label>
-          {loadingCities ? (
-            <p className="text-sm text-gray-500">Loading cities…</p>
-          ) : cities.length > 0 ? (
-            <Select
-              value={localFormData.projectCity}
-              onValueChange={(v) => handleSelectChange("projectCity", v)}
-              disabled={sameAsMailingAddress}
-            >
-              <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Select a city" />
-              </SelectTrigger>
-              <SelectContent className="bg-white max-h-[300px]">
-                {cities.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id="projectCity"
-              name="projectCity"
-              value={localFormData.projectCity}
-              onChange={handleInputChange}
-              placeholder="Enter city"
-              className="mt-1"
-              disabled={sameAsMailingAddress}
-            />
-          )}
-        </div>
-
         {/* ----- Street Address ----- */}
         <div className="mt-4">
-          <Label htmlFor="projectStreetAddress" className="text-xs font-normal">
+          <Label className="mb-2" htmlFor="projectStreetAddress" >
             Street Address
           </Label>
           <Input
@@ -349,21 +262,136 @@ export default function ProjectDetailsSection({
           />
         </div>
 
-        {/* ----- Zip Code ----- */}
-        <div className="mt-4">
-          <Label htmlFor="projectZipCode" className="text-xs font-normal">
-            Zip Code
+        {/* ----- Country ----- */}
+        <div className="space-y-2">
+          <Label className="mb-2" htmlFor="projectCountry" >
+            Country
           </Label>
-          <Input
-            id="projectZipCode"
-            name="projectZipCode"
-            value={localFormData.projectZipCode}
-            onChange={handleInputChange}
-            className="mt-1"
-            required
+          <Select
+            value={localFormData.projectCountry}
+            onValueChange={(v) => handleSelectChange("projectCountry", v)}
             disabled={sameAsMailingAddress}
-          />
+          >
+            <SelectTrigger className="mt-1 w-full">
+              <SelectValue placeholder="Select country" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] bg-white border-gray-300">
+              {countries.map((c) => (
+                <SelectItem key={c.code} value={c.name} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        {/* ----- State ----- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="mt-4">
+            <Label className="mb-2" htmlFor="projectState">
+              State / Province
+            </Label>
+            {loadingStates ? (
+              <p className="text-sm text-gray-500">Loading states…</p>
+            ) : states.length > 0 ? (
+              <Select
+                value={localFormData.projectState}
+                onValueChange={(v) => handleSelectChange("projectState", v)}
+                disabled={sameAsMailingAddress}
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="Select a state" />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-[300px] border-gray-300">
+                  {states.map((s) => (
+                    <SelectItem key={s} value={s} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="projectState"
+                name="projectState"
+                value={localFormData.projectState}
+                onChange={handleInputChange}
+                placeholder="Enter state or province"
+                className="mt-1"
+                disabled={sameAsMailingAddress}
+              />
+            )}
+          </div>
+          <div className="mt-4">
+            <Label className="mb-2" htmlFor="projectZipCode" >
+              Zip Code
+            </Label>
+            <Input
+              id="projectZipCode"
+              name="projectZipCode"
+              value={localFormData.projectZipCode}
+              onChange={handleInputChange}
+              // className="mt-1"
+              required
+              disabled={sameAsMailingAddress}
+            />
+          </div>
+        </div>
+
+
+        {/* ----- City ----- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
+          <div className="">
+            <Label className="mb-2" htmlFor="projectCity" >
+              City
+            </Label>
+            {loadingCities ? (
+              <p className="text-sm text-gray-500">Loading cities…</p>
+            ) : cities.length > 0 ? (
+              <Select
+                value={localFormData.projectCity}
+                onValueChange={(v) => handleSelectChange("projectCity", v)}
+                disabled={sameAsMailingAddress}
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="Select a city" />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-[300px] border-gray-300">
+                  {cities.map((c) => (
+                    <SelectItem key={c} value={c} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="projectCity"
+                name="projectCity"
+                value={localFormData.projectCity}
+                onChange={handleInputChange}
+                placeholder="Enter city"
+                // className="mt-1"
+                disabled={sameAsMailingAddress}
+              />
+            )}
+          </div>
+          <div className="">
+            <div>
+              <Label className="mb-2" htmlFor="projectAptSuiteUnit">Apt / Suite / Unit</Label>
+              <Input
+                id="projectAptSuiteUnit"
+                name="projectAptSuiteUnit"
+                value={localFormData.projectAptSuiteUnit}
+                onChange={handleInputChange}
+                disabled={sameAsMailingAddress}
+              />
+            </div>
+          </div>
+        </div>
+
+
+        {/* ----- Zip Code ----- */}
+
       </div>
 
       {/* --------------------------------------------------- Project Specifications */}
@@ -373,7 +401,7 @@ export default function ProjectDetailsSection({
           {/* ---- Service Type + optional “Other” input ---- */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="serviceType" className="text-xs font-normal">
+              <Label className="mb-2" htmlFor="serviceType" >
                 Service Type
               </Label>
 
@@ -384,15 +412,15 @@ export default function ProjectDetailsSection({
                 <SelectTrigger className="mt-1 w-full">
                   <SelectValue placeholder="Select service type" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="new-construction">
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="new-construction" className="hover:bg-gray-800 hover:text-white cursor-pointer">
                     New Construction
                   </SelectItem>
-                  <SelectItem value="renovation">
+                  <SelectItem value="renovation" className="hover:bg-gray-800 hover:text-white cursor-pointer">
                     Renovation / Remodel
                   </SelectItem>
-                  <SelectItem value="addition">Tenant Improvement</SelectItem>
-                  <SelectItem value="consultation">Other</SelectItem>
+                  <SelectItem value="addition" className="hover:bg-gray-800 hover:text-white cursor-pointer">Tenant Improvement</SelectItem>
+                  <SelectItem value="consultation" className="hover:bg-gray-800 hover:text-white cursor-pointer">Other</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -410,7 +438,7 @@ export default function ProjectDetailsSection({
 
             {/* ---- Project Type + optional “Other” input ---- */}
             <div className="space-y-2">
-              <Label htmlFor="projectType" className="text-xs font-normal">
+              <Label className="mb-2" htmlFor="projectType" >
                 Project Type
               </Label>
 
@@ -421,10 +449,10 @@ export default function ProjectDetailsSection({
                 <SelectTrigger className="mt-1 w-full">
                   <SelectValue placeholder="Project Type" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="residential">Residential</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="residential" className="hover:bg-gray-800 hover:text-white cursor-pointer">Residential</SelectItem>
+                  <SelectItem value="commercial" className="hover:bg-gray-800 hover:text-white cursor-pointer">Commercial</SelectItem>
+                  <SelectItem value="other" className="hover:bg-gray-800 hover:text-white cursor-pointer">Other</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -441,94 +469,67 @@ export default function ProjectDetailsSection({
             </div>
           </div>
 
-          {/* ---- Square Footage ---- */}
-          <div>
-            <Label htmlFor="squareFootage" className="text-xs font-normal">
-              Project Size
-            </Label>
-            <Input
-              id="squareFootage"
-              name="squareFootage"
-              type="number"
-              value={localFormData.squareFootage}
-              onChange={handleInputChange}
-              className="mt-1"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* ---- Square Footage ---- */}
+            <div>
+              <Label className="mb-2" htmlFor="squareFootage" >
+                Project Size ( Estimate )
+              </Label>
+              <div className="flex justify-center items-center w-full">
+
+                <Input
+                  id="squareFootage"
+                  name="squareFootage"
+                  type="number"
+                  value={localFormData.squareFootage}
+                  onChange={handleInputChange}
+                  className=" flex-1 border-r-0 rounded-r-none"
+                  required
+                />
+                <div>
+                  <Select
+                    value={localFormData.projectSizeUnit}
+                    onValueChange={(v) => handleSelectChange("projectSizeUnit", v)}
+                  >
+                    <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
+                      <SelectValue placeholder="Sq Ft / Sq M" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-300">
+                      <SelectItem value="sqf" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq Ft</SelectItem>
+                      <SelectItem value="sqm" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq M</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            {/* budget range  */}
+            <div>
+              <Label className="mb-2" htmlFor="budgetRange" >
+                Budget Range
+              </Label>
+              <Select
+                value={localFormData.budgetRange}
+                onValueChange={(v) => handleSelectChange("budgetRange", v)}
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="Select budget range" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="under-100k" className="hover:bg-gray-800 hover:text-white cursor-pointer">Under $100,000</SelectItem>
+                  <SelectItem value="100k-250k" className="hover:bg-gray-800 hover:text-white cursor-pointer">$100,000 - $250,000</SelectItem>
+                  <SelectItem value="250k-500k" className="hover:bg-gray-800 hover:text-white cursor-pointer">$250,000 - $500,000</SelectItem>
+                  <SelectItem value="500k-1m" className="hover:bg-gray-800 hover:text-white cursor-pointer">$500,000 - $1 million</SelectItem>
+                  <SelectItem value="over-1m" className="hover:bg-gray-800 hover:text-white cursor-pointer">Over $1 million</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* budget range  */}
-          <div>
-            <Label htmlFor="budgetRange" className="text-xs font-normal">
-              Budget Range
-            </Label>
-            <Select
-              value={localFormData.budgetRange}
-              onValueChange={(v) => handleSelectChange("budgetRange", v)}
-            >
-              <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Select budget range" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="under-100k">Under $100,000</SelectItem>
-                <SelectItem value="100k-250k">$100,000 - $250,000</SelectItem>
-                <SelectItem value="250k-500k">$250,000 - $500,000</SelectItem>
-                <SelectItem value="500k-1m">$500,000 - $1 million</SelectItem>
-                <SelectItem value="over-1m">Over $1 million</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
+
+
         </div>
       </div>
-
-      {/* --------------------------------------------------- Timeline & Budget */}
-      {/* <div>
-        <h2 className="text-base font-medium mb-4">
-          Project Timeline and Budget
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="projectTimeline" className="text-xs font-normal">
-              Expected Project Timeline
-            </Label>
-            <Select
-              value={localFormData.projectTimeline}
-              onValueChange={(v) => handleSelectChange("projectTimeline", v)}
-            >
-              <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Select expected timeline" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="0-6-months">0-6 months</SelectItem>
-                <SelectItem value="6-12-months">6-12 months</SelectItem>
-                <SelectItem value="1-2-years">1-2 years</SelectItem>
-                <SelectItem value="2-plus-years">2+ years</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="budgetRange" className="text-xs font-normal">
-              Budget Range
-            </Label>
-            <Select
-              value={localFormData.budgetRange}
-              onValueChange={(v) => handleSelectChange("budgetRange", v)}
-            >
-              <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Select budget range" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="under-100k">Under $100,000</SelectItem>
-                <SelectItem value="100k-250k">$100,000 - $250,000</SelectItem>
-                <SelectItem value="250k-500k">$250,000 - $500,000</SelectItem>
-                <SelectItem value="500k-1m">$500,000 - $1 million</SelectItem>
-                <SelectItem value="over-1m">Over $1 million</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div> */}
 
       {/* --------------------------------------------------- Architectural Preferences */}
       <div>
@@ -536,8 +537,8 @@ export default function ProjectDetailsSection({
           Architectural Preferences
         </h2>
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="architecturalStyle" className="text-xs font-normal">
+          {/* <div>
+            <Label htmlFor="architecturalStyle" >
               Preferred Architectural Style
             </Label>
             <Textarea
@@ -548,10 +549,10 @@ export default function ProjectDetailsSection({
               className="mt-1"
               placeholder="e.g., Modern, Traditional, Mediterranean, etc."
             />
-          </div>
+          </div> */}
           <div>
-            <Label htmlFor="siteConstraints" className="text-xs font-normal">
-              Site Constraints or Challenges
+            <Label htmlFor="siteConstraints" >
+              Site Constraints and Notes
             </Label>
             <Textarea
               id="siteConstraints"
@@ -567,39 +568,20 @@ export default function ProjectDetailsSection({
 
       {/* --------------------------------------------------- Sustainability & Special */}
       <div>
-        <h2 className="text-base font-medium mb-4">
-          Sustainability and Special Requirements
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <Label
-              htmlFor="sustainabilityGoals"
-              className="text-xs font-normal"
-            >
-              Sustainability Goals
-            </Label>
-            <Textarea
-              id="sustainabilityGoals"
-              name="sustainabilityGoals"
-              value={localFormData.sustainabilityGoals}
-              onChange={handleInputChange}
-              className="mt-1"
-              placeholder="e.g., LEED certification, energy efficiency, etc."
-            />
-          </div>
+        <div className="space-y-2">
           <div>
             <Label
               htmlFor="specialRequirements"
-              className="text-xs font-normal"
+
             >
-              Special Requirements or Accessibility Needs
+              Additional Notes / Contextual Requirements
             </Label>
             <Textarea
               id="specialRequirements"
               name="specialRequirements"
               value={localFormData.specialRequirements}
               onChange={handleInputChange}
-              className="mt-1"
+              className="mt-2"
               placeholder="e.g., ADA compliance, home office, etc."
             />
           </div>
@@ -608,48 +590,46 @@ export default function ProjectDetailsSection({
 
       {/* --------------------------------------------------- Required Documents */}
       <div>
-        <h2 className="text-base font-medium mb-4">Required Documents</h2>
+        <h2 className="font-bold mb-4">Additional Documents</h2>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label
-                htmlFor="propertyBoundarySurveyMap"
-                className="text-xs font-normal"
-              >
-                Property Boundary/Survey Map
-              </Label>
-              <Input
-                id="propertyBoundarySurveyMap"
-                name="propertyBoundarySurveyMap"
-                type="file"
-                onChange={handleFileChange}
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="geotechnicalReport"
-                className="text-xs font-normal"
-              >
-                Geotechnical Report/Survey
-              </Label>
-              <Input
-                id="geotechnicalReport"
-                name="geotechnicalReport"
-                type="file"
-                onChange={handleFileChange}
-                className="mt-1"
-                required
-              />
-            </div>
+          <div>
+            <Label
+              htmlFor="propertyBoundarySurveyMap"
+              className="mb-2"
+            >
+              Property Boundary / Survey Map
+            </Label>
+            <Input
+              id="propertyBoundarySurveyMap"
+              name="propertyBoundarySurveyMap"
+              type="file"
+              onChange={handleFileChange}
+              className="mt-1 cursor-pointer"
+              required
+            />
+          </div>
+          <div>
+            <Label
+              htmlFor="geotechnicalReport"
+              className="mb-2"
+            >
+              Geotechnical Report / Survey
+            </Label>
+            <Input
+              id="geotechnicalReport"
+              name="geotechnicalReport"
+              type="file"
+              onChange={handleFileChange}
+              className="mt-1 cursor-pointer"
+              required
+            />
           </div>
           <div>
             <Label
               htmlFor="additionalProjectPhotos"
-              className="text-xs font-normal"
+              className="mb-2"
             >
-              Additional Project Photos (Optional)
+              Project Photos
             </Label>
             <Input
               id="additionalProjectPhotos"
@@ -657,7 +637,7 @@ export default function ProjectDetailsSection({
               type="file"
               multiple
               onChange={handleFileChange}
-              className="mt-1"
+              className="mt-1 cursor-pointer"
             />
           </div>
         </div>
@@ -674,13 +654,30 @@ export default function ProjectDetailsSection({
           Previous
         </Button>
 
-        <Button
+        {/* <Button
           type="button"
           onClick={goNext}
           className="cursor-pointer border-2 border-black hover:bg-gray-600 hover:border-gray-600 hover:text-white"
         >
           Next Step
-        </Button>
+        </Button> */}
+      </div>
+
+      <div className="w-full mt-10 flex justify-center items-center">
+        <div className="flex justify-center mt-8">
+          <ThumbprintButton
+            // @ts-ignore
+            type="button"
+            onClick={() => {
+              updateFormData({
+                ...localFormData,
+                projectLocationSameAsClient: sameAsMailingAddress,
+              });
+              goToNextSection();
+            }}
+            text="Next Step"
+          />
+        </div>
       </div>
     </div>
   );

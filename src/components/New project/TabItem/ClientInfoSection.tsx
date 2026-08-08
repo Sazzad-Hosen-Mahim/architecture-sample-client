@@ -37,6 +37,7 @@ export default function ClientInfoSection({
     email: formData?.email || "",
     phone: formData?.phone || "",
     address: formData?.address || "",
+    aptSuiteUnit: formData?.aptSuiteUnit || "",
     city: formData?.city || "",
     state: formData?.state || "",
     zipCode: formData?.zipCode || "",
@@ -207,6 +208,16 @@ export default function ClientInfoSection({
           <Label htmlFor="country" className="font-semibold my-7">
             Client Contact Address
           </Label>
+          <div className="space-y-2">
+            <Label htmlFor="address">Street Address</Label>
+            <Input
+              id="address"
+              name="address"
+              value={localFormData.address}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
           {/* Country */}
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
@@ -217,11 +228,11 @@ export default function ClientInfoSection({
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a country" />
               </SelectTrigger>
-              <SelectContent className="max-h-[300px] bg-white">
+              <SelectContent className="max-h-[300px] bg-white border-gray-300">
                 <SelectGroup>
                   <SelectLabel>Countries</SelectLabel>
                   {countries.map((country) => (
-                    <SelectItem key={country.code} value={country.name}>
+                    <SelectItem key={country.code} value={country.name} className="hover:bg-gray-800 hover:text-white cursor-pointer">
                       {country.name}
                     </SelectItem>
                   ))}
@@ -231,84 +242,104 @@ export default function ClientInfoSection({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="state">State / Province</Label>
-          {loadingStates ? (
-            <p className="text-sm text-gray-500">Loading states...</p>
-          ) : states.length > 0 ? (
-            <Select
-              value={localFormData.state}
-              onValueChange={(value) => handleSelectChange("state", value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a state" />
-              </SelectTrigger>
-              <SelectContent className="bg-white max-h-[300px]">
-                {states.map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {state}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
+        {/* Province */}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="state">State / Province</Label>
+            {loadingStates ? (
+              <p className="text-sm text-gray-500">Loading states...</p>
+            ) : states.length > 0 ? (
+              <Select
+                value={localFormData.state}
+                onValueChange={(value) => handleSelectChange("state", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a state" />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-[300px] border-gray-300">
+                  {states.map((state) => (
+                    <SelectItem key={state} value={state} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="state"
+                name="state"
+                value={localFormData.state}
+                onChange={handleInputChange}
+                placeholder="Enter state or province"
+              />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="zipCode">Zip Code / Postal code</Label>
             <Input
-              id="state"
-              name="state"
-              value={localFormData.state}
+              id="zipCode"
+              name="zipCode"
+              value={localFormData.zipCode}
               onChange={handleInputChange}
-              placeholder="Enter state or province"
+              required
             />
-          )}
+          </div>
+
         </div>
+
 
         {/* 🆕 Dynamic City Dropdown */}
-        <div className="space-y-2">
-          <Label htmlFor="city">City</Label>
-          {loadingCities ? (
-            <p className="text-sm text-gray-500">Loading cities...</p>
-          ) : cities.length > 0 ? (
-            <Select
-              value={localFormData.city}
-              onValueChange={(value) => handleSelectChange("city", value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a city" />
-              </SelectTrigger>
-              <SelectContent className="bg-white max-h-[300px]">
-                {cities.map((city) => (
-                  <SelectItem key={city} value={city}>
-                    {city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id="city"
-              name="city"
-              value={localFormData.city}
-              onChange={handleInputChange}
-              placeholder="Enter city"
-            />
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="address">Street Address</Label>
-          <Input
-            id="address"
-            name="address"
-            value={localFormData.address}
-            onChange={handleInputChange}
-            required
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              {loadingCities ? (
+                <p className="text-sm text-gray-500">Loading cities...</p>
+              ) : cities.length > 0 ? (
+                <Select
+                  value={localFormData.city}
+                  onValueChange={(value) => handleSelectChange("city", value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a city" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white max-h-[300px] border-gray-300">
+                    {cities.map((city) => (
+                      <SelectItem key={city} value={city} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="city"
+                  name="city"
+                  value={localFormData.city}
+                  onChange={handleInputChange}
+                  placeholder="Enter city"
+                />
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="space-y-2">
+              <Label htmlFor="aptSuiteUnit">Apt / Suite / Unit</Label>
+              <Input
+                id="aptSuiteUnit"
+                name="aptSuiteUnit"
+                value={localFormData.aptSuiteUnit}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
         </div>
 
         <Textarea
           id="projectDescription"
           name="additionalComments"
-          placeholder="write your additionalComments"
+          placeholder="Additional Comments"
           value={localFormData.additionalComments}
           onChange={handleInputChange}
           rows={4}

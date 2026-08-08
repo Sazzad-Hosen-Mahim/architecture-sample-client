@@ -27,8 +27,9 @@ interface ProjectFormProps {
     serviceType: string;
     projectType: string;
     squareFootage: string;
+    projectSizeUnit: string;
     budgetRange: string;
-    timeline: string;
+    // timeline: string;
   };
   handleProjectInfoChange: (field: string, value: string | boolean) => void;
   handleNext: () => void;
@@ -91,9 +92,11 @@ export default function ProjectTabForm({
       zip: String(projectInfo.zip || ""),
       serviceType: String(serviceType).toUpperCase().replace(/\s+/g, '_'),
       projectCategory: String(projectCategory).toUpperCase().replace(/\s+/g, '_'),
-      squareFootage: String(projectInfo.squareFootage || ""),
+      squareFootage: projectInfo.squareFootage
+        ? `${projectInfo.squareFootage} ${projectInfo.projectSizeUnit === 'sqm' ? 'sq m' : 'sq ft'}`
+        : "",
       budgetRange: String(projectInfo.budgetRange || ""),
-      expectedTimeline: String(projectInfo.timeline || ""),
+      // expectedTimeline: String(projectInfo.timeline || ""),
     };
 
     try {
@@ -322,15 +325,32 @@ export default function ProjectTabForm({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="squareFootage">Square Footage</Label>
-          <Input
-            id="squareFootage"
-            type="number"
-            value={projectInfo.squareFootage}
-            onChange={(e) =>
-              handleProjectInfoChange("squareFootage", e.target.value)
-            }
-          />
+          <Label htmlFor="squareFootage">Project Size (Estimate)</Label>
+          <div className="flex justify-center items-center w-full">
+            <Input
+              id="squareFootage"
+              type="number"
+              value={projectInfo.squareFootage}
+              onChange={(e) =>
+                handleProjectInfoChange("squareFootage", e.target.value)
+              }
+              className="flex-1 border-r-0 rounded-r-none"
+            />
+            <div>
+              <Select
+                value={projectInfo.projectSizeUnit || "sqf"}
+                onValueChange={(v) => handleProjectInfoChange("projectSizeUnit", v)}
+              >
+                <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
+                  <SelectValue placeholder="Sq Ft / Sq M" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="sqf" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq Ft</SelectItem>
+                  <SelectItem value="sqm" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq M</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -354,7 +374,7 @@ export default function ProjectTabForm({
           </Select>
         </div>
 
-        <div className="flex flex-col gap-2">
+        {/* <div className="flex flex-col gap-2">
           <Label htmlFor="timeline">Expected Timeline</Label>
           <Select
             value={projectInfo.timeline}
@@ -372,7 +392,7 @@ export default function ProjectTabForm({
               <SelectItem value="Over 2 years">Over 2 years</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </div> */}
       </div>
 
       <div className="flex justify-between">

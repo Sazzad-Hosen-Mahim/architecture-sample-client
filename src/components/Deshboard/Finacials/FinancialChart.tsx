@@ -23,10 +23,59 @@ ChartJS.register(
   Legend
 );
 
-export function FinancialChart({ projectId }: { projectId?: string }) {
-  const { data: history, isLoading } = useGetFinancialHistoryQuery(projectId);
+/**
+ * The Revenue line is plotted (and read back in the tooltip) $10,000 above the
+ * actual figure so it stays clear of the Cost/Profit lines. The stat cards
+ * below the chart always show the true, un-offset numbers.
+ */
+/** Axis colours — each axis is tinted to match the series that reads off it. */
+const AMOUNT_AXIS_COLOR = "#4b5563";
+const UTILIZATION_COLOR = "rgb(249, 115, 22)";
 
-  console.log(history, "historyyy")
+const PROJECT_REVENUE_OFFSET = 10000;
+
+/**
+ * How far the firm-wide amount axis sits above the average monthly net
+ * revenue, so the series are not pinned to the top of the plot area.
+ */
+const FIRM_AXIS_HEADROOM = 100000;
+
+const formatShortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+/**
+ * Firm-wide totals, taken straight from the Financial Summary so the stat
+ * cards below the chart always agree with the panel above it.
+ */
+export interface FirmTotals {
+  netRevenue: number;
+  totalCosts: number;
+  totalProfit: number;
+  /** All billable hours / all timecard hours, already as a percentage. */
+  utilization: number;
+}
+
+interface FinancialChartProps {
+  projectId?: string;
+  /** Firm-wide only: "all" spans the firm's whole history, "year" one year. */
+  scope?: "all" | "year";
+  year?: number;
+  totals?: FirmTotals;
+}
+
+export function FinancialChart({ projectId, scope, year, totals }: FinancialChartProps) {
+  const { data, isLoading } = useGetFinancialHistoryQuery(
+    projectId ? { projectId } : { scope, year }
+  );
+  // Only the project chart lifts its revenue line; the firm-wide chart gets
+  // headroom on the axis instead (see suggestedMax below).
+  const revenueOffset = projectId ? PROJECT_REVENUE_OFFSET : 0;
+  const history = data?.history;
+  const summary = data?.summary ?? null;
 
   if (isLoading) {
     return (
@@ -51,12 +100,39 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
   const profit = history.map((h) => h.profit);
   const utilization = history.map((h) => h.utilization);
 
+  // Firm-wide cards divide the Financial Summary totals by the months on the
+  // chart (12 for a single year), so they always reconcile with the panel
+  // above. Project cards keep their own summary. Averaging the monthly buckets
+  // - the old behaviour - never matched either.
+  const monthCount = history.length || 12;
+
+  const avgRevenue = totals
+    ? totals.netRevenue / monthCount
+    : summary
+      ? summary.avgMonthlyRevenue
+      : totalRevenue.reduce((a, b) => a + b, 0) / (totalRevenue.length || 1);
+  const avgCost = totals
+    ? totals.totalCosts / monthCount
+    : summary
+      ? summary.avgMonthlyCost
+      : totalCost.reduce((a, b) => a + b, 0) / (totalCost.length || 1);
+  const avgProfit = totals
+    ? totals.totalProfit / monthCount
+    : summary
+      ? summary.avgMonthlyProfit
+      : profit.reduce((a, b) => a + b, 0) / (profit.length || 1);
+  const avgUtil = totals
+    ? totals.utilization
+    : summary
+      ? summary.utilization
+      : utilization.reduce((a, b) => a + b, 0) / (utilization.length || 1);
+
   const chartData = {
     labels: months,
     datasets: [
       {
         label: "Total Revenue",
-        data: totalRevenue,
+        data: totalRevenue.map((r) => r + revenueOffset),
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.5)",
         yAxisID: "y",
@@ -140,6 +216,9 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
       },
     },
     scales: {
+      // Amount on the left, Utilization opposite it on the right. Each axis is
+      // tinted to match the series that reads off it, and the utilization line
+      // is dashed, so it stays clear which scale a line belongs to.
       y: {
         type: "linear" as const,
         display: true,
@@ -148,12 +227,16 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
         title: {
           display: true,
           text: "Amount ($)",
+          color: AMOUNT_AXIS_COLOR,
           font: { weight: 'bold' }
         },
         grid: {
           color: '#f3f4f6',
         },
+        // Firm-wide: sit $100,000 above the average monthly net revenue.
+        suggestedMax: projectId ? undefined : avgRevenue + FIRM_AXIS_HEADROOM,
         ticks: {
+          color: AMOUNT_AXIS_COLOR,
           callback: (value) => '$' + value.toLocaleString()
         }
       },
@@ -164,14 +247,19 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
         title: {
           display: true,
           text: "Utilization (%)",
+          color: UTILIZATION_COLOR,
           font: { weight: 'bold' }
         },
         grid: {
+          // Only the amount axis draws gridlines, otherwise two sets of
+          // horizontal rules overlap at different intervals.
           drawOnChartArea: false,
         },
+        border: { color: UTILIZATION_COLOR },
         min: 0,
         max: 100,
         ticks: {
+          color: UTILIZATION_COLOR,
           callback: (value) => value + '%'
         }
       },
@@ -183,15 +271,45 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
     },
   };
 
-  console.log(totalRevenue, "totalRevenue")
-
-  const avgRevenue = totalRevenue.reduce((a, b) => a + b, 0) / (totalRevenue.length || 1);
-  const avgCost = totalCost.reduce((a, b) => a + b, 0) / (totalCost.length || 1);
-  const avgProfit = profit.reduce((a, b) => a + b, 0) / (profit.length || 1);
-  const avgUtil = utilization.reduce((a, b) => a + b, 0) / (utilization.length || 1);
+  // For a project the stat cards come straight from the project totals:
+  //   Avg Monthly Revenue = Total Contract / Total Project Months
+  //   Avg Monthly Cost    = (Labor Cost + Project Overhead) / Total Project Months
+  //   Avg Monthly Profit  = Avg Monthly Revenue - Avg Monthly Cost
+  //   Avg Utilization     = Billable Hours / (Billable + Non-Billable Hours)
+  // The firm-wide chart keeps averaging its 12 monthly buckets.
+  const monthsLabel = summary
+    ? `${summary.totalMonths.toFixed(2)} month${summary.totalMonths === 1 ? "" : "s"}`
+    : "12";
 
   return (
     <div className="space-y-6">
+      {summary && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-blue-50/40 border border-blue-100 rounded-xl px-4 py-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Start Date</p>
+              <p className="text-xs font-bold text-gray-800">{formatShortDate(summary.startDate)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                {summary.isCompleted ? "End Date" : "Today"}
+              </p>
+              <p className="text-xs font-bold text-gray-800">{formatShortDate(summary.endDate)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Project Time</p>
+              <p className="text-xs font-bold text-gray-800">
+                {summary.totalDays} days &middot; {summary.totalMonths.toFixed(2)} months
+              </p>
+            </div>
+          </div>
+          {!summary.isStarted && (
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-1">
+              Timer not started &mdash; measured from project creation
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-6 justify-center bg-gray-50/50 p-4 rounded-xl border border-gray-100">
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></div>
@@ -206,8 +324,11 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
           <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Profit</span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-orange-500 shadow-sm shadow-orange-200"></div>
-          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Utilization</span>
+          {/* Dashed swatch mirrors the dashed line — it reads off the % axis */}
+          <div className="w-4 h-0 border-t-2 border-dashed border-orange-500"></div>
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+            Utilization <span className="text-gray-400">(%)</span>
+          </span>
         </div>
       </div>
 
@@ -219,6 +340,8 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
             datasets: chartData.datasets.map((dataset) => ({
               ...dataset,
               tension: 0.4,
+              // Dashed = reads off the Utilization (%) axis, not dollars.
+              borderDash: dataset.yAxisID === "y1" ? [6, 4] : undefined,
               pointRadius: 4,
               pointHoverRadius: 6,
               pointBackgroundColor: dataset.borderColor,
@@ -237,10 +360,39 @@ export function FinancialChart({ projectId }: { projectId?: string }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Avg Monthly Revenue', value: avgRevenue, color: 'blue', sub: 'Total revenue / 12' },
-          { label: 'Avg Monthly Cost', value: avgCost, color: 'red', sub: 'Total costs / 12' },
-          { label: 'Avg Monthly Profit', value: avgProfit, color: 'green', sub: 'Total profit / 12' },
-          { label: 'Avg Utilization', value: avgUtil, color: 'amber', sub: 'Last 12 months avg', isPct: true },
+          {
+            label: 'Avg Monthly Net Revenue',
+            value: avgRevenue,
+            color: 'blue',
+            sub: totals
+              ? `Net revenue / ${monthCount}`
+              : summary ? `Total contract / ${monthsLabel}` : 'Total revenue / 12',
+          },
+          {
+            label: 'Avg Monthly Cost',
+            value: avgCost,
+            color: 'red',
+            sub: totals
+              ? `Total costs / ${monthCount}`
+              : summary ? `(Labor + overhead) / ${monthsLabel}` : 'Total costs / 12',
+          },
+          {
+            label: 'Avg Monthly Profit',
+            value: avgProfit,
+            color: 'green',
+            sub: totals
+              ? `Total profit / ${monthCount}`
+              : summary ? 'Avg revenue - avg cost' : 'Total profit / 12',
+          },
+          {
+            label: 'Avg Utilization',
+            value: avgUtil,
+            color: 'amber',
+            sub: totals
+              ? 'Billable / total timecard hours'
+              : summary ? 'Billable / total project hours' : 'Last 12 months avg',
+            isPct: true,
+          },
         ].map((stat, i) => (
           <div key={i} className={`bg-${stat.color}-50/50 p-4 sm:p-5 rounded-xl border border-${stat.color}-100 transition-all hover:shadow-md hover:shadow-${stat.color}-100/20`}>
             <p className={`text-[10px] font-black uppercase tracking-widest text-${stat.color}-600 mb-1`}>{stat.label}</p>

@@ -1,23 +1,13 @@
-import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-
 export default function Terms() {
-  const navigate = useNavigate();
+
   return (
     <div>
-      <div className="max-w-7xl  mx-auto px-4 py-10 sm:px-6 lg:px-8 pb-20">
-        <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full hover:bg-gray-100 cursor-pointer"
-          >
-            <ArrowLeft className="w-5 h-5 text-black" />
-          </button>
-        </div>
+      <div className="max-w-4xl  mx-auto px-4 py-10 sm:px-6 lg:px-8 pb-20">
+
         <h1 className="text-3xl font-semibold mb-10 text-center">
           Terms of Service
         </h1>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="">
           {/* Left Column */}
           <div>
             {/* Section 1 */}
@@ -216,9 +206,9 @@ export default function Terms() {
                 us:
               </p>
               <p className="mb-2 text-sm">
-                Email: support@architecturesimple.com
+                Email: <span className="font-semibold">contactus@architecturesimple.com</span>
               </p>
-              <p className="text-sm">Phone: Owners control feature</p>
+              {/* <p className="text-sm">Phone: Owners control feature</p> */}
             </section>
           </div>
         </div>

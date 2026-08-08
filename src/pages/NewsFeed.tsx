@@ -9,6 +9,7 @@ import preview3 from "@/assets/newsfeed/preview-3.jpg";
 import article1 from "@/assets/newsfeed/newsfeed-1.jpg";
 import { Link } from "react-router-dom";
 import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 
 function NewsFeed() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,6 +23,7 @@ function NewsFeed() {
     summary: item.excerpt || item.content?.substring(0, 150) + "...",
     image: item.coverImage || (item.assets && item.assets[0]?.cdnUrl) || article1,
     source: item.author || "Architecture Simple",
+    photographer: item.photographer || "",
   })) || [];
 
   // Filter newsItems based on search term
@@ -29,7 +31,8 @@ function NewsFeed() {
     (news: any) =>
       news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       news.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      news.source.toLowerCase().includes(searchTerm.toLowerCase())
+      news.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      news.photographer.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const featured = featuredData?.data?.[0];
@@ -125,26 +128,30 @@ function NewsFeed() {
                 </div>
               </div>
 
-              <div className="md:w-1/2">
-                <h3 className="text-sm font-semibold mb-2 text-card-foreground">
-                  {featuredProject.name}
-                </h3>
-                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 text-muted-foreground mb-4">
-                  <span>Year: {featuredProject.year}</span>
-                  <span>Architect: {featuredProject.architect}</span>
-                  <span>Photo: {featuredProject.photographer}</span>
-                  <span>Location: {featuredProject.location}</span>
+              <div className="md:w-1/2 flex flex-col ">
+                <div>
+                  <h3 className="text-sm font-semibold mb-2 text-card-foreground">
+                    {featuredProject.name}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 text-muted-foreground mb-4">
+                    <span>Year: {featuredProject.year}</span>
+                    <span>Architect: {featuredProject.architect}</span>
+                    <span>Photographer: {featuredProject.photographer}</span>
+                    <span>Location: {featuredProject.location}</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs mb-4 text-gray-700  leading-relaxed">
+                    {featuredProject.summary}
+                  </p>
                 </div>
-                <p className="text-muted-foreground text-xs mb-4 text-gray-700  leading-relaxed">
-                  {featuredProject.summary}
-                </p>
 
-                <Link
-                  to={`/newsFeed/${featuredProject.id}`}
-                  className="px-4 py-2 border border-border text-xs bg-background cursor-pointer hover:bg-accent text-gray-600 hover:text-accent-foreground rounded-md hover:text-white hover:bg-black  transition-colors"
-                >
-                  View Project Details
-                </Link>
+                <div className="self-end mt-auto">
+                  <Link
+                    to={`/newsFeed/${featuredProject.id}`}
+                    className="px-4 py-2  border border-border text-xs bg-background cursor-pointer hover:bg-accent text-gray-600 hover:text-accent-foreground rounded-md hover:text-white hover:bg-black  transition-colors"
+                  >
+                    View Project Details
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -152,6 +159,10 @@ function NewsFeed() {
       </div>
       <div>
         <LatestNews filteredNews={filteredNews} />
+      </div>
+      {/* footer  */}
+      <div className="mb-32 mt-12">
+        <HeroSocialMedia />
       </div>
     </div>
   );

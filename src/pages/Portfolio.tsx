@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 
 export default function Portfolio() {
   const navigate = useNavigate();
@@ -203,6 +204,9 @@ export default function Portfolio() {
             </Card>
           ))}
         </div>
+      </div>
+      <div className="mb-38 mt-12">
+        <HeroSocialMedia />
       </div>
     </div>
   );

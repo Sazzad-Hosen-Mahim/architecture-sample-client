@@ -124,10 +124,10 @@ export default function ProjectFinancialDetailsModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-[900px] max-h-[90vh] flex flex-col bg-white text-black p-0 overflow-hidden font-semibold">
+            <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-[900px] max-h-[90vh] flex flex-col bg-white text-black p-0 border-none overflow-hidden font-semibold">
                 <div id="project-financial-content" className="w-full max-w-full overflow-x-hidden flex flex-col flex-1 min-h-0">
                     <DialogHeader className="px-4 lg:px-8 py-4 sm:py-6 border-b border-gray-100 bg-gray-50/50 flex-shrink-0">
-                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mt-5">
                             <div className="space-y-1 w-full sm:w-auto">
                                 <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 break-words">
                                     {details.projectName}
@@ -164,7 +164,7 @@ export default function ProjectFinancialDetailsModal({
                     <div className="p-4 sm:p-8 overflow-y-auto overflow-x-hidden w-full max-w-full space-y-6 sm:space-y-10 flex-1 min-h-0">
 
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 cursor-crosshair gap-3 sm:gap-4">
                             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
                                 <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
                                     <Clock size={14} className="group-hover:text-blue-400" />
@@ -189,14 +189,14 @@ export default function ProjectFinancialDetailsModal({
                                 <div className="text-xl font-black">{formatCurrency(details.totalLaborCost)}</div>
                                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">Actual Employee Pay</p>
                             </div>
-                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
-                                <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
-                                    <BarChart3 size={14} className="group-hover:text-amber-400" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Project Overhead</span>
-                                </div>
+                            {/* <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
+                                    <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
+                                        <BarChart3 size={14} className="group-hover:text-amber-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Project Overhead</span>
+                                    </div>
                                 <div className="text-xl font-black">{formatCurrency(details.projectOverheadAllocation)}</div>
                                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">Non-Billable × ${details.firmBillingRate}/hr</p>
-                            </div>
+                            </div> */}
                             {(details.totalAmendmentAmount || 0) > 0 && (
                                 <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 space-y-2 group hover:bg-amber-900 hover:text-white transition-all duration-300 shadow-sm">
                                     <div className="flex items-center gap-2 text-amber-500 group-hover:text-amber-300">
@@ -224,7 +224,7 @@ export default function ProjectFinancialDetailsModal({
                                             <th className="px-4 py-4">Contract Fee</th>
                                             <th className="px-4 py-4">Amt Burned</th>
                                             <th className="px-4 py-4">Labor Cost</th>
-                                            <th className="px-4 py-4">Overhead</th>
+                                            {/* <th className="px-4 py-4">Overhead</th> */}
                                             <th className="px-4 py-4 text-right">Profit / Margin</th>
                                         </tr>
                                     </thead>
@@ -240,7 +240,7 @@ export default function ProjectFinancialDetailsModal({
                                                 <td className="px-4 py-4 text-blue-600 font-black">{formatCurrency(phase.price)}</td>
                                                 <td className="px-4 py-4 font-bold text-gray-700">{formatCurrency(phase.burned)}</td>
                                                 <td className="px-4 py-4 text-gray-600">{formatCurrency(phase.laborCost)}</td>
-                                                <td className="px-4 py-4 text-gray-600">{formatCurrency(phase.overhead)}</td>
+                                                {/* <td className="px-4 py-4 text-gray-600">{formatCurrency(phase.overhead)}</td> */}
                                                 <td className="px-4 py-4 text-right">
                                                     <div className={`font-black ${phase.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
                                                         {formatCurrency(phase.profit)}

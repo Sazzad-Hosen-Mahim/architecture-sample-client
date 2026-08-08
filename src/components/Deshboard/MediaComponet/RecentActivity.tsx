@@ -89,7 +89,7 @@ export default function RecentActivity() {
               onClick={() => setFilter(f)}
               className="text-[10px] h-7 px-2"
             >
-              {f === "NEWS" ? "Newsfeed" : f.replace("_", " ")}
+              {f === "NEWS" ? "NEWSFEED" : f.replace("_", " ")}
             </Button>
           ))}
         </div>

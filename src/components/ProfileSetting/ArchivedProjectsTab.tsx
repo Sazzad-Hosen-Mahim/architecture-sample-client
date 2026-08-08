@@ -32,8 +32,13 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useAppSelector } from "@/hooks/useRedux";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 
 export function ArchivedProjectsTab() {
+    const currentUser = useAppSelector(selectCurrentUser);
+    const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+
     const { data: response, isLoading, isError } = useGetArchivedProjectsQuery();
     const [unarchiveProject] = useUnarchiveProjectMutation();
     const [deleteProject] = useDeleteProjectMutation();
@@ -42,6 +47,7 @@ export function ArchivedProjectsTab() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
     const [confirmText, setConfirmText] = useState("");
+    const [deletePassword, setDeletePassword] = useState("");
 
     const archivedProjects = response || [];
 
@@ -64,15 +70,20 @@ export function ArchivedProjectsTab() {
             toast.error("Please type 'Delete' to confirm");
             return;
         }
+        if (!deletePassword) {
+            toast.error("Please enter your password to confirm");
+            return;
+        }
 
         try {
-            await deleteProject(projectToDelete.id).unwrap();
+            await deleteProject({ id: projectToDelete.id, password: deletePassword }).unwrap();
             toast.success("Project permanently deleted");
             setDeleteConfirmOpen(false);
             setProjectToDelete(null);
             setConfirmText("");
-        } catch (error) {
-            toast.error("Failed to delete project");
+            setDeletePassword("");
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to delete project");
         }
     };
 
@@ -164,18 +175,20 @@ export function ArchivedProjectsTab() {
                                                 <RotateCcw className="w-4 h-4 mr-1" />
                                                 Restore
                                             </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                                                onClick={() => {
-                                                    setProjectToDelete(project);
-                                                    setDeleteConfirmOpen(true);
-                                                }}
-                                                title="Permanently Delete"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {isSuperAdmin && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                                                    onClick={() => {
+                                                        setProjectToDelete(project);
+                                                        setDeleteConfirmOpen(true);
+                                                    }}
+                                                    title="Permanently Delete"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -208,19 +221,30 @@ export function ArchivedProjectsTab() {
                             placeholder="Type 'Delete' to confirm"
                             className="border-red-200 focus:ring-red-500"
                         />
+                        <p className="text-sm text-gray-600">
+                            Enter your account password to confirm this permanent deletion.
+                        </p>
+                        <Input
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Your password"
+                            className="border-red-200 focus:ring-red-500"
+                        />
                     </div>
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => {
                             setDeleteConfirmOpen(false);
                             setConfirmText("");
+                            setDeletePassword("");
                         }}>
                             Cancel
                         </Button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white"
                             onClick={handleDelete}
-                            disabled={confirmText.toLowerCase() !== "delete"}
+                            disabled={confirmText.toLowerCase() !== "delete" || !deletePassword}
                         >
                             Confirm Delete
                         </Button>

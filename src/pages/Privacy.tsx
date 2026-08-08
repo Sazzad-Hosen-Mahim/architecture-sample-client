@@ -1,20 +1,13 @@
-import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+
 
 export default function Privacy() {
-  const navigate = useNavigate();
   return (
     <div>
-      <div className="max-w-7xl mx-auto px-4 mt-5 ">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-full hover:bg-gray-100 cursor-pointer"
-        >
-          <ArrowLeft className="w-5 h-5 text-black" />
-        </button>
-      </div>
+
       <div className="max-w-4xl mx-auto px-4 py-5 sm:px-6 lg:px-8 pb-10">
-        <h1 className="text-xl  mb-6">Privacy Policy</h1>
+        <h1 className="text-3xl font-semibold mb-10 text-center">
+          Privacy Policy
+        </h1>
 
         {/* 1. Introduction */}
         <section className="mb-8">
@@ -178,13 +171,14 @@ export default function Privacy() {
 
         {/* 9. Contact Us */}
         <section>
-          <h2 className="text-xl  mb-4">9. Contact Us</h2>
+          <h2 className=" mb-4">9. Contact Us</h2>
           <p className="mb-4 text-sm">
             If you have questions about this policy or how we handle your data,
             contact us at:
           </p>
-          <p className="mb-2">Email: privacy@architecturesimple.com</p>
-          <p className="mb-2">Phone: (925) 922-4374</p>
+          <p className="mb-2 text-sm">
+            Email: <span className="font-semibold">contactus@architecturesimple.com</span>
+          </p>
           {/* <p>
             Architecture Simple LLC
             <br />

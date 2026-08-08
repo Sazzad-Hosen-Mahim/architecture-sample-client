@@ -33,7 +33,16 @@ export interface NewInquiryProjectInfo {
 export interface CreateNewInquiryRequest {
     clientInfo: NewInquiryClientInfo;
     projectInfo: NewInquiryProjectInfo;
-    password: string;
+    password?: string;
+}
+
+export interface CheckEmailExistsResponse {
+    exists: boolean;
+    emailVerified: boolean;
+    role: string | null;
+    hasPassword: boolean;
+    /** True only when the PM has to set a password for this client. */
+    needsPassword: boolean;
 }
 
 export interface NewInquiry {
@@ -49,6 +58,7 @@ export interface NewInquiry {
     budgetRange: string | null;
     status: string;
     isNewInquiry: boolean;
+    consultationPaymentId: string | null;
     createdAt: string;
     updatedAt: string;
     user?: {
@@ -119,6 +129,25 @@ export const newInquiryApi = baseApi.injectEndpoints({
             }),
             providesTags: ["Project"],
         }),
+
+        checkEmailExists: builder.query<CheckEmailExistsResponse, string>({
+            query: (email) => ({
+                url: `/project-requests-admin/check-email?email=${encodeURIComponent(email)}`,
+                method: "GET",
+            }),
+        }),
+
+        attachConsultationPayment: builder.mutation<
+            { success: boolean; message: string },
+            { projectRequestId: string; paymentIntentId: string }
+        >({
+            query: ({ projectRequestId, paymentIntentId }) => ({
+                url: `/project-requests-admin/${projectRequestId}/pay-consultation`,
+                method: "POST",
+                body: { paymentIntentId },
+            }),
+            invalidatesTags: ["Project"],
+        }),
     }),
 });
 
@@ -126,4 +155,6 @@ export const {
     useCreateNewInquiryMutation,
     useGetAllNewInquiriesQuery,
     useGetMyNewInquiriesQuery,
+    useLazyCheckEmailExistsQuery,
+    useAttachConsultationPaymentMutation,
 } = newInquiryApi;

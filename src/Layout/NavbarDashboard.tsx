@@ -11,7 +11,8 @@ import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 import logo from "@/assets/logo.png";
 import TimeCardDialog from "@/components/Deshboard/TimeCardDialog/TimeCardDialog";
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
-import { logout, selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { signOut } from "@/redux/features/auth/authActions";
 
 export default function NavbarDashboard() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function NavbarDashboard() {
   const toggleMenu = () => setIsOpen(!isOpen);
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(signOut());
     navigate("/login");
   };
 
@@ -50,11 +51,14 @@ export default function NavbarDashboard() {
   }, [isOpen]);
 
   return (
-    <nav className="bg-white sticky top-0 z-50 border-b border-gray-200 px-6">
-      <div className="mx-auto px-4 sm:px-6 lg:px-16">
+    <nav className="bg-white sticky top-0 z-50 border-b border-gray-200 p-4">
+      <div className="mx-auto px-2 lg:px-12">
         <div className="flex items-center justify-between h-12 ">
           {/* Left: Desktop menu (hidden on mobile) */}
-          <div className="hidden md:flex space-x-4">
+          <div className="flex md:hidden ">
+            <NotificationPopover />
+          </div>
+          <div className="hidden md:flex space-x-2  w-1/3">
             <NavLink
               to="/dashboard"
               end
@@ -88,7 +92,17 @@ export default function NavbarDashboard() {
                   Financials
                 </NavLink>
 
-
+                {/* {(user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
+                  <NavLink
+                    to="/dashboard/adjust-rates"
+                    className={({ isActive }) =>
+                      `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                      }`
+                    }
+                  >
+                    Adjust Rates
+                  </NavLink>
+                )} */}
               </>
             )}
             <NavLink
@@ -130,17 +144,17 @@ export default function NavbarDashboard() {
           </div>
 
           {/* Logo */}
-          <div className="flex-shrink-0 mx-auto md:mx-0">
+          <div className="flex  flex-shrink-1 w-1/3">
             <Link to="/" className="flex items-center gap-2">
               <img src={logo} alt="Logo" className="w-8 h-8" />
               <span className="text-xl font-extralight tracking-wide">
-                Architecture Simple<span className="text-yellow-400">.</span>
+                Architecture Simple
               </span>
             </Link>
           </div>
 
           {/* Right: Desktop User Avatar */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center justify-end gap-4 w-1/3">
             {/* Notification Dropdown */}
             <NotificationPopover />
 
@@ -177,7 +191,7 @@ export default function NavbarDashboard() {
                   onClick={() => navigate("/profile-settings")}
                   className=" text-black w-full cursor-pointer hover:bg-gray-400"
                 >
-                  setting
+                  Setting
                 </Button>
                 <Button
                   onClick={handleLogout}
@@ -311,6 +325,18 @@ export default function NavbarDashboard() {
                 >
                   Financials
                 </NavLink>
+
+                {(user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
+                  <NavLink
+                    to="/dashboard/adjust-rates"
+                    className={({ isActive }) =>
+                      `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                      }`
+                    }
+                  >
+                    Adjust Rates
+                  </NavLink>
+                )}
 
                 <NavLink
                   to="/dashboard/teams"

@@ -1,6 +1,7 @@
-import { ArrowLeft, Linkedin } from "lucide-react";
-import { CiInstagram } from "react-icons/ci";
-import { FaFacebook } from "react-icons/fa";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
+import { ArrowLeft } from "lucide-react";
+// import { CiInstagram } from "react-icons/ci";
+// import { FaFacebook } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 
 const About = () => {
@@ -105,43 +106,8 @@ const About = () => {
         </div>
 
         {/* Footer section */}
-        <div className="space-y-8 text-center mt-auto">
-          <div className="space-y-4">
-            <h2 className="text-sm">
-              LICENSED TO PRACTICE IN THE FOLLOWING STATES
-            </h2>
-            <div className="flex justify-center items-center gap-4 text-sm">
-              <span>CALIFORNIA</span>
-              <span className="text-gray-300">.</span>
-              <span>FLORIDA</span>
-              <span className="text-gray-300">.</span>
-              <span>TEXAS</span>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="flex justify-center gap-6">
-              <Link
-                to="#"
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <Linkedin className="w-6 h-6" />
-              </Link>
-              <Link
-                to="#"
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <FaFacebook className="w-6 h-6" />
-              </Link>
-              <Link
-                to="#"
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <CiInstagram className="w-6 h-6" />
-              </Link>
-            </div>
-            <p className="text-sm text-gray-500">Keep it Simple.</p>
-          </div>
+        <div className="mb-32 mt-12">
+          <HeroSocialMedia />
         </div>
       </div>
     </div>

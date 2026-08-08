@@ -168,13 +168,13 @@ export default function RefundBankDetailsModal({ isOpen, onClose, onSubmit }: Re
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-50 transition-colors"
+                            className="flex-1 px-4 cursor-pointer py-3 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-50 transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 px-4 py-3 bg-gray-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-black transition-colors shadow-lg shadow-gray-900/20 active:scale-95"
+                            className="flex-1 px-4 cursor-pointer py-3 bg-gray-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-black transition-colors shadow-lg shadow-gray-900/20 active:scale-95"
                         >
                             Save & Continue
                         </button>

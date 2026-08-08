@@ -19,6 +19,7 @@ import {
 } from "@/redux/api/adminDashboard/masterContractApi";
 import { toast } from "sonner";
 import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
+import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
 
 // PDF related imports
 import {
@@ -81,8 +82,13 @@ export const ContractPDF = ({ contract, sections }: { contract: any; sections: C
                         <Text>{contract?.projectLocation || ""}</Text>
                     </View>
                     <View style={pdfStyles.dateCol}>
-                        <Text>Date: {new Date().toLocaleDateString()}</Text>
-                        <Text>File No. 25-0001</Text>
+                        <Text>
+                            Date:{" "}
+                            {contract?.createdAt
+                                ? new Date(contract.createdAt).toLocaleDateString()
+                                : new Date().toLocaleDateString()}
+                        </Text>
+                        <Text>File No. {contract?.proposalNumber || "—"}</Text>
                     </View>
                 </View>
             </View>
@@ -301,6 +307,7 @@ export default function ContractReviewModal({
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const [showSignature, setShowSignature] = useState(false);
     const signatureRef = useRef<SignatureCanvas>(null);
+    const signatureWrapperRef = useResponsiveSignatureCanvas(signatureRef, 120);
 
     const contract = contractData?.data;
     const rawSections = contract?.contractSections;
@@ -461,7 +468,10 @@ export default function ContractReviewModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-7xl max-h-[95vh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden">
+            {/* DialogContent's base class carries `sm:max-w-lg`, so an
+                unprefixed max-w never applies above the sm breakpoint — the
+                width has to be set at sm and up to actually win. */}
+            <DialogContent className="w-[95vw] sm:max-w-5xl lg:max-w-7xl max-h-[95vh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-3">
@@ -600,7 +610,7 @@ export default function ContractReviewModal({
                                                     />
                                                     <div className="pt-2 border-t border-gray-100">
                                                         <p className="text-sm font-bold text-gray-900">Eric Rivera, AIA</p>
-                                                        <p className="text-xs text-gray-500">Principal Architect</p>
+                                                        <p className="text-xs text-gray-500">Architecture Simple</p>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -617,7 +627,7 @@ export default function ContractReviewModal({
                                                     <img
                                                         src={contract.clientContractSignature!}
                                                         alt="Client Signature"
-                                                        className="h-16 object-contain"
+                                                        className="h-16 w-44 object-contain"
                                                     />
                                                     <div className="pt-2 border-t border-gray-100">
                                                         <p className="text-sm font-bold text-gray-900">{contract?.clientName || "Client"}</p>
@@ -628,14 +638,17 @@ export default function ContractReviewModal({
                                                 </div>
                                             ) : (
                                                 <div className="space-y-4">
-                                                    <div className="border border-gray-200 rounded bg-white">
+                                                    {/* The wrapper is measured and the canvas bitmap
+                                                        resized to match — see useResponsiveSignatureCanvas */}
+                                                    <div
+                                                        ref={signatureWrapperRef}
+                                                        className="border border-gray-200 rounded bg-white overflow-hidden touch-none"
+                                                    >
                                                         <SignatureCanvas
                                                             ref={signatureRef}
                                                             canvasProps={{
-                                                                width: 400,
-                                                                height: 120,
-                                                                className: "w-full",
-                                                                style: { width: "100%", height: "120px" }
+                                                                className: "block w-full cursor-crosshair",
+                                                                style: { height: "120px" },
                                                             }}
                                                         />
                                                     </div>
@@ -644,11 +657,11 @@ export default function ContractReviewModal({
                                                             size="sm"
                                                             onClick={handleSign}
                                                             disabled={isSigning}
-                                                            className="flex-1 bg-green-600 hover:bg-green-700"
+                                                            className="flex-1 bg-green-600 cursor-pointer hover:bg-green-700"
                                                         >
-                                                            {isSigning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign & Complete"}
+                                                            {isSigning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign"}
                                                         </Button>
-                                                        <Button size="sm" variant="outline" onClick={clearSignature}>
+                                                        <Button size="sm" variant="outline" className="cursor-pointer hover:bg-gray-900 hover:text-white" onClick={clearSignature}>
                                                             Clear
                                                         </Button>
                                                     </div>
@@ -690,7 +703,7 @@ export default function ContractReviewModal({
                                         variant="outline"
                                         size="sm"
                                         disabled={loading}
-                                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                        className="text-blue-600 border-blue-200 cursor-pointer hover:bg-blue-50"
                                     >
                                         <Download className="w-4 h-4 mr-2" />
                                         {loading ? "Preparing PDF..." : "Download PDF"}
@@ -698,7 +711,7 @@ export default function ContractReviewModal({
                                 )}
                             </PDFDownloadLink>
                         )}
-                        <Button variant="ghost" size="sm" onClick={onClose}>
+                        <Button variant="ghost" size="sm" onClick={onClose} className="cursor-pointer hover:bg-gray-900 hover:text-white">
                             Close
                         </Button>
                     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Popover,
   PopoverContent,
@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 // import { logout } from "@/store/Slices/AuthSlice/authSlice";
 import logo from "@/assets/logo.png";
-import { logout, selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { signOut } from "@/redux/features/auth/authActions";
+import NotificationPopover from "@/components/Deshboard/NotificationPopover";
+import Backbutton from "@/components/Common/Backbutton";
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
 
 const Navbar: React.FC = () => {
@@ -19,12 +22,16 @@ const Navbar: React.FC = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
+  // never showing back button in home page 
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
+
+  // const toggleMenu = () => {
+  //   setIsOpen(!isOpen);
+  // };
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(signOut());
     navigate("/login");
   };
 
@@ -33,7 +40,11 @@ const Navbar: React.FC = () => {
       <div className=" mx-auto px-4 sm:px-6 lg:px-16">
         <div className="flex items-center justify-between h-12">
           {/* Logo */}
-          <div className="flex-shrink-0">
+          <div className="">
+            {!isHomePage && <Backbutton />}
+          </div>
+          <div className="flex shrink w-full justify-center">
+
             <Link to="/" className="text-black text-2xl ">
               <div className="flex content-center gap-2">
                 <img src={logo} alt="" className="w-8 h-8" />
@@ -45,32 +56,9 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-4">
-            {/* <Link
-              to="/"
-              className="text-white hover:bg-website-color-lightGray hover:text-black px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Home
-            </Link>
-            <Link
-              to="/about"
-              className="text-white hover:bg-website-color-lightGray hover:text-black px-3 py-2 rounded-md text-sm font-medium"
-            >
-              About
-            </Link>
-            <Link
-              to="/services"
-              className="text-white hover:bg-website-color-lightGray hover:text-black px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Services
-            </Link>
-            <Link
-              to="/contact"
-              className="text-white hover:bg-website-color-lightGray hover:text-black px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Contact
-            </Link> */}
-
+          <div className="hidden md:flex items-center gap-3">
+            {/* Notifications sit beside the avatar for signed-in clients */}
+            {user && <NotificationPopover />}
             {user ? (
               <Popover>
                 <PopoverTrigger className="cursor-pointer">
@@ -116,6 +104,7 @@ const Navbar: React.FC = () => {
 
           {/* Mobile Menu Button & Avatar */}
           <div className="md:hidden flex items-center gap-3">
+            {user && <NotificationPopover />}
             {user && (
               <Popover>
                 <PopoverTrigger className="cursor-pointer">
@@ -151,7 +140,16 @@ const Navbar: React.FC = () => {
               </Popover>
             )}
 
-            <button
+            {!user && (
+              <Button
+                onClick={() => navigate("/login")}
+                className="bg-black text-white hover:bg-gray-800 w-full cursor-pointer rounded-lg text-xs"
+              >
+                Login
+              </Button>
+            )}
+
+            {/* <button
               onClick={toggleMenu}
               type="button"
               className="text-black hover:text-gray-600 focus:outline-none"
@@ -178,7 +176,7 @@ const Navbar: React.FC = () => {
                   />
                 )}
               </svg>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

@@ -16,7 +16,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import ClientTabFrom from "@/components/NewProposalTabContent/ClientTabFrom";
-import { useCreateNewInquiryMutation } from "@/redux/api/newInquiryApi";
+import { useCreateNewInquiryMutation, useLazyCheckEmailExistsQuery } from "@/redux/api/newInquiryApi";
 
 export interface NewInquiryPageProps {
     projectData?: any;
@@ -37,6 +37,7 @@ export default function NewInquiryPage({
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const [createNewInquiry, { isLoading: isSubmitting }] = useCreateNewInquiryMutation();
+    const [checkEmailExists, { isFetching: isCheckingEmail }] = useLazyCheckEmailExistsQuery();
 
     // Form state
     const [clientInfo, setClientInfo] = useState({
@@ -66,6 +67,7 @@ export default function NewInquiryPage({
         serviceType: "New Construction",
         projectType: "",
         squareFootage: "",
+        projectSizeUnit: "sqf",
         budgetRange: "",
         timeline: "",
         googleDriveLink: "",
@@ -79,7 +81,7 @@ export default function NewInquiryPage({
         setProjectInfo((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (activeStep === "client") {
             // Validate required client fields
             if (!clientInfo.firstName.trim() || !clientInfo.lastName.trim() || !clientInfo.email.trim()) {
@@ -94,9 +96,22 @@ export default function NewInquiryPage({
                 toast.error("Please fill in the Project Name");
                 return;
             }
-            // Show password modal instead of proceeding
-            setShowPasswordModal(true);
+
             setProgress(100);
+
+            // If the client already has an account with credentials, there's no
+            // password to set — submit directly instead of prompting.
+            try {
+                const result = await checkEmailExists(clientInfo.email.trim()).unwrap();
+                if (!result.needsPassword) {
+                    await submitInquiry();
+                    return;
+                }
+            } catch {
+                // Fall through to the password step as a safe default.
+            }
+
+            setShowPasswordModal(true);
         }
     };
 
@@ -107,19 +122,9 @@ export default function NewInquiryPage({
         }
     };
 
-    const handleSubmitInquiry = async () => {
-        // Validate passwords
-        if (!password || password.length < 6) {
-            toast.error("Password must be at least 6 characters");
-            return;
-        }
-        if (password !== confirmPassword) {
-            toast.error("Passwords do not match");
-            return;
-        }
-
+    const submitInquiry = async (passwordToSend?: string) => {
         try {
-            await createNewInquiry({
+            const response = await createNewInquiry({
                 clientInfo: {
                     firstName: clientInfo.firstName.trim(),
                     lastName: clientInfo.lastName.trim(),
@@ -144,20 +149,41 @@ export default function NewInquiryPage({
                     sameAsMailingAddress: projectInfo.sameAsMailingAddress,
                     serviceType: projectInfo.serviceType || undefined,
                     projectType: projectInfo.projectType || undefined,
-                    squareFootage: projectInfo.squareFootage || undefined,
+                    squareFootage: projectInfo.squareFootage 
+                        ? `${projectInfo.squareFootage} ${projectInfo.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}`
+                        : undefined,
                     budgetRange: projectInfo.budgetRange || undefined,
                     timeline: projectInfo.timeline || undefined,
                 },
-                password,
+                password: passwordToSend,
             }).unwrap();
 
-            toast.success("New inquiry created successfully! Client account has been set up.");
+            toast.success(
+                response?.message ||
+                (passwordToSend
+                    ? "New inquiry created successfully! Client account has been set up."
+                    : "New inquiry created successfully and linked to the client's existing account.")
+            );
             setShowPasswordModal(false);
             navigate("/dashboard");
         } catch (error: any) {
             console.error("Failed to create new inquiry:", error);
             toast.error(error?.data?.message || "Failed to create new inquiry");
         }
+    };
+
+    const handleSubmitInquiry = async () => {
+        // Validate passwords
+        if (!password || password.length < 6) {
+            toast.error("Password must be at least 6 characters");
+            return;
+        }
+        if (password !== confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        await submitInquiry(password);
     };
 
     return (
@@ -248,6 +274,7 @@ export default function NewInquiryPage({
                         handleProjectInfoChange={handleProjectInfoChange}
                         handleNext={handleNext}
                         handleBack={handleBack}
+                        isSubmitting={isCheckingEmail || isSubmitting}
                     />
                 )}
 
@@ -376,11 +403,13 @@ function ProjectTabFormForInquiry({
     handleProjectInfoChange,
     handleNext,
     handleBack,
+    isSubmitting,
 }: {
     projectInfo: any;
     handleProjectInfoChange: (field: string, value: string | boolean) => void;
     handleNext: () => void;
     handleBack: () => void;
+    isSubmitting?: boolean;
 }) {
     // Components are now imported at the top of the file
 
@@ -538,13 +567,30 @@ function ProjectTabFormForInquiry({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div className="flex flex-col gap-2">
-                    <Label htmlFor="squareFootage">Square Footage</Label>
-                    <Input
-                        id="squareFootage"
-                        type="number"
-                        value={projectInfo.squareFootage}
-                        onChange={(e: any) => handleProjectInfoChange("squareFootage", e.target.value)}
-                    />
+                    <Label htmlFor="squareFootage">Project Size (Estimate)</Label>
+                    <div className="flex justify-center items-center w-full">
+                        <Input
+                            id="squareFootage"
+                            type="number"
+                            value={projectInfo.squareFootage}
+                            onChange={(e: any) => handleProjectInfoChange("squareFootage", e.target.value)}
+                            className="flex-1 border-r-0 rounded-r-none"
+                        />
+                        <div>
+                            <Select
+                                value={projectInfo.projectSizeUnit || "sqf"}
+                                onValueChange={(v: any) => handleProjectInfoChange("projectSizeUnit", v)}
+                            >
+                                <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
+                                    <SelectValue placeholder="Sq Ft / Sq M" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-gray-300">
+                                    <SelectItem value="sqf" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq Ft</SelectItem>
+                                    <SelectItem value="sqm" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq M</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -591,9 +637,17 @@ function ProjectTabFormForInquiry({
                 </Button>
                 <Button
                     onClick={handleNext}
+                    disabled={isSubmitting}
                     className="bg-gray-800 text-white hover:bg-black cursor-pointer"
                 >
-                    Submit
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Checking...
+                        </>
+                    ) : (
+                        "Submit"
+                    )}
                 </Button>
             </div>
         </div>

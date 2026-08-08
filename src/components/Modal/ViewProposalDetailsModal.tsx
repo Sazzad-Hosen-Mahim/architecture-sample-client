@@ -258,7 +258,7 @@ const ViewProposalDetailsModal = ({ proposal, onClose }: ViewProposalDetailsModa
                                                 <p className="text-sm text-gray-600 mt-1">{amendment.description}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                {getUrgencyBadge(amendment.urgency)}
+                                                {amendment.urgency && getUrgencyBadge(amendment.urgency)}
                                                 {getAmendmentStatusBadge(amendment.status)}
                                             </div>
                                         </div>

@@ -4,18 +4,16 @@ import { Suspense, lazy, useState, useCallback, useMemo } from "react";
 
 // Lazy load tab components for code splitting
 const ProjectDataTable = lazy(() => import("@/components/Deshboard/UserDashboard/ProjectDataTable"));
-const NewInquiriesClientTab = lazy(() => import("@/components/Deshboard/UserDashboard/NewInquiriesClientTab"));
 
-type TabType = "projects" | "new-inquiries";
+type TabType = "projects";
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState<TabType>("projects");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Memoize tab configuration - meetings merged into projects
+  // Everything a client needs now lives inside a project's details modal.
   const tabs = useMemo(() => [
     { id: "projects", label: "Projects" },
-    { id: "new-inquiries", label: "New Inquiries" },
   ], []);
 
   // Handle tab change
@@ -29,9 +27,7 @@ const UserDashboard = () => {
     setSearchQuery(e.target.value);
   }, []);
 
-  // Active tab component
-  const ActiveTabComponent =
-    activeTab === "projects" ? ProjectDataTable : NewInquiriesClientTab;
+  const ActiveTabComponent = ProjectDataTable;
 
   return (
     <div className="p-3 sm:p-6">

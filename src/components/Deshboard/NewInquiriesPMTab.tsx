@@ -1,4 +1,5 @@
 import { useGetAllNewInquiriesQuery, NewInquiry } from "@/redux/api/newInquiryApi";
+import { toExternalUrl } from "@/utils/externalUrl";
 import { useSendMeetingLinkMutation } from "@/redux/api/meetingApi";
 import {
     Loader2,
@@ -250,7 +251,7 @@ const NewInquiriesPMTab = () => {
                                                         </button>
                                                         {latestMeeting && (
                                                             <a
-                                                                href={latestMeeting.meetingUrl}
+                                                                href={toExternalUrl(latestMeeting.meetingUrl) ?? undefined}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="w-full text-left px-4 py-2.5 flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg transition-colors"

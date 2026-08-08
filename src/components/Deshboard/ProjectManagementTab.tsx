@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { ProjectRequest, useGetProjectRequestsQuery, useGetMyProjectRequestsQuery, useArchiveProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
+import { getProjectProgress } from "@/utils/projectProgress";
+import { useProjectDeepLink } from "@/hooks/useProjectDeepLink";
 import ProjectDetailsModal from "./ProjectDetailesModal";
 import { BsFillClipboard2PlusFill } from "react-icons/bs";
 import { toast } from "sonner";
@@ -107,10 +109,26 @@ export function ProjectManagementTab() {
     setIsModalOpen(true);
   }, []);
 
+  // Notification deep links land here as ?project=&tab=
+  const deepLink = useProjectDeepLink();
+  useEffect(() => {
+    if (!deepLink.projectId || isLoading) return;
+    const match = nonArchivedProjects.find((p) => p.id === deepLink.projectId);
+    if (match) {
+      setSelectedProject(match);
+      setIsModalOpen(true);
+    } else {
+      toast.error("That project is no longer available.");
+    }
+    // Deliberately not cleared here — the modal still needs the tab this render.
+  }, [deepLink, isLoading, nonArchivedProjects]);
+
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedProject(null);
-  }, []);
+    // Drop the deep link so the next project opens on its default tab.
+    deepLink.clear();
+  }, [deepLink]);
 
   // Helper functions
   const formatDate = useCallback((dateString: string) => {
@@ -150,15 +168,10 @@ export function ProjectManagementTab() {
     }
   }, []);
 
-  const getProgress = useCallback((status: string) => {
-    switch (status) {
-      case "PENDING": return 25;
-      case "REVIEWED": return 50;
-      case "SCHEDULED": return 75;
-      case "ACTIVE": return 90;
-      case "COMPLETED": return 100;
-      default: return 0;
-    }
+  const getProgress = useCallback((project: ProjectRequest) => {
+    const stages = project.stages || [];
+    const completedPhaseCount = stages.filter((s) => s.status === "COMPLETED").length;
+    return getProjectProgress(project.status, completedPhaseCount, stages.length);
   }, []);
 
   const renderProjectTable = (filteredProjects: ProjectRequest[]) => {
@@ -195,17 +208,17 @@ export function ProjectManagementTab() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <Table className="min-w-[900px]">
+              <Table >
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Location</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Location</TableHead>
                     <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Client</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Assigned Manager</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Appointment Date</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Client</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Assigned Manager</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Initial Appointment Date</TableHead>
                     <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Progress</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Progress</TableHead>
                     <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -215,27 +228,27 @@ export function ProjectManagementTab() {
                       key={project.id}
                       className="hover:bg-gray-100 cursor-pointer"
                     >
-                      <TableCell>
+                      <TableCell className="whitespace-pre-wrap">
                         <div>
                           <div className="text-xs font-semibold">{project.projectName}</div>
-                          <div className="text-xs text-gray-400">{project.companyName}</div>
+                          <div className="text-xs text-gray-400 mt-1">{project.companyName}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs hidden md:table-cell">
                         {project.projectCity}, {project.projectState}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs hidden md:table-cell">
                         {project.clientFirstName} {project.clientLastName}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs hidden md:table-cell">
                         {project.assignedManager?.name || "Unassigned"}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs hidden md:table-cell">
                         {formatDate(project.appointmentDate)}
                       </TableCell>
                       <TableCell>
@@ -246,19 +259,19 @@ export function ProjectManagementTab() {
                           {getStatusLabel(project.status)}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs hidden md:table-cell">
                         <div className="flex items-center gap-2">
                           <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className="h-2 bg-green-500 rounded-full"
-                              style={{ width: `${getProgress(project.status)}%` }}
+                              style={{ width: `${getProgress(project)}%` }}
                             ></div>
                           </div>
-                          <span className="text-xs">{getProgress(project.status)}%</span>
+                          <span className="text-xs">{getProgress(project)}%</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <Button
                             variant="outline"
                             size="sm"
@@ -323,6 +336,7 @@ export function ProjectManagementTab() {
           isOpen={isModalOpen}
           onClose={closeModal}
           project={selectedProject}
+          initialTab={deepLink.tab as any}
         />
 
         {/* Archive Confirmation Modal */}

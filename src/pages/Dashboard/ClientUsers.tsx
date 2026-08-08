@@ -12,19 +12,22 @@ import {
     Search,
     ChevronRight,
     Building2,
-    // Calendar,
+    Eye,
     Clock
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import CommonWrapper from "@/common/CommonWrapper";
+import ClientDetailsModal from "@/components/Modal/ClientDetailsModal";
 import { Loader } from "@/components/ui/loader";
 
 export default function ClientUsers() {
     const { data: clientsData, isLoading } = useGetClientUsersQuery(undefined);
     const [search, setSearch] = useState("");
     const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [detailsClient, setDetailsClient] = useState<any>(null);
 
     const clients = clientsData?.data || [];
+    const runningProjects = selectedUser?.runningProjects || [];
 
     const filteredClients = clients.filter((c: any) =>
         c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,21 +40,18 @@ export default function ClientUsers() {
         <CommonWrapper>
             <div className="mt-8 space-y-6">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-gray-900 to-black rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-10 opacity-10">
-                        <User size={180} />
-                    </div>
-                    <div className="relative z-10 space-y-4 max-w-2xl">
-                        <Link to="/dashboard/financials" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-xs font-bold transition-colors mb-2">
-                            <ArrowLeft size={14} /> Back to Financials
-                        </Link>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-widest">
-                            <Building2 size={12} /> Client Management
-                        </div>
-                        <h1 className="text-4xl font-black tracking-tight leading-tight">
-                            Client Directory <br />
-                            <span className="text-gray-400">{clients.length} Total Users</span>
-                        </h1>
+                <div className="space-y-3">
+                    <Link
+                        to="/dashboard/financials"
+                        className="inline-flex items-center gap-2 text-gray-500 hover:text-black text-xs font-bold transition-colors"
+                    >
+                        <ArrowLeft size={14} /> Back to Accountant Controls
+                    </Link>
+                    <div className="flex flex-wrap items-baseline gap-3">
+                        <h1 className="text-2xl font-black tracking-tight text-gray-900">Client Directory</h1>
+                        <span className="text-sm font-bold text-gray-400">
+                            {clients.length} Total Users
+                        </span>
                     </div>
                 </div>
 
@@ -139,6 +139,12 @@ export default function ClientUsers() {
                                         <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{selectedUser.name || "Unnamed Client"}</h2>
                                         <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Client Since {new Date(selectedUser.createdAt).getFullYear()}</p>
                                     </div>
+                                    <button
+                                        onClick={() => setDetailsClient(selectedUser)}
+                                        className="w-full px-4 py-2.5 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-95 inline-flex items-center justify-center gap-2"
+                                    >
+                                        <Eye size={14} /> View Client Details
+                                    </button>
                                 </div>
 
                                 {/* Financial Cards */}
@@ -161,22 +167,32 @@ export default function ClientUsers() {
                                         <span className="text-gray-900 font-black">{selectedUser.projectCount}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-400 font-medium flex items-center gap-2"><Clock size={14} /> Running Phases</span>
-                                        <span className="text-gray-900 font-black">{selectedUser.runningPhases.length}</span>
+                                        <span className="text-gray-400 font-medium flex items-center gap-2"><Clock size={14} /> Running Projects</span>
+                                        <span className="text-gray-900 font-black">{runningProjects.length}</span>
                                     </div>
                                 </div>
 
-                                {/* Running Phases */}
-                                {selectedUser.runningPhases.length > 0 && (
+                                {/* Active work is tracked per project, not per phase */}
+                                {runningProjects.length > 0 && (
                                     <div className="space-y-3">
                                         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-2">Active Work</h3>
-                                        {selectedUser.runningPhases.map((phase: any, idx: number) => (
-                                            <div key={idx} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 space-y-2">
-                                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{phase.projectName}</p>
-                                                <p className="text-sm font-black text-gray-900">{phase.phaseName}</p>
-                                                <div className="w-full bg-blue-200 rounded-full h-1.5 mt-2">
-                                                    <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${phase.progress}%` }}></div>
+                                        {runningProjects.map((project: any) => (
+                                            <div key={project.id} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 space-y-2">
+                                                <p className="text-sm font-black text-gray-900">{project.projectName}</p>
+                                                {project.currentPhase && (
+                                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                                                        Currently: {project.currentPhase}
+                                                    </p>
+                                                )}
+                                                <div className="w-full bg-blue-200 rounded-full h-1.5 mt-2 overflow-hidden">
+                                                    <div
+                                                        className="bg-blue-600 h-1.5 rounded-full"
+                                                        style={{ width: `${Math.min(100, project.progress)}%` }}
+                                                    />
                                                 </div>
+                                                <p className="text-[10px] font-bold text-gray-400">
+                                                    {project.completedPhases} of {project.totalPhases} phases complete
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
@@ -224,6 +240,11 @@ export default function ClientUsers() {
                     </div>
                 </div>
             </div>
+
+            {/* Closing returns to the directory, not to the financials page */}
+            {detailsClient && (
+                <ClientDetailsModal client={detailsClient} onClose={() => setDetailsClient(null)} />
+            )}
         </CommonWrapper>
     );
 }

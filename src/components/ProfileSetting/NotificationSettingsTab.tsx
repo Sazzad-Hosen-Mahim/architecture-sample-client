@@ -1,12 +1,6 @@
-// import React from "react";
-
-// export default function NotificationSettingsTabTab() {
-//   return <div>NotificationSettingsTabTab</div>;
-// }
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button"; // Or your custom Button
-import { Separator } from "@/components/ui/separator"; // Or your custom Separator
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardHeader,
@@ -14,27 +8,76 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"; // Or your custom Card components
+} from "@/components/ui/card";
+import { toast } from "sonner";
+import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
+import { selectCurrentUser, updateUser } from "@/redux/features/auth/authSlice";
+import {
+  useUpdateNotificationPreferencesMutation,
+  type NotificationPreferences,
+} from "@/redux/features/ProfileSettings/profileSettings";
+
+const PREFERENCES: {
+  id: keyof NotificationPreferences;
+  title: string;
+  description: string;
+}[] = [
+  {
+    id: "emailNotifications",
+    title: "Email Notifications",
+    description: "Receive notifications via email",
+  },
+  {
+    id: "projectUpdates",
+    title: "Project Updates",
+    description:
+      "Phase changes, deliverables ready to view, payments due, and meeting times",
+  },
+  {
+    id: "securityAlerts",
+    title: "Security Alerts",
+    description: "Password changes and other security events",
+  },
+];
 
 export function NotificationSettingsTab() {
-  const [isLoading, setIsLoading] = useState(false);
+  const user = useAppSelector(selectCurrentUser) as any;
+  const dispatch = useAppDispatch();
+  const [savePreferences, { isLoading }] =
+    useUpdateNotificationPreferencesMutation();
 
-  const [notificationSettings, setNotificationSettings] = useState({
+  const [settings, setSettings] = useState<NotificationPreferences>({
     emailNotifications: true,
     projectUpdates: true,
-    taskAssignments: true,
     securityAlerts: true,
-    marketingEmails: false,
   });
 
-  // Toggle handler
-  const handleNotificationChange = (name: string, checked: boolean) => {
-    setNotificationSettings((prev) => ({ ...prev, [name]: checked }));
+  // Hydrate from the saved user record rather than defaulting every visit.
+  useEffect(() => {
+    if (user) {
+      setSettings({
+        emailNotifications: user.emailNotifications ?? true,
+        projectUpdates: user.projectUpdates ?? true,
+        securityAlerts: user.securityAlerts ?? true,
+      });
+    }
+  }, [user]);
+
+  const handleChange = (name: keyof NotificationPreferences, checked: boolean) =>
+    setSettings((prev) => ({ ...prev, [name]: checked }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res: any = await savePreferences(settings).unwrap();
+      if (res?.data) dispatch(updateUser(res.data));
+      toast.success(res?.message || "Notification preferences saved");
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to save preferences");
+    }
   };
 
-  // Custom Switch component
   const Switch = ({
-    // id,
     checked,
     onCheckedChange,
   }: {
@@ -47,7 +90,7 @@ export function NotificationSettingsTab() {
       role="switch"
       aria-checked={checked}
       onClick={() => onCheckedChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
         checked ? "bg-gray-800" : "bg-gray-200"
       }`}
     >
@@ -61,13 +104,7 @@ export function NotificationSettingsTab() {
 
   return (
     <Card>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setIsLoading(true);
-          setTimeout(() => setIsLoading(false), 1000); // simulate save
-        }}
-      >
+      <form onSubmit={handleSubmit}>
         <CardHeader>
           <CardTitle>Notification Preferences</CardTitle>
           <CardDescription>
@@ -75,57 +112,29 @@ export function NotificationSettingsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {[
-            {
-              id: "emailNotifications",
-              title: "Email Notifications",
-              description: "Receive notifications via email",
-            },
-            {
-              id: "projectUpdates",
-              title: "Project Updates",
-              description: "Get notified about changes to your projects",
-            },
-            {
-              id: "taskAssignments",
-              title: "Task Assignments",
-              description: "Get notified when you're assigned to a task",
-            },
-            {
-              id: "securityAlerts",
-              title: "Security Alerts",
-              description: "Get notified about security events",
-            },
-            {
-              id: "marketingEmails",
-              title: "Marketing Emails",
-              description: "Receive marketing and promotional emails",
-            },
-          ].map((item, idx) => (
+          {PREFERENCES.map((item, idx) => (
             <div key={item.id}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="font-medium text-gray-900">{item.title}</p>
                   <p className="text-sm text-gray-600">{item.description}</p>
                 </div>
                 <Switch
                   id={item.id}
-                  checked={
-                    notificationSettings[
-                      item.id as keyof typeof notificationSettings
-                    ]
-                  }
-                  onCheckedChange={(checked) =>
-                    handleNotificationChange(item.id, checked)
-                  }
+                  checked={settings[item.id]}
+                  onCheckedChange={(checked) => handleChange(item.id, checked)}
                 />
               </div>
-              {idx < 4 && <Separator />}
+              {idx < PREFERENCES.length - 1 && <Separator className="mt-4" />}
             </div>
           ))}
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={isLoading}>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="bg-gray-800 text-white mt-4 cursor-pointer hover:bg-black"
+          >
             {isLoading ? "Saving..." : "Save notification preferences"}
           </Button>
         </CardFooter>

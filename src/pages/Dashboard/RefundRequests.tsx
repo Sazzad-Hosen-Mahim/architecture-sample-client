@@ -4,10 +4,11 @@ import {
     useApproveRefundMutation,
     useRejectRefundMutation,
 } from "@/redux/api/refundApi";
-import { CheckCircle, XCircle, Clock, DollarSign, User, ArrowLeft, AlertCircle, Search } from "lucide-react";
+import { CheckCircle, XCircle, Clock, DollarSign, User, ArrowLeft, Search, Landmark, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import CommonWrapper from "@/common/CommonWrapper";
+import RefundPayoutModal from "@/components/Modal/RefundPayoutModal";
 import { Loader } from "@/components/ui/loader";
 
 export default function RefundRequests() {
@@ -18,6 +19,8 @@ export default function RefundRequests() {
     const [filterStatus, setFilterStatus] = useState<string>("ALL");
     const [rejectModal, setRejectModal] = useState<{ id: string; open: boolean }>({ id: "", open: false });
     const [rejectionReason, setRejectionReason] = useState("");
+    const [reasoningModal, setReasoningModal] = useState<any>(null);
+    const [payoutRefundId, setPayoutRefundId] = useState<string | null>(null);
 
     const refunds = refundsData?.data || [];
     const filteredRefunds = refunds.filter((r: any) => {
@@ -55,12 +58,16 @@ export default function RefundRequests() {
     return (
         <CommonWrapper>
             <div className="mt-8 space-y-6">
-                <div className="bg-gradient-to-r from-gray-900 to-black rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-10 opacity-10"><DollarSign size={180} /></div>
-                    <div className="relative z-10 space-y-4 max-w-2xl">
-                        <Link to="/dashboard/financials" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-xs font-bold transition-colors mb-2"><ArrowLeft size={14} /> Back to Financials</Link>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-black uppercase tracking-widest"><AlertCircle size={12} /> Refund Management</div>
-                        <h1 className="text-4xl font-black tracking-tight">Refund Requests <br /><span className="text-gray-400">{pendingCount} Pending</span></h1>
+                <div className="space-y-3">
+                    <Link
+                        to="/dashboard/financials"
+                        className="inline-flex items-center gap-2 text-gray-500 hover:text-black text-xs font-bold transition-colors"
+                    >
+                        <ArrowLeft size={14} /> Back to Accountant Controls
+                    </Link>
+                    <div className="flex flex-wrap items-baseline gap-3">
+                        <h1 className="text-2xl font-black tracking-tight text-gray-900">Refund Requests</h1>
+                        <span className="text-sm font-bold text-gray-400">{pendingCount} Pending</span>
                     </div>
                 </div>
 
@@ -83,7 +90,7 @@ export default function RefundRequests() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead><tr className="border-b border-gray-100 bg-gray-50/50">
-                                    {["Client", "Project", "Phase", "Cause", "Amount", "Status", "Date", "Actions"].map(h => (
+                                    {["Client", "Project", "Phase", "Reasoning", "Amount", "Status", "Date", "Actions"].map(h => (
                                         <th key={h} className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr></thead>
@@ -93,7 +100,15 @@ export default function RefundRequests() {
                                             <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><User size={14} className="text-gray-500" /></div><div><p className="text-sm font-bold text-gray-900">{r.user?.name || "—"}</p><p className="text-xs text-gray-400">{r.user?.email}</p></div></div></td>
                                             <td className="px-6 py-4 text-sm font-medium text-gray-700">{r.projectRequest?.projectName || "—"}</td>
                                             <td className="px-6 py-4 text-sm font-medium text-gray-700">{r.stageName}</td>
-                                            <td className="px-6 py-4"><p className="text-xs text-gray-600 max-w-[150px] truncate" title={r.refundCause}>{r.refundCause}</p></td>
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => setReasoningModal(r)}
+                                                    className="text-xs font-bold text-blue-600 underline decoration-dotted underline-offset-4 hover:text-blue-800 max-w-[150px] truncate text-left"
+                                                    title="View the client's reasoning"
+                                                >
+                                                    {r.refundCause || "View reasoning"}
+                                                </button>
+                                            </td>
                                             <td className="px-6 py-4 text-sm font-bold text-gray-900">${Number(r.amount).toLocaleString()}</td>
                                             <td className="px-6 py-4">{statusBadge(r.refundStatus)}</td>
                                             <td className="px-6 py-4 text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString()}</td>
@@ -103,6 +118,21 @@ export default function RefundRequests() {
                                                         <button onClick={() => handleApprove(r.id)} disabled={isApproving} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-[10px] font-bold uppercase hover:bg-green-100">Accept</button>
                                                         <button onClick={() => setRejectModal({ id: r.id, open: true })} className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold uppercase hover:bg-red-100">Reject</button>
                                                     </div>
+                                                )}
+                                                {/* Approved refunds still need paying out */}
+                                                {r.refundStatus === "APPROVED" && (
+                                                    r.refundProcessedAt ? (
+                                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-700">
+                                                            <CheckCircle size={12} /> Refund Processed
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => setPayoutRefundId(r.id)}
+                                                            className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-gray-700 inline-flex items-center gap-1.5 transition-all active:scale-95"
+                                                        >
+                                                            <Landmark size={12} /> Process Refund
+                                                        </button>
+                                                    )
                                                 )}
                                             </td>
                                         </tr>
@@ -124,6 +154,67 @@ export default function RefundRequests() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* The client's stated reasoning, in full */}
+                {reasoningModal && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4">
+                            <div className="flex justify-between items-start gap-4">
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900">Refund Reasoning</h3>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        {reasoningModal.user?.name} · {reasoningModal.projectRequest?.projectName}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setReasoningModal(null)}
+                                    className="text-gray-400 hover:text-black p-1 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cause</p>
+                                    <p className="text-sm font-bold text-gray-800">{reasoningModal.refundCause || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Details</p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                        {reasoningModal.refundDescription || "No further detail provided."}
+                                    </p>
+                                </div>
+                                <div className="flex gap-6 pt-2 border-t border-gray-100">
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phase</p>
+                                        <p className="text-sm font-bold text-gray-800">{reasoningModal.stageName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</p>
+                                        <p className="text-sm font-black text-gray-900">
+                                            ${Number(reasoningModal.amount).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => setReasoningModal(null)}
+                                    className="px-5 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold uppercase hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {payoutRefundId && (
+                    <RefundPayoutModal
+                        refundId={payoutRefundId}
+                        onClose={() => setPayoutRefundId(null)}
+                    />
                 )}
             </div>
         </CommonWrapper>

@@ -3,13 +3,8 @@
 import { CheckCircle, Clock, Users, Eye } from "lucide-react";
 import { useState } from "react";
 import TeamManagementModa from "../approvalsModal/TeamManagementModa";
-import {
-  useGetPendingTimecardsQuery,
-  useApproveTimecardMutation,
-  useRejectTimecardMutation
-} from "@/redux/api/financialApi";
-import { toast } from "sonner";
-import TimesheetEntryFormDialog from "../../../TimeCardDialog/TimesheetEntryFormDialog";
+import { useGetPendingTimecardsQuery } from "@/redux/api/financialApi";
+import TimecardReviewDialog from "../../../TimeCardDialog/TimecardReviewDialog";
 import { Link } from "react-router-dom";
 import { Loader } from "@/components/ui/loader";
 
@@ -18,28 +13,6 @@ export function PendingApprovalsPayroll() {
   const [selectedTimecardId, setSelectedTimecardId] = useState<string | null>(null);
 
   const { data: pendingTimecards = [], isLoading } = useGetPendingTimecardsQuery();
-  const [approveTimecard, { isLoading: isApproving }] = useApproveTimecardMutation();
-  const [rejectTimecard, { isLoading: isRejecting }] = useRejectTimecardMutation();
-
-  const handleApprove = async (id: string) => {
-    try {
-      await approveTimecard(id).unwrap();
-      toast.success("Timecard approved");
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Approval failed");
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    const note = prompt("Please enter a reason for rejection:");
-    if (note === null) return;
-    try {
-      await rejectTimecard({ id, rejectionNote: note }).unwrap();
-      toast.success("Timecard rejected");
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Rejection failed");
-    }
-  };
 
   return (
     <div className="bg-green-50 border-l-4 border-green-500 rounded-lg p-6 h-full font-semibold">
@@ -90,28 +63,13 @@ export function PendingApprovalsPayroll() {
                 </div>
               </div>
 
-              <div className="flex gap-2 font-medium">
-                <button
-                  onClick={() => setSelectedTimecardId(tc.id)}
-                  className="flex-1 flex items-center justify-center gap-1 border cursor-pointer border-gray-300 rounded-lg py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Eye size={14} /> View
-                </button>
-                <button
-                  onClick={() => handleApprove(tc.id)}
-                  disabled={isApproving}
-                  className="flex-1 bg-green-100 cursor-pointer border border-green-200 text-green-700 rounded-lg py-2 text-xs hover:bg-green-700 hover:text-white transition-all disabled:opacity-50"
-                >
-                  {isApproving ? "..." : "Approve"}
-                </button>
-                <button
-                  onClick={() => handleReject(tc.id)}
-                  disabled={isRejecting}
-                  className="flex-1 bg-red-100 cursor-pointer border border-red-200 text-red-700 rounded-lg py-2 text-xs hover:bg-red-700 hover:text-white transition-all disabled:opacity-50"
-                >
-                  {isRejecting ? "..." : "Deny"}
-                </button>
-              </div>
+              {/* Review happens inside the timecard view — approve/deny live there */}
+              <button
+                onClick={() => setSelectedTimecardId(tc.id)}
+                className="w-full flex items-center justify-center gap-1.5 border cursor-pointer border-gray-300 rounded-lg py-2 text-xs font-medium text-gray-700 hover:bg-black hover:text-white hover:border-black transition-colors"
+              >
+                <Eye size={14} /> View &amp; Review
+              </button>
             </div>
           ))
         )}
@@ -142,23 +100,24 @@ export function PendingApprovalsPayroll() {
           </div>
         </div>
 
-        <button
+        {/* <button
           onClick={() => setEmployeesModalOpen(true)}
           className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]"
         >
           <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
           <span>Manage Team Registry</span>
-        </button>
+        </button> */}
+        <div className="mt-20">
+          <Link to="/dashboard/timecards">
+            <button className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]">
+              <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
+              <span>Timecards</span>
+            </button>
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-20">
-        <Link to="/dashboard/timecards">
-          <button className="group cursor-pointer relative w-full text-xs flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-bold text-gray-900 hover:text-white transition-all duration-200 hover:bg-black active:scale-[0.98]">
-            <Users className="h-4 w-4 text-gray-500 transition-colors duration-200 group-hover:text-white" />
-            <span>Timecards</span>
-          </button>
-        </Link>
-      </div>
+
 
       <TeamManagementModa
         open={employeesModalOpen}
@@ -166,10 +125,11 @@ export function PendingApprovalsPayroll() {
       />
 
       {selectedTimecardId && (
-        <TimesheetEntryFormDialog
+        <TimecardReviewDialog
           open={!!selectedTimecardId}
           onOpenChange={(isOpen: boolean) => !isOpen && setSelectedTimecardId(null)}
           timecardId={selectedTimecardId}
+          canReview
         />
       )}
     </div>

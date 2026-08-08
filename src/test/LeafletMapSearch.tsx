@@ -4,7 +4,7 @@ import {
   MapContainer,
   TileLayer,
   Marker,
-  Popup,
+  Tooltip,
   useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -21,31 +21,24 @@ L.Icon.Default.mergeOptions({
 
 interface LeafletMapSearchProps {
   onLocationSelect?: (coords: { lat: number; lng: number } | null) => void;
+  onProjectClick?: (id: string) => void;
   projects?: any[];
 }
 
 export default function LeafletMapSearch({
   onLocationSelect,
+  onProjectClick,
   projects = [],
 }: LeafletMapSearchProps) {
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     null
   );
-  const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map | null>(null);
 
-  // Filter projects by city or country locally for marker display
-  const filteredProjects = projects.filter(
-    (p) =>
-      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.country || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Fly map to bounds when filteredProjects changes
+  // Fly map to bounds when projects changes
   useEffect(() => {
-    if (mapRef.current && filteredProjects.length > 0) {
-      const markers = filteredProjects
+    if (mapRef.current && projects.length > 0) {
+      const markers = projects
         .filter(p => p.location && p.location.lat && p.location.lng)
         .map((p) => L.marker([p.location.lat, p.location.lng]));
 
@@ -54,7 +47,7 @@ export default function LeafletMapSearch({
         mapRef.current.fitBounds(group.getBounds().pad(0.5));
       }
     }
-  }, [filteredProjects]);
+  }, [projects]);
 
   // Handle map click
   function LocationMarker() {
@@ -73,7 +66,7 @@ export default function LeafletMapSearch({
 
     return selected ? (
       <Marker position={selected}>
-        <Popup>
+        <Tooltip permanent>
           📍 Filtering projects near this area
           <br />
           <button
@@ -82,7 +75,7 @@ export default function LeafletMapSearch({
           >
             Clear map filter
           </button>
-        </Popup>
+        </Tooltip>
       </Marker>
     ) : null;
   }
@@ -92,17 +85,6 @@ export default function LeafletMapSearch({
       className="relative w-full h-[400px] rounded-xl shadow overflow-hidden"
       style={{ zIndex: 1 }}
     >
-      {/* Search input - positioned above map but below navbar */}
-      <div className="absolute top-4 left-16 z-[10] w-72 pointer-events-auto">
-        <input
-          type="text"
-          placeholder="Filter markers by city/country..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-1 border rounded-lg outline-none  shadow bg-white"
-        />
-      </div>
-
       {/* Map */}
       <MapContainer
         center={[20, 0]}
@@ -124,17 +106,18 @@ export default function LeafletMapSearch({
         <LocationMarker />
 
         {/* Project markers */}
-        {filteredProjects.map((project) => (
+        {projects.map((project) => (
           project.location && project.location.lat ? (
             <Marker
               key={project.id}
               position={[project.location.lat, project.location.lng]}
+              eventHandlers={{ click: () => onProjectClick?.(project.id) }}
             >
-              <Popup>
+              <Tooltip>
                 <strong>{project.name}</strong>
                 <br />
                 {project.locationName}
-              </Popup>
+              </Tooltip>
             </Marker>
           ) : null
         ))}

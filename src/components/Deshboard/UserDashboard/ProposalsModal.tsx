@@ -288,6 +288,7 @@ import {
 } from "@/redux/api/amendmentApi";
 import SignatureCanvas from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
 
 interface ThreeDotMenuProps {
     proposal: any;
@@ -473,6 +474,7 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: any) => {
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
     const [signingId, setSigningId] = useState<string | null>(null);
     const sigCanvas = useRef<SignatureCanvas>(null);
+    const sigWrapperRef = useResponsiveSignatureCanvas(sigCanvas, 192);
 
     const amdProposals = proposals?.data?.amendmentProposals || [];
     const amdRequests = amendmentsData?.data || [];
@@ -562,7 +564,15 @@ const AmendmentProposalsModal = ({ proposalId, onClose }: any) => {
                                 <DialogTitle className="text-xl font-bold mb-4">Provide your signature</DialogTitle>
                             </DialogHeader>
                             <div className="border-2 border-dashed border-gray-200 rounded-xl overflow-hidden bg-gray-50 mb-6">
-                                <SignatureCanvas ref={sigCanvas} canvasProps={{ className: "w-full h-48 cursor-crosshair" }} />
+                                <div ref={sigWrapperRef} className="overflow-hidden touch-none">
+                                    <SignatureCanvas
+                                        ref={sigCanvas}
+                                        canvasProps={{
+                                            className: "block w-full cursor-crosshair",
+                                            style: { height: "192px" },
+                                        }}
+                                    />
+                                </div>
                             </div>
                             <div className="flex justify-end gap-3">
                                 <Button variant="ghost" onClick={() => setIsSignatureModalOpen(false)}>Cancel</Button>

@@ -9,9 +9,36 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { ChevronLeft, ChevronRight, Search, Send, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
 import LeafletMapSearch from "@/test/LeafletMapSearch";
-import { useGetAllMediaQuery, useToggleLikeMutation, useCreateCommentMutation } from "@/redux/features/Media/mediaApi";
+import { useGetAllMediaQuery, } from "@/redux/features/Media/mediaApi";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
+
+const CLIMATE_OPTIONS = ["ALPINE", "CONTINENTAL", "TROPICAL", "DESERT", "POLAR", "MARINE", "TEMPERATE"];
+const CONTINENT_OPTIONS = ["ASIA", "EUROPE", "NORTH_AMERICA", "SOUTH_AMERICA", "AFRICA", "AUSTRALIA"];
+const YEAR_OPTIONS = Array.from({ length: 31 }, (_, i) => 2000 + i); // 2000 to 2030
+
+// Simple geocoding cache to avoid duplicate requests
+const geocodeCache: Record<string, { lat: number; lng: number } | null> = {};
+const geocodeLocation = async (locationStr: string): Promise<{ lat: number; lng: number } | null> => {
+  if (geocodeCache[locationStr] !== undefined) return geocodeCache[locationStr];
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationStr)}&limit=1`,
+      { headers: { "Accept-Language": "en" } }
+    );
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      geocodeCache[locationStr] = coords;
+      return coords;
+    }
+  } catch (err) {
+    console.error("Geocoding failed for:", locationStr, err);
+  }
+  geocodeCache[locationStr] = null;
+  return null;
+};
 
 // Simple distance calculation between two coordinates (Haversine formula)
 const getDistanceKm = (
@@ -37,55 +64,98 @@ function WorldProject() {
     lng: number;
   } | null>(null);
   const [continentFilter, setContinentFilter] = useState("");
+  const [climateFilter, setClimateFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [showTagPopup, setShowTagPopup] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-  const [activeTab, setActiveTab] = useState<"all" | "top-rated">("all");
+  const [geocodedLocations, setGeocodedLocations] = useState<Record<string, { lat: number; lng: number }>>({}); 
 
   const { data: apiData, isLoading, error: apiError } = useGetAllMediaQuery({ type: "WORLD_PROJECT" });
-  const [toggleLike] = useToggleLikeMutation();
-  const [addComment] = useCreateCommentMutation();
 
   if (apiError) console.error("Error fetching world projects:", apiError);
 
-  const worldProjectsDynamic = apiData?.data?.map((item: any) => ({
-    id: item.id,
-    name: item.title,
-    PublishedDate: item.publishDate ? new Date(item.publishDate).toLocaleDateString() : new Date(item.createdAt).toLocaleDateString(),
-    Architect: item.architect || "TBA",
-    Photographer: item.photographer || "TBA",
-    description: item.excerpt || item.content?.substring(0, 100) + "...",
-    locationName: item.location || (item.city ? `${item.city}, ${item.country}` : "Global"),
-    continent: item.country?.includes("USA") ? "North America" : "Global", // Simplified mapping
-    year: item.projectYear || 2024,
-    tags: item.projectTags || [],
-    images: item.assets?.map((a: any) => a.cdnUrl) || [],
-    location: item.coordinates ? (typeof item.coordinates === 'string' ? JSON.parse(item.coordinates) : item.coordinates) : null,
-    likeCount: item.likeCount || 0,
-    commentCount: item.commentCount || 0,
-  })) || [];
+  // Geocode location strings when API data arrives
+  useEffect(() => {
+    if (!apiData?.data) return;
+    const toGeocode = apiData.data.filter(
+      (item: any) => !item.coordinates && item.location && !geocodedLocations[item.id]
+    );
+    if (toGeocode.length === 0) return;
 
-  // Import mock projects for the map pins (as requested: "previous pin")
-  const mockProjectsForMap = [
-    { id: "m1", name: "Tropical Villa", locationName: "Phuket", location: { lat: 7.8804, lng: 98.3923 } },
-    { id: "m2", name: "Desert House", locationName: "Dubai", location: { lat: 25.1972, lng: 55.2744 } },
-    { id: "m3", name: "Modern Office", locationName: "New York", location: { lat: 40.7128, lng: -74.0060 } },
-    { id: "m4", name: "Sky Skyscraper", locationName: "Tokyo", location: { lat: 35.6762, lng: 139.6503 } },
-  ];
+    let cancelled = false;
+    (async () => {
+      const newLocations: Record<string, { lat: number; lng: number }> = {};
+      for (const item of toGeocode) {
+        if (cancelled) break;
+        const coords = await geocodeLocation(item.location);
+        if (coords) newLocations[item.id] = coords;
+      }
+      if (!cancelled && Object.keys(newLocations).length > 0) {
+        setGeocodedLocations(prev => ({ ...prev, ...newLocations }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [apiData]);
 
-  const mapProjects = [...worldProjectsDynamic, ...mockProjectsForMap];
+  const worldProjectsDynamic = apiData?.data?.map((item: any) => {
+    // Resolve coordinates: prefer explicit coordinates, then geocoded result
+    let resolvedLocation = null;
+    if (item.coordinates) {
+      resolvedLocation = typeof item.coordinates === 'string' ? JSON.parse(item.coordinates) : item.coordinates;
+    } else if (geocodedLocations[item.id]) {
+      resolvedLocation = geocodedLocations[item.id];
+    }
+
+    return {
+      id: item.id,
+      name: item.title,
+      PublishedDate: item.publishDate ? new Date(item.publishDate).toLocaleDateString() : new Date(item.createdAt).toLocaleDateString(),
+      Architect: item.architect || "TBA",
+      Photographer: item.photographer || "TBA",
+      description: item.excerpt || item.content?.substring(0, 100) + "...",
+      locationName: item.location || (item.city ? `${item.city}, ${item.country}` : "Global"),
+      continent: item.continent || "",
+      climate: item.climate || "",
+      city: item.city || "",
+      country: item.country || "",
+      state: item.state || "",
+      region: item.region || "",
+      year: item.projectYear || 2024,
+      tags: item.projectTags || [],
+      images: item.assets?.map((a: any) => a.cdnUrl) || [],
+      location: resolvedLocation,
+      likeCount: item.likeCount || 0,
+      commentCount: item.commentCount || 0,
+      projectYear: item.projectYear,
+    };
+  }) || [];
+
+
 
   // Get unique values for filters from dynamic data
   const availableTags = Array.from(new Set(worldProjectsDynamic.flatMap((p: any) => p.tags || []))) as string[];
-  const availableContinents = Array.from(new Set(worldProjectsDynamic.map((p: any) => p.continent))) as string[];
-  const availableYears = Array.from(new Set(worldProjectsDynamic.map((p: any) => p.year))) as number[];
+
+  const hasActiveFilters = searchQuery || continentFilter || climateFilter || yearFilter || selectedTags.length > 0 || selectedLocation;
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setContinentFilter("");
+    setClimateFilter("");
+    setYearFilter("");
+    setSelectedTags([]);
+    setSelectedLocation(null);
+  };
 
   // Step 1: Search filter
   let filtered = worldProjectsDynamic.filter(
     (p: any) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase())
+      p.Architect.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.Photographer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.locationName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.city || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.country || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.state || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.region || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Step 2: Tag filter
@@ -100,38 +170,38 @@ function WorldProject() {
     filtered = filtered.filter((p: any) => p.continent === continentFilter);
   }
 
-  // Step 4: Year filter
+  // Step 4: Climate filter
+  if (climateFilter) {
+    filtered = filtered.filter((p: any) => p.climate === climateFilter);
+  }
+
+  // Step 5: Year filter
   if (yearFilter) {
     filtered = filtered.filter((p: any) => String(p.year) === yearFilter);
   }
 
-  // Step 5: Location filter (if map location is selected)
+  // Step 6: Location filter (if map location is selected)
   let displayedProjects = selectedLocation
     ? filtered.filter(
       (p: any) => p.location && getDistanceKm(p.location, selectedLocation) <= 200
     )
     : filtered;
 
-  // Step 6: Apply tab filter - sort by real likes for top-rated
-  if (activeTab === "top-rated") {
-    displayedProjects = [...displayedProjects].sort((a: any, b: any) => b.likeCount - a.likeCount);
-  }
+  // const handleVote = async (projectId: string) => {
+  //   try {
+  //     await toggleLike(projectId).unwrap();
+  //   } catch (err) {
+  //     console.error("Failed to vote:", err);
+  //   }
+  // };
 
-  const handleVote = async (projectId: string) => {
-    try {
-      await toggleLike(projectId).unwrap();
-    } catch (err) {
-      console.error("Failed to vote:", err);
-    }
-  };
-
-  const onCommentSubmit = async (projectId: string, content: string) => {
-    try {
-      await addComment({ id: projectId, content }).unwrap();
-    } catch (err) {
-      console.error("Failed to add comment:", err);
-    }
-  };
+  // const onCommentSubmit = async (projectId: string, content: string) => {
+  //   try {
+  //     await addComment({ id: projectId, content }).unwrap();
+  //   } catch (err) {
+  //     console.error("Failed to add comment:", err);
+  //   }
+  // };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -156,15 +226,16 @@ function WorldProject() {
 
   return (
     <div>
+      <h1 className="text-xl font-bold flex justify-center w-full mt-5 text-center md:text-left">
+        World Projects
+      </h1>
       <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4 pb-34">
         {/* Header & Filters */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <h1 className="text-xl font-bold md:w-1/4 text-center md:text-left">
-            World Projects
-          </h1>
 
-          <div className="flex items-center justify-center md:w-1/3 w-full">
-            <div className="flex items-center gap-2 px-4 w-full border rounded-lg bg-white shadow-sm">
+
+          <div className="relative flex flex-col md:w-1/3 w-full">
+            <div className="flex items-center gap-2 px-4 w-full border rounded-lg bg-white shadow-sm relative z-20">
               <Search className="text-gray-600" size={14} />
               <input
                 type="text"
@@ -174,6 +245,36 @@ function WorldProject() {
                 className="flex-1 outline-none py-2 bg-transparent text-gray-700 text-sm"
               />
             </div>
+            {searchQuery.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                {displayedProjects.length > 0 ? (
+                  displayedProjects.map((project: any) => (
+                    <div 
+                      key={project.id} 
+                      className="p-3 border-b hover:bg-gray-50 cursor-pointer flex gap-3"
+                      onClick={() => navigate(`/world-project/${project.id}`)}
+                    >
+                      <img src={project.images[0] || "/placeholder.svg"} className="w-12 h-12 object-cover rounded" />
+                      <div className="flex-1 text-sm">
+                        <div className="font-bold flex justify-between">
+                          <span>{project.name}</span>
+                          <span className="text-gray-500 font-normal">{project.locationName}</span>
+                        </div>
+                        <div className="text-gray-600 flex justify-between text-xs mt-1">
+                          <span>Architect: {project.Architect}</span>
+                          <span>Year: {project.projectYear}</span>
+                        </div>
+                        <div className="text-gray-600 text-xs mt-1">
+                          Photographer: {project.Photographer}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-gray-500">No projects found</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap md:flex-nowrap justify-center md:justify-end gap-2 md:w-1/3">
@@ -235,17 +336,24 @@ function WorldProject() {
 
             <select
               className="border rounded-lg px-3 py-1 text-sm bg-white"
+              onChange={(e) => setClimateFilter(e.target.value)}
+              value={climateFilter}
+            >
+              <option value="">Climate</option>
+              {CLIMATE_OPTIONS.map((climate: string) => (
+                <option key={climate} value={climate}>{climate.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+
+            <select
+              className="border rounded-lg px-3 py-1 text-sm bg-white"
               onChange={(e) => setContinentFilter(e.target.value)}
               value={continentFilter}
             >
               <option value="">All Continents</option>
-              {availableContinents.map(
-                (continent: string) => (
-                  <option key={continent} value={continent}>
-                    {continent}
-                  </option>
-                )
-              )}
+              {CONTINENT_OPTIONS.map((continent: string) => (
+                <option key={continent} value={continent}>{continent.replace(/_/g, " ")}</option>
+              ))}
             </select>
 
             <select
@@ -254,41 +362,30 @@ function WorldProject() {
               value={yearFilter}
             >
               <option value="">All Years</option>
-              {availableYears.map(
-                (year: number) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                )
-              )}
+              {YEAR_OPTIONS.map((year: number) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
             </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="border rounded-lg px-3 py-1 text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              >
+                Clear All
+              </button>
+            )}
           </div>
         </div>
 
         <div className="py-6 mb-10">
-          <LeafletMapSearch onLocationSelect={setSelectedLocation} projects={mapProjects} />
-        </div>
-
-        {/* Tab Component */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "all"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            All Projects
-          </button>
-          <button
-            onClick={() => setActiveTab("top-rated")}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "top-rated"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            Top Rated Projects
-          </button>
+          <LeafletMapSearch 
+            onLocationSelect={setSelectedLocation} 
+            projects={displayedProjects}
+            onProjectClick={(id) => navigate(`/world-project/${id}`)}
+          />
         </div>
 
         {/* Projects grid */}
@@ -296,9 +393,7 @@ function WorldProject() {
           {displayedProjects.length === 0 ? (
             <div className="col-span-full flex justify-center items-center min-h-[50vh]">
               <h2>
-                {activeTab === "top-rated"
-                  ? "No voted projects yet."
-                  : "No projects found for this area."}
+                No projects found for this area.
               </h2>
             </div>
           ) : (
@@ -333,14 +428,20 @@ function WorldProject() {
                       Published: {project.PublishedDate}
                     </p>
                   </div>
-                  <p className="text-sm font-bold text-gray-500">
-                    Architect: {project.Architect}
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Architect:</span> {project.Architect}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Photographer: {project.Photographer}
+                    <span className="font-semibold">Photographer:</span>  {project.Photographer}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Description: {project.description}
+                    <span className="font-semibold">Year:</span>  {project.projectYear}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Location:</span>  {project.locationName}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Description:</span> {project.description}
                   </p>
                   <p className="text-sm text-gray-500">
                     Location: {project.locationName || "Unknown"}
@@ -356,7 +457,7 @@ function WorldProject() {
                     ))}
                   </div>
 
-                  <div className="mt-4">
+                  {/* <div className="mt-4">
                     <button
                       className="mr-4 text-xs px-6 py-1.5 border rounded"
                       onClick={(e) => {
@@ -375,9 +476,9 @@ function WorldProject() {
                     >
                       View Comments ({project.commentCount})
                     </button>
-                  </div>
+                  </div> */}
 
-                  <div className="mt-2 space-y-2">
+                  {/* <div className="mt-2 space-y-2">
                     <form
                       onClick={(e) => e.stopPropagation()}
                       onSubmit={(e) => {
@@ -406,7 +507,7 @@ function WorldProject() {
                         <Send size={16} />
                       </button>
                     </form>
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
             ))
@@ -425,6 +526,9 @@ function WorldProject() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+      </div>
+      <div className="mb-44 mt-12">
+        <HeroSocialMedia />
       </div>
     </div>
   );

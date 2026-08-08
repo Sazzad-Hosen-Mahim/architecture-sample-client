@@ -8,8 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo } from "react";
-import { toPng } from "html-to-image";
-import { jsPDF } from "jspdf";
+import { downloadTimesheetPDF, timesheetFileName } from "@/utils/timesheetPdf";
 import {
   useGetTimecardByIdQuery,
   useUpdateTimecardMutation,
@@ -18,7 +17,7 @@ import {
   useGetMyAssignedProjectsQuery
 } from "@/redux/api/financialApi";
 import { toast } from "sonner";
-import { Plus, X, Loader2, Info, Download } from "lucide-react";
+import { Plus, X, Loader2, Info, Download, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -369,87 +368,14 @@ export default function TimesheetEntryFormDialog({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const handleDownloadPDF = async () => {
-    const element = document.getElementById('timesheet-modal-content');
-    if (!element) return;
-
     setIsGeneratingPDF(true);
-
-    // Temporarily hide no-pdf elements
-    const noPdfElements = element.querySelectorAll<HTMLElement>('.no-pdf, [data-html2canvas-ignore]');
-    noPdfElements.forEach(el => { el.style.display = 'none'; });
-
-    // Expand all scroll-clipped / overflow-hidden containers so full content is captured
-    const scrollable = element.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"]');
-    const originalStyles: { el: HTMLElement; overflow: string; maxHeight: string; height: string }[] = [];
-    scrollable.forEach(el => {
-      originalStyles.push({ el, overflow: el.style.overflow, maxHeight: el.style.maxHeight, height: el.style.height });
-      el.style.overflow = 'visible';
-      el.style.maxHeight = 'none';
-      el.style.height = 'auto';
-    });
-
     try {
-      // html-to-image uses SVG foreignObject — browser handles oklab() natively, no parse errors
-      const dataUrl = await toPng(element, {
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-      });
-
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise(res => { img.onload = res; });
-
-      // Use landscape A4 for the wide timesheet table
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const ratio = pdfWidth / img.width;
-      const scaledHeight = img.height * ratio;
-
-      let position = 0;
-      let remainingHeight = scaledHeight;
-
-      while (remainingHeight > 0) {
-        pdf.addImage(
-          dataUrl,
-          'PNG',
-          0,
-          position === 0 ? 0 : -(scaledHeight - remainingHeight),
-          pdfWidth,
-          scaledHeight
-        );
-        remainingHeight -= pdfHeight;
-        if (remainingHeight > 0) {
-          pdf.addPage();
-        }
-        position++;
-      }
-
-      const weekEnd = timecard?.weekEnding
-        ? new Date(timecard.weekEnding).toLocaleDateString('en-CA')
-        : new Date().toISOString().split('T')[0];
-      const name = timecard?.user?.name?.replace(/\s+/g, '-') || 'Timecard';
-      pdf.save(`Timecard-${name}-${weekEnd}.pdf`);
+      await downloadTimesheetPDF('timesheet-modal-content', timesheetFileName(timecard));
     } catch (err: any) {
       const msg = err?.message || String(err) || 'Unknown error';
       console.error('PDF generation failed:', err);
       toast.error(`PDF Error: ${msg}`);
     } finally {
-      // Restore hidden elements
-      noPdfElements.forEach(el => { el.style.display = ''; });
-      // Restore scroll containers
-      originalStyles.forEach(({ el, overflow, maxHeight, height }) => {
-        el.style.overflow = overflow;
-        el.style.maxHeight = maxHeight;
-        el.style.height = height;
-      });
       setIsGeneratingPDF(false);
     }
   };
@@ -501,6 +427,25 @@ export default function TimesheetEntryFormDialog({
 
           <div className="p-4 sm:p-6 flex-1 min-h-0 overflow-y-auto space-y-6 sm:space-y-8 font-semibold">
 
+            {/* A denied timecard comes back here with its entries intact —
+                correct against the reason below and resubmit. */}
+            {timecard?.status === "REJECTED" && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-red-500">
+                    Denied — correction needed
+                  </p>
+                  <p className="text-xs text-red-800 mt-1 whitespace-pre-wrap">
+                    {timecard.rejectionNote || "No reason was provided."}
+                  </p>
+                  <p className="text-[10px] text-red-400 mt-1.5 font-bold italic">
+                    Your entries were kept. Fix them below and resubmit for approval.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Bi-Weekly Tab Switcher */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 flex-shrink-0">
               {([1, 2] as const).map((week) => (
@@ -538,10 +483,10 @@ export default function TimesheetEntryFormDialog({
                   </Select>
                 </div>
                 <div className="col-span-12 sm:col-span-4">
-                  <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Phase</label>
+                  <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Contract</label>
                   <Select value={selectedPhase} onValueChange={setSelectedPhase} disabled={!selectedProject}>
                     <SelectTrigger className="bg-white border-gray-200">
-                      <SelectValue placeholder="Pick a Phase..." />
+                      <SelectValue placeholder="Pick a Contract" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
                       {currentProjectPhases.map((ph: any) => (
@@ -683,7 +628,7 @@ export default function TimesheetEntryFormDialog({
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h3 className="text-sm font-black text-gray-900 tracking-tight uppercase">Non-Billable Hours (Project Overhead)</h3>
+                  <h3 className="text-sm font-black text-gray-900 tracking-tight uppercase">Non-Billable Hours (Labor Overhead)</h3>
                   {selectedProject && selectedPhase ? (
                     <p className="text-[10px] text-blue-600 font-bold mt-1">
                       Currently editing for: {assignedProjects.find(p => p.id === selectedProject)?.projectName} - {selectedPhase}
@@ -779,7 +724,8 @@ export default function TimesheetEntryFormDialog({
 
           <div className="px-4 sm:px-6 py-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center no-pdf" data-html2canvas-ignore="true">
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              {!isReadOnly && (
+              {/* Only drafts are deletable — a denied card has to be corrected */}
+              {!isReadOnly && timecard?.status === "DRAFT" && (
                 <Button
                   variant="outline"
                   onClick={handleDelete}
@@ -821,7 +767,11 @@ export default function TimesheetEntryFormDialog({
                     disabled={isUpdating || isSubmitting}
                     className="bg-black text-white hover:bg-gray-800 font-black uppercase tracking-widest px-8 shadow-lg shadow-black/10 transition-all active:scale-95 w-full sm:w-auto"
                   >
-                    {isSubmitting ? "Submitting..." : "Submit for Approval"}
+                    {isSubmitting
+                      ? "Submitting..."
+                      : timecard?.status === "REJECTED"
+                        ? "Resubmit for Approval"
+                        : "Submit for Approval"}
                   </Button>
                 </>
               )}

@@ -15,6 +15,7 @@ import ContractReviewModal from '@/components/Deshboard/ContractReviewModal';
 import { toast } from 'sonner';
 import { MoreVertical, Eye, FileEdit, FileStack, FileSignature, CheckCircle, XCircle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
+import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
 
 interface ProposalsTabProps {
     searchQuery?: string;
@@ -515,6 +516,7 @@ const AmendmentProposalsModal = ({ proposalId, onClose, handleOpenContract }: Am
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
     const [signingProposalId, setSigningProposalId] = useState<string | null>(null);
     const clientSigCanvas = useRef<SignatureCanvas>(null);
+    const clientSigWrapperRef = useResponsiveSignatureCanvas(clientSigCanvas, 192);
 
     // Amendment proposals (proposals created by PM from approved amendments)
     const amendmentProposals = Array.isArray(data?.data?.amendmentProposals)
@@ -808,13 +810,15 @@ const AmendmentProposalsModal = ({ proposalId, onClose, handleOpenContract }: Am
                                 <p className="text-sm text-gray-500 mt-1">By signing below, you agree to the terms of this amendment.</p>
                             </div>
                             <div className="p-6">
-                                <div className="border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
+                                <div
+                                    ref={clientSigWrapperRef}
+                                    className="border border-gray-200 rounded-lg bg-gray-50 overflow-hidden touch-none"
+                                >
                                     <SignatureCanvas
                                         ref={clientSigCanvas}
                                         canvasProps={{
-                                            className: "w-full h-48 bg-white cursor-crosshair",
-                                            width: 500,
-                                            height: 200
+                                            className: "block w-full bg-white cursor-crosshair",
+                                            style: { height: "192px" },
                                         }}
                                     />
                                 </div>

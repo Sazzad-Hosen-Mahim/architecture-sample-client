@@ -15,7 +15,8 @@ import {
     Amendment,
 } from "@/redux/api/amendmentApi";
 import ContractReviewModal from '@/components/Deshboard/ContractReviewModal';
-import { FileTextIcon } from 'lucide-react';
+import { FileTextIcon, Search, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import SignatureCanvas from 'react-signature-canvas';
 import { Loader } from "@/components/ui/loader";
@@ -25,9 +26,74 @@ const Proposals = () => {
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const proposals = proposalsData?.data ? proposalsData?.data : [];
+    const [search, setSearch] = useState("");
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-    console.log(proposals, "proposal dataaaaaaa")
+    // Memoised so the grouping below isn't recomputed on every render.
+    const proposals = React.useMemo(() => proposalsData?.data ?? [], [proposalsData]);
+
+    /** "City, State, Country" for the Location column. */
+    const locationOf = (proposal: any) => {
+        const pr = proposal.projectRequest;
+        const parts = [pr?.projectCity, pr?.projectState, pr?.projectCountry].filter(Boolean);
+        return parts.length > 0 ? parts.join(", ") : proposal.projectLocation || "—";
+    };
+
+    /**
+     * Amendments hang off their original contract rather than sitting at the
+     * top level, so each project reads as one contract with its revisions.
+     */
+    const groupedProposals = React.useMemo(() => {
+        const all: any[] = proposals as any[];
+        const amendmentsByParent = new Map<string, any[]>();
+        const originals: any[] = [];
+
+        all.forEach((p: any) => {
+            if (p.proposalType === "AMENDMENT" && p.parentProposalId) {
+                const list = amendmentsByParent.get(p.parentProposalId) || [];
+                list.push(p);
+                amendmentsByParent.set(p.parentProposalId, list);
+            } else {
+                originals.push(p);
+            }
+        });
+
+        // An amendment whose parent isn't in the list still needs showing.
+        const originalIds = new Set(originals.map((p) => p.id));
+        amendmentsByParent.forEach((list, parentId) => {
+            if (!originalIds.has(parentId)) originals.push(...list);
+        });
+
+        const query = search.trim().toLowerCase();
+        const matches = (p: any) =>
+            !query ||
+            (p.proposalNumber || "").toLowerCase().includes(query) ||
+            (p.clientName || "").toLowerCase().includes(query) ||
+            (p.projectName || "").toLowerCase().includes(query) ||
+            locationOf(p).toLowerCase().includes(query);
+
+        return originals
+            .map((p: any) => ({
+                ...p,
+                amendments: (amendmentsByParent.get(p.id) || []).sort((a: any, b: any) =>
+                    (a.proposalNumber || "").localeCompare(b.proposalNumber || "")
+                ),
+            }))
+            // Keep a contract when it matches, or when any of its amendments do.
+            .filter((p: any) => matches(p) || p.amendments.some(matches));
+    }, [proposals, search]);
+
+    const toggleExpanded = (id: string) => {
+        setExpandedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "N/A";
@@ -74,9 +140,29 @@ const Proposals = () => {
 
     return (
         <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">All Proposals</h1>
-                <span className="text-sm text-gray-500">{proposals.length} total proposals</span>
+            <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">All Proposals</h1>
+                    <span className="text-sm text-gray-500">{proposals.length} total proposals</span>
+                </div>
+                <Link
+                    to="/dashboard/financials"
+                    title="Back to Accountant's Controls"
+                    className="p-2 rounded-lg text-gray-400 hover:text-black hover:bg-gray-100 transition-colors flex-shrink-0"
+                >
+                    <X size={20} />
+                </Link>
+            </div>
+
+            <div className="relative mb-6 max-w-xl">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by proposal #, client, project or location..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
             </div>
 
             {proposals.length === 0 ? (
@@ -92,10 +178,16 @@ const Proposals = () => {
                                     Proposal #
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Amendment Total #
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Client
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Project
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Location
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Status
@@ -112,38 +204,113 @@ const Proposals = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {proposals.map((proposal: any) => (
-                                <tr key={proposal.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {proposal.proposalNumber}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                        {proposal.clientName}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                        {proposal.projectName}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(proposal.status)}`}>
-                                            {proposal.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                        ${proposal.totalAmount || "0"}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                        {formatDate(proposal.createdAt)}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                        <button
-                                            onClick={() => handleViewDetails(proposal)}
-                                            className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
-                                        >
-                                            View Details
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {groupedProposals.map((proposal: any) => {
+                                const hasAmendments = proposal.amendments.length > 0;
+                                const isExpanded = expandedIds.has(proposal.id);
+
+                                return (
+                                    <React.Fragment key={proposal.id}>
+                                        <tr className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                <div className="flex items-center gap-2">
+                                                    {hasAmendments ? (
+                                                        <button
+                                                            onClick={() => toggleExpanded(proposal.id)}
+                                                            className="p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
+                                                            title={isExpanded ? "Hide amendments" : "Show amendments"}
+                                                        >
+                                                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="w-[22px]" />
+                                                    )}
+                                                    {proposal.proposalNumber}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                                {hasAmendments ? (
+                                                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100 text-xs font-bold">
+                                                        {proposal.amendments.length}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">0</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                {proposal.clientName}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                {proposal.projectName}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                {locationOf(proposal)}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(proposal.status)}`}>
+                                                    {proposal.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                ${proposal.totalAmount || "0"}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                {formatDate(proposal.createdAt)}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                                <button
+                                                    onClick={() => handleViewDetails(proposal)}
+                                                    className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+
+                                        {/* Amendments belonging to this contract */}
+                                        {isExpanded &&
+                                            proposal.amendments.map((amendment: any) => (
+                                                <tr key={amendment.id} className="bg-purple-50/30 hover:bg-purple-50/60 transition-colors">
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-700 pl-12">
+                                                        <span className="text-purple-700">{amendment.proposalNumber}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-xs">
+                                                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 font-bold uppercase tracking-tighter">
+                                                            Amendment
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                        {amendment.clientName}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                        {amendment.projectName}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                        {locationOf(amendment)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(amendment.status)}`}>
+                                                            {amendment.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                        ${amendment.totalAmount || "0"}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                        {formatDate(amendment.createdAt)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                                        <button
+                                                            onClick={() => handleViewDetails(amendment)}
+                                                            className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                                                        >
+                                                            View Details
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </React.Fragment>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -352,17 +519,21 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
         const signature = architectSigCanvas.current.toDataURL("image/png");
 
         try {
-            await sendProposalToClient({
+            const result: any = await sendProposalToClient({
                 id: signingProposalId,
                 architectSignature: signature
             }).unwrap();
 
-            toast.success("Amendment proposal signed and sent to client!");
+            if (result?.data?.emailSent === false) {
+                toast.warning(result?.message || "Sent, but the email could not be delivered.");
+            } else {
+                toast.success("Amendment proposal signed and sent to client!");
+            }
             setIsSignatureModalOpen(false);
             setSigningProposalId(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to sign/send proposal:", error);
-            toast.error("Failed to sign/send proposal.");
+            toast.error(error?.data?.message || "Failed to sign/send proposal.");
         }
     };
 
@@ -631,7 +802,7 @@ const ProposalDetailsModal = ({ proposal, onClose }: ProposalDetailsModalProps) 
                                                         <p className="text-sm text-gray-600 mt-1">{amendment.description}</p>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        {getUrgencyBadge(amendment.urgency)}
+                                                        {amendment.urgency && getUrgencyBadge(amendment.urgency)}
                                                         {getAmendmentStatusBadge(amendment.status)}
                                                     </div>
                                                 </div>

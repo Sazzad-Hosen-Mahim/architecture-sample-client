@@ -13,6 +13,8 @@ export interface ProjectRequest {
     state: string;
     city: string;
     streetAddress: string;
+    aptSuiteUnit?: string | null;
+    zipCode?: string | null;
     additionalComments: string;
     projectName: string;
     projectLocationSameAsClient: boolean;
@@ -20,6 +22,7 @@ export interface ProjectRequest {
     projectState: string;
     projectCity: string;
     projectStreetAddress: string;
+    projectAptSuiteUnit?: string | null;
     projectZipCode: string;
     serviceType: string;
     projectCategory: string;
@@ -35,6 +38,7 @@ export interface ProjectRequest {
     additionalNotes: string;
     driveLink: string | null;
     isNewInquiry: boolean;
+    consultationPaymentId?: string | null;
     isArchived: boolean;
     archiverId: string | null;
     archivedAt: string | null;
@@ -52,6 +56,9 @@ export interface ProjectRequest {
     teams?: Team[];
     isProjectStarted?: boolean;
     projectStartedAt?: string | null;
+    projectCompletedAt?: string | null;
+    totalDurationMonths?: number | null;
+    stages?: { id: string; name: string; status: string; progress: number; driveLink: string | null; completedAt: string | null }[];
 }
 
 export interface Team {
@@ -88,7 +95,7 @@ export interface SendProposalRequest {
     projectCategory: string;
     squareFootage: string;
     budgetRange: string;
-    expectedTimeline: string;
+    // expectedTimeline: string;
 }
 
 export interface Proposal {
@@ -121,6 +128,7 @@ export interface Proposal {
     taxAmount: string;
     totalAmount: string;
     paymentMethod: string | null;
+    paymentType?: string | null;
     paymentTerms: string | null;
     estimatedDuration: string | null;
     contactInfo: string | null;
@@ -239,6 +247,13 @@ export const proposalApi = baseApi.injectEndpoints({
             transformResponse: (response: any) => response.data || response,
             providesTags: ["Project"],
         }),
+        getProposalFull: builder.query<{ success: boolean; data: Proposal }, string>({
+            query: (id) => ({
+                url: `/proposals/${id}/full`,
+                method: "GET",
+            }),
+            providesTags: ["Project"],
+        }),
         submitNewProposal: builder.mutation<ProjectRequest, SendProposalRequest>({
             query: (payload) => ({
                 url: `/proposals`,
@@ -247,11 +262,30 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
-        addService: builder.mutation<ProjectRequest, { name: string; cost: number; timelineWeeks?: number; description?: string; id: string }>({
-            query: ({ name, cost, timelineWeeks, description, id }) => ({
+        addService: builder.mutation<ProjectRequest, { name: string; cost: number; timelineWeeks?: number; description?: string; order?: number; id: string }>({
+            query: ({ name, cost, timelineWeeks, description, order, id }) => ({
                 url: `/proposals/${id}/services`,
                 method: "POST",
-                body: { name, cost, timelineWeeks, description },
+                body: { name, cost, timelineWeeks, description, order },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        // The proposal row is created on the Project step, before the PM has
+        // picked a payment plan on the Services step — so the plan has to be
+        // patched onto the DRAFT afterwards or it silently stays LUMP_SUM.
+        updateProposalPaymentPlan: builder.mutation<unknown, { id: string; paymentMethod: string }>({
+            query: ({ id, paymentMethod }) => ({
+                url: `/proposals/${id}`,
+                method: "PATCH",
+                body: { paymentMethod },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        reorderProposalServices: builder.mutation<unknown, { id: string; items: { id: string; order: number }[] }>({
+            query: ({ id, items }) => ({
+                url: `/proposals/${id}/services/reorder`,
+                method: "PATCH",
+                body: { items },
             }),
             invalidatesTags: ["Project"],
         }),
@@ -404,10 +438,11 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
-        deleteProject: builder.mutation<any, string>({
-            query: (id) => ({
+        deleteProject: builder.mutation<any, { id: string; password: string }>({
+            query: ({ id, password }) => ({
                 url: `/project-requests-admin/${id}`,
                 method: "DELETE",
+                body: { password },
             }),
             invalidatesTags: ["Project"],
         }),
@@ -505,8 +540,11 @@ export const {
     useGetProjectRequestByIdQuery,
     useUpdateProjectRequestStatusMutation,
     useGetProposalInfoQuery,
+    useGetProposalFullQuery,
     useSubmitNewProposalMutation,
     useAddServiceMutation,
+    useUpdateProposalPaymentPlanMutation,
+    useReorderProposalServicesMutation,
     useSendProposalToClientMutation,
     useGetMyProposalsQuery,
     useGetSingleProposalQuery,

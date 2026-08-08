@@ -5,8 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Search, Eye } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useGetActiveProjectsQuery } from "@/redux/api/financialApi";
+import { getProjectProgress } from "@/utils/projectProgress";
 import ProjectFinancialDetailsModal from "./ProjectFinancialDetailsModal";
 import { Loader } from "@/components/ui/loader";
+
+// Phase label shown in the "Phase" column. PENDING and REVIEWED are both the
+// inquiry stage, so they read "Inquiry" - matching their 0% progress.
+const PHASE_LABELS: Record<string, string> = {
+  PENDING: "Inquiry",
+  REVIEWED: "Inquiry",
+  SCHEDULED: "Bidding",
+  ACTIVE: "Active",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
+const PHASE_BADGE_CLASSES: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-800 border-amber-300",
+  REVIEWED: "bg-blue-100 text-blue-800 border-blue-400",
+  SCHEDULED: "bg-emerald-100 text-emerald-800 border-emerald-400",
+  ACTIVE: "bg-green-100 text-green-800 border-green-400",
+  COMPLETED: "bg-purple-100 text-purple-800 border-purple-300",
+  CANCELLED: "bg-red-100 text-red-800 border-red-300",
+};
 
 export default function ProjectFinancialTracking() {
   const { data: projects = [], isLoading } = useGetActiveProjectsQuery();
@@ -22,7 +43,8 @@ export default function ProjectFinancialTracking() {
       const query = searchQuery.toLowerCase();
       result = result.filter((p: any) =>
         p.projectName.toLowerCase().includes(query) ||
-        p.clientName.toLowerCase().includes(query)
+        p.clientName.toLowerCase().includes(query) ||
+        (p.projectNumber || "").toLowerCase().includes(query)
       );
     }
 
@@ -90,7 +112,7 @@ export default function ProjectFinancialTracking() {
             Project Search
           </h2>
           <p className="text-sm text-gray-500 mb-4 font-medium">
-            Find {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects by name or client to review their financial status
+            Find {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects by name, number or client to review their financial status
           </p>
           <div className="flex gap-3">
             <div className="flex-1 relative">
@@ -121,14 +143,20 @@ export default function ProjectFinancialTracking() {
             {activeFilter === "ALL" ? "All" : activeFilter === "ACTIVE" ? "Active" : "Implemented"} Projects Summary
           </h2>
           <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-            <table className="w-full text-sm min-w-[600px]">
+            <table className="w-full text-sm min-w-[820px]">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80">
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">
                     Client Name
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    Project Number
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">
                     Project Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    Phase
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 uppercase tracking-wider">
                     Phase Running
@@ -144,42 +172,68 @@ export default function ProjectFinancialTracking() {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={7}>
                       <Loader fullScreen={false} size={8} />
                     </td>
                   </tr>
                 ) : filteredProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500 font-medium">
+                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500 font-medium">
                       No {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects found.
                     </td>
                   </tr>
                 ) : (
                   filteredProjects.map((project: any) => {
-                    const currentPhase = project.phases.find((ph: any) => ph.status === "IN_PROGRESS" || ph.status === "ACTIVE") || project.phases[0];
+                    const phases = project.phases || [];
+                    const isCompleted = project.status === "COMPLETED";
+                    const currentPhase = phases.find((ph: any) => ph.status === "IN_PROGRESS" || ph.status === "ACTIVE") || phases[0];
+                    // A completed project reads "Completed" in both the Phase
+                    // and Phase Running columns.
+                    const phaseRunning = isCompleted
+                      ? "Completed"
+                      : currentPhase?.name || "Initializing";
+                    const completedPhaseCount = phases.filter((ph: any) => ph.status === "COMPLETED").length;
+                    const progress = getProjectProgress(project.status, completedPhaseCount, phases.length);
+
                     return (
                       <tr key={project.id} className="hover:bg-gray-50 bg-white transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold">
                           {project.clientName}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 font-mono text-xs">
+                          {project.projectNumber || "—"}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold">
                           {project.projectName}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2.5 py-1 rounded-full border font-bold text-[11px] ${PHASE_BADGE_CLASSES[project.status] || "bg-gray-100 text-gray-800 border-gray-300"
+                              }`}
+                          >
+                            {PHASE_LABELS[project.status] || project.status}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
-                          <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100 uppercase tracking-tighter font-black text-[10px]">
-                            {currentPhase?.name || "Initializing"}
+                          <span
+                            className={`px-2 py-1 rounded-md border uppercase tracking-tighter font-black text-[10px] ${isCompleted
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-blue-50 text-blue-700 border-blue-100"
+                              }`}
+                          >
+                            {phaseRunning}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <span className="font-bold text-gray-900">
-                            {currentPhase?.progress || 0}%
+                            {progress}%
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-black hover:text-gray-600 font-bold flex items-center gap-1 ml-auto"
+                            className="text-black cursor-pointer hover:text-gray-600 font-bold flex items-center gap-1 ml-auto"
                             onClick={() => setSelectedProjectId(project.id)}
                           >
                             <Eye className="w-4 h-4 " />

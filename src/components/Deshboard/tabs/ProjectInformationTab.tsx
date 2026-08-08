@@ -1,4 +1,5 @@
 import { ProjectRequest } from "@/redux/api/adminDashboard/proposalApi";
+import { toExternalUrl } from "@/utils/externalUrl";
 import {
     UserIcon,
     MailIcon,
@@ -6,7 +7,7 @@ import {
     CalendarIcon,
     ClockIcon,
     MapPinIcon,
-    CheckCircle2Icon,
+    // CheckCircle2Icon, // used by the commented-out manual status control
     Building2Icon,
     HomeIcon,
     Loader2,
@@ -15,12 +16,10 @@ import {
     Trash2,
     UserCog,
     Users,
-    Play,
     X,
     Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -31,17 +30,17 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
-    useUpdateProjectRequestStatusMutation,
+    // useUpdateProjectRequestStatusMutation, // manual status control (commented out below)
     useUpdateProjectDriveLinkMutation,
     useDeleteProjectDriveLinkMutation,
     useGetProjectManagersQuery,
     useAssignProjectManagerMutation,
     useGetTeamsQuery,
     useAssignProjectTeamsMutation,
-    useStartProjectMutation,
 } from "@/redux/api/adminDashboard/proposalApi";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { getProjectProgress } from "@/utils/projectProgress";
 
 type ProjectInformationTabProps = {
     project: ProjectRequest;
@@ -59,14 +58,13 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
     const currentUser = useAppSelector(selectCurrentUser);
     const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
 
-    const [selectedStatus, setSelectedStatus] = useState<ProjectRequest["status"] | null>(null);
-    const [updateStatus, { isLoading: isUpdating }] = useUpdateProjectRequestStatusMutation();
+    // const [selectedStatus, setSelectedStatus] = useState<ProjectRequest["status"] | null>(null);
+    // Manual status mutation — retained for the commented-out control below.
+    // const [updateStatus, { isLoading: isUpdating }] = useUpdateProjectRequestStatusMutation();
     const [updateDriveLink, { isLoading: isUpdatingDriveLink }] = useUpdateProjectDriveLinkMutation();
     const [deleteDriveLink, { isLoading: isDeletingDriveLink }] = useDeleteProjectDriveLinkMutation();
     const [assignPM, { isLoading: isAssigning }] = useAssignProjectManagerMutation();
     const [assignTeams] = useAssignProjectTeamsMutation();
-    const [startProject, { isLoading: isStartingProject }] = useStartProjectMutation();
-
     const { data: pmData } = useGetProjectManagersQuery(undefined, { skip: !isSuperAdmin });
     const { data: teamsData } = useGetTeamsQuery();
 
@@ -80,7 +78,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
 
     useEffect(() => {
         if (project) {
-            setSelectedStatus(project.status);
+            // setSelectedStatus(project.status); // manual status control (commented out)
             setShowDriveLinkInput(false);
             setIsEditingDriveLink(false);
             setDriveLinkValue("");
@@ -97,28 +95,28 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
         });
     };
 
-    const handleStatusChange = (value: string) => {
-        setSelectedStatus(value as ProjectRequest["status"]);
-    };
+    // const handleStatusChange = (value: string) => {
+    //     setSelectedStatus(value as ProjectRequest["status"]);
+    // };
 
-    const handleSaveChanges = async () => {
-        if (!selectedStatus || selectedStatus === project.status) {
-            toast.info("No changes to save");
-            return;
-        }
-
-        try {
-            await updateStatus({
-                id: project.id,
-                status: selectedStatus,
-                notes: "Status updated from admin panel",
-            }).unwrap();
-            toast.success("Status updated successfully!");
-        } catch (error) {
-            console.error("Failed to update status:", error);
-            toast.error("Failed to update status. Please try again.");
-        }
-    };
+    // const handleSaveChanges = async () => {
+    // if (!selectedStatus || selectedStatus === project.status) {
+    // toast.info("No changes to save");
+    // return;
+    // }
+    //
+    // try {
+    // await updateStatus({
+    // id: project.id,
+    // status: selectedStatus,
+    // notes: "Status updated from admin panel",
+    // }).unwrap();
+    // toast.success("Status updated successfully!");
+    // } catch (error) {
+    // console.error("Failed to update status:", error);
+    // toast.error("Failed to update status. Please try again.");
+    // }
+    // };
 
     const handleAssignPM = async (managerId: string) => {
         try {
@@ -135,28 +133,28 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
     const handleSaveDriveLink = async () => {
         const link = driveLinkValue.trim();
         if (!link) {
-            toast.error("Please enter a Google Drive link");
+            toast.error("Please enter a Project Drive link");
             return;
         }
         try {
             await updateDriveLink({ id: project.id, driveLink: link }).unwrap();
-            toast.success("Google Drive link saved successfully!");
+            toast.success("Project Drive link saved successfully!");
             setShowDriveLinkInput(false);
             setIsEditingDriveLink(false);
             setDriveLinkValue("");
         } catch (error) {
             console.error("Failed to save drive link:", error);
-            toast.error("Failed to save Google Drive link.");
+            toast.error("Failed to save Project Drive link.");
         }
     };
 
     const handleDeleteDriveLink = async () => {
         try {
             await deleteDriveLink(project.id).unwrap();
-            toast.success("Google Drive link removed!");
+            toast.success("Project Drive link removed!");
         } catch (error) {
             console.error("Failed to remove drive link:", error);
-            toast.error("Failed to remove Google Drive link.");
+            toast.error("Failed to remove Project Drive link.");
         }
     };
 
@@ -185,33 +183,25 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
         }
     };
 
-    const handleStartProject = async () => {
-        try {
-            await startProject(project.id).unwrap();
-            toast.success("Project started successfully!");
-        } catch (error) {
-            toast.error("Failed to start project");
-        }
-    };
-
     const getStatusLabel = (status: string) => {
         return STATUS_OPTIONS.find((opt) => opt.value === status)?.label || status;
     };
 
-    const getProgress = (status: string) => {
-        switch (status) {
-            case "PENDING": return 25;
-            case "REVIEWED": return 50;
-            case "SCHEDULED": return 75;
-            case "ACTIVE": return 90;
-            case "COMPLETED": return 100;
-            default: return 0;
-        }
-    };
-
-    const progress = getProgress(selectedStatus || project.status);
-    const hasChanges = selectedStatus !== project.status;
-    const fullClientName = `${project.clientFirstName} ${project.clientMiddleName} ${project.clientLastName}`.trim();
+    const acceptedProposals = project.proposals?.filter((p) => p.status === "ACCEPTED") || [];
+    // Phases live on the project request itself; the accepted proposals are a
+    // fallback for payloads that only carry projectStages. Reading only the
+    // latter left this empty, so a fully-completed project still showed the
+    // 15% "no phases" floor.
+    const allPhases = (project as any).stages?.length
+        ? (project as any).stages
+        : acceptedProposals.flatMap((p) => p.projectStages || []);
+    const completedPhaseCount = allPhases.filter((s: any) => s.status === "COMPLETED").length;
+    // Driven entirely by phase completion — no manual status change needed.
+    const progress = getProjectProgress(project.status, completedPhaseCount, allPhases.length);
+    // const hasChanges = selectedStatus !== project.status;
+    const fullClientName = [project.clientFirstName, project.clientMiddleName, project.clientLastName]
+        .filter(Boolean)
+        .join(" ");
     const fullAddress = `${project.streetAddress}, ${project.city}, ${project.state}, ${project.country}`;
     const projectAddress = `${project.projectStreetAddress}, ${project.projectCity}, ${project.projectState}, ${project.projectCountry}`;
 
@@ -309,6 +299,11 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5" />
                                 <span>{projectAddress}</span>
                             </div>
+                            {project.projectAptSuiteUnit && (
+                                <p className="text-sm text-gray-500 ml-6 mt-1">
+                                    Apt/Suite/Unit: {project.projectAptSuiteUnit}
+                                </p>
+                            )}
                             {project.projectZipCode && (
                                 <p className="text-sm text-gray-500 ml-6 mt-1">
                                     Zip Code: {project.projectZipCode}
@@ -326,10 +321,10 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 <h4 className="text-sm font-semibold text-gray-900 mb-1">Site Constraints</h4>
                                 <p className="text-sm text-gray-600">{project.siteConstraints}</p>
                             </div>
-                            <div>
+                            {/* <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-1">Sustainability Goals</h4>
                                 <p className="text-sm text-gray-600">{project.sustainabilityGoals}</p>
-                            </div>
+                            </div> */}
                         </div>
 
                         {project.specialRequirements && (
@@ -353,18 +348,18 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <LinkIcon className="w-5 h-5 text-blue-600" />
-                            <h3 className="text-lg font-semibold text-gray-900">Google Drive Folder</h3>
+                            <h3 className="text-lg font-semibold text-gray-900"> Project Folder</h3>
                         </div>
                     </div>
                     <p className="text-xs text-gray-500 mb-4">
-                        Internal Google Drive folder for architects and project managers. Not visible to clients.
+                        Internal project folder for architects and project managers. Not visible to clients.
                     </p>
 
                     {/* Show link if exists */}
                     {project.driveLink && !isEditingDriveLink && (
                         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                             <a
-                                href={project.driveLink}
+                                href={toExternalUrl(project.driveLink) ?? undefined}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 font-medium truncate max-w-[70%]"
@@ -403,7 +398,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                             className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium border border-dashed border-blue-300 rounded-lg px-4 py-3 w-full justify-center hover:bg-blue-50 transition-colors"
                         >
                             <LinkIcon className="w-4 h-4" />
-                            Add Google Drive Link
+                            Add Project Folder Link
                         </button>
                     )}
 
@@ -413,7 +408,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 type="url"
                                 value={driveLinkValue}
                                 onChange={(e) => setDriveLinkValue(e.target.value)}
-                                placeholder="https://drive.google.com/drive/folders/..."
+                                placeholder="Project Folder Link"
                                 className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                             <button
@@ -467,7 +462,19 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                         <div className="pt-2 border-t border-gray-200">
                             <div className="flex items-start gap-2">
                                 <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5" />
-                                <p className="text-sm text-gray-600">{fullAddress}</p>
+                                <div>
+                                    <p className="text-sm text-gray-600">{fullAddress}</p>
+                                    {project.aptSuiteUnit && (
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Apt/Suite/Unit: {project.aptSuiteUnit}
+                                        </p>
+                                    )}
+                                    {project.zipCode && (
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Zipcode: {project.zipCode}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -503,7 +510,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-gray-900">Status Progress</span>
                                 <span className="text-sm text-gray-600">
-                                    {getStatusLabel(selectedStatus || project.status)}
+                                    {progress >= 100 ? "Completed" : getStatusLabel(project.status)}
                                 </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -515,49 +522,9 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                             <p className="text-xs text-gray-500 text-right">{progress}% Complete</p>
                         </div>
 
-                        {/* Project Activation / Start Button */}
-                        {project.status === "ACTIVE" && (
-                            <div className="pt-4 border-t border-gray-200 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-semibold text-gray-900">Project Lifecycle</span>
-                                    {project.isProjectStarted ? (
-                                        <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-                                            STARTED
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="outline" className="text-gray-400 border-gray-200">
-                                            NOT STARTED
-                                        </Badge>
-                                    )}
-                                </div>
+                        {/* Manual status control — superseded by the automatic
+                            phase-driven progress above. Kept for reference.
 
-                                {!project.isProjectStarted ? (
-                                    <Button
-                                        onClick={handleStartProject}
-                                        disabled={isStartingProject || (!isSuperAdmin && currentUser?.role !== "PROJECT_MANAGER")}
-                                        className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 h-10 shadow-lg shadow-green-100"
-                                    >
-                                        {isStartingProject ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                                        Start Project
-                                    </Button>
-                                ) : (
-                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                                            <CalendarIcon className="w-3 h-3" />
-                                            Started On:
-                                        </div>
-                                        <p className="text-sm font-bold text-gray-900">
-                                            {project.projectStartedAt ? new Date(project.projectStartedAt).toLocaleDateString() : "N/A"}
-                                        </p>
-                                    </div>
-                                )}
-                                <p className="text-[10px] text-gray-400 italic">
-                                    Starting the project initiates official timeline tracking and notifies all assigned team members.
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Status Dropdown */}
                         <Select
                             value={selectedStatus || project.status}
                             onValueChange={handleStatusChange}
@@ -575,7 +542,6 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                             </SelectContent>
                         </Select>
 
-                        {/* Save Changes Button */}
                         <button
                             onClick={handleSaveChanges}
                             disabled={!hasChanges || isUpdating}
@@ -596,6 +562,7 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                                 </>
                             )}
                         </button>
+                        */}
                     </div>
                 </div>
 

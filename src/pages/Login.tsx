@@ -8,8 +8,9 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAppDispatch } from "@/hooks/useRedux";
 import { toast } from "sonner";
 import SyncLoader from "react-spinners/SyncLoader";
-import { setCredentials } from "@/redux/features/auth/authSlice";
+import { signIn } from "@/redux/features/auth/authActions";
 import { useLoginMutation } from "@/redux/api/authApi";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -41,7 +42,7 @@ const Login = () => {
       const { accessToken, user } = response.data;
 
       dispatch(
-        setCredentials({
+        signIn({
           user,
           accessToken,
         })
@@ -151,12 +152,12 @@ const Login = () => {
 
         {/* Quick Access Section */}
         <div className="mt-8 text-center">
-          <a
+          {/* <a
             href="/dashboard"
             className="text-sm font-medium text-gray-900 mb-3"
           >
             Quick Access (Temporary)
-          </a>
+          </a> */}
           <p className="text-sm text-gray-600">
             Don’t have an account?{" "}
             <Link
@@ -166,6 +167,9 @@ const Login = () => {
               Sign up
             </Link>
           </p>
+          <div className="mt-2">
+            <HeroSocialMedia />
+          </div>
         </div>
       </div>
     </div>

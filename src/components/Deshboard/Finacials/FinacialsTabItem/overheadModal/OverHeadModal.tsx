@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -52,6 +52,60 @@ const expenseCategories = [
   { id: "6", name: "Office Expenses", description: "Supplies, equipment, miscellaneous" },
 ];
 
+/** Sentinel for the free-text category option. Never stored — the typed name is. */
+const OTHER_CATEGORY = "__OTHER__";
+
+const CATEGORY_NAMES = expenseCategories.map((c) => c.name);
+
+/** Colours cycled through the Category Breakdown bars. */
+const BAR_COLORS = [
+  "bg-blue-600",
+  "bg-emerald-600",
+  "bg-amber-500",
+  "bg-purple-600",
+  "bg-rose-500",
+  "bg-cyan-600",
+  "bg-lime-600",
+];
+
+/** How much of a single expense lands in one month. */
+const monthlyValue = (expense: any) => {
+  const amount = Number(expense.amount) || 0;
+  switch (expense.frequency) {
+    case "monthly":
+      return amount;
+    // Legacy rows only - semi-annually is no longer offered when adding.
+    case "semi-annually":
+      return amount / 6;
+    case "yearly":
+    case "one-time":
+      return amount / 12;
+    default:
+      return 0;
+  }
+};
+
+/** How much of a single expense lands in one year. */
+const annualValue = (expense: any) => {
+  const amount = Number(expense.amount) || 0;
+  switch (expense.frequency) {
+    case "monthly":
+      return amount * 12;
+    case "semi-annually":
+      return amount * 2;
+    case "yearly":
+    case "one-time":
+      return amount;
+    default:
+      return 0;
+  }
+};
+
+const sumBy = (expenses: any[], frequencies: string[]) =>
+  expenses
+    .filter((e: any) => frequencies.includes(e.frequency))
+    .reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+
 export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesModalProps) {
   const { data: overheadExpenses = [], isLoading } = useGetOverheadExpensesQuery(undefined, { skip: !open });
   const [createExpense, { isLoading: isCreating }] = useCreateOverheadExpenseMutation();
@@ -60,6 +114,7 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
 
   const [newExpenseFormOpen, setNewExpenseFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [customCategory, setCustomCategory] = useState("");
   const [newExpense, setNewExpense] = useState({
     name: "",
     amount: 0,
@@ -67,52 +122,75 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
     category: "Rent & Facilities",
   });
 
-  const calculateMonthlyEquivalent = (expenses: any[]) => {
-    return (
-      expenses.filter((e) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount), 0) +
-      expenses.filter((e) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount) / 6, 0) +
-      expenses.filter((e) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0) +
-      expenses.filter((e) => e.frequency === "one-time").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0)
-    );
-  };
+  const monthlyEquivalent = overheadExpenses.reduce(
+    (sum: number, e: any) => sum + monthlyValue(e),
+    0
+  );
+  const annualTotal = overheadExpenses.reduce((sum: number, e: any) => sum + annualValue(e), 0);
 
-  const calculateAnnualTotal = (expenses: any[]) => {
-    return (
-      expenses.filter((e) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount) * 12, 0) +
-      expenses.filter((e) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount) * 2, 0) +
-      expenses.filter((e) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount), 0) +
-      expenses.filter((e) => e.frequency === "one-time").reduce((sum: number, e: any) => sum + Number(e.amount), 0)
-    );
-  };
+  const monthlyExpenses = sumBy(overheadExpenses, ["monthly"]);
+  const semiAnnualExpenses = sumBy(overheadExpenses, ["semi-annually"]);
+  const yearlyExpenses = sumBy(overheadExpenses, ["yearly"]);
+  const oneTimeExpenses = sumBy(overheadExpenses, ["one-time"]);
 
-  const monthlyEquivalent = calculateMonthlyEquivalent(overheadExpenses);
-  const annualTotal = calculateAnnualTotal(overheadExpenses);
+  // Derived from the data, so custom "Other" categories appear too.
+  const categoryBreakdown = useMemo(() => {
+    const totals = new Map<string, number>();
+    overheadExpenses.forEach((e: any) => {
+      const name = e.category || "Uncategorised";
+      totals.set(name, (totals.get(name) || 0) + monthlyValue(e));
+    });
+    return Array.from(totals.entries())
+      .map(([name, monthlyTotal]) => ({
+        name,
+        monthlyTotal,
+        percentage: monthlyEquivalent > 0 ? (monthlyTotal / monthlyEquivalent) * 100 : 0,
+      }))
+      .sort((a, b) => b.monthlyTotal - a.monthlyTotal);
+  }, [overheadExpenses, monthlyEquivalent]);
+
+  const isOtherCategory = newExpense.category === OTHER_CATEGORY;
+
+  const resetForm = () => {
+    setNewExpense({ name: "", amount: 0, frequency: "monthly", category: "Rent & Facilities" });
+    setCustomCategory("");
+  };
 
   const handleAddOrUpdateExpense = async () => {
+    const resolvedCategory = isOtherCategory ? customCategory.trim() : newExpense.category;
+    if (isOtherCategory && !resolvedCategory) {
+      toast.error("Please name the category");
+      return;
+    }
+
     try {
+      const payload = { ...newExpense, category: resolvedCategory };
       if (editingId) {
-        await updateExpense({ id: editingId, ...newExpense }).unwrap();
+        await updateExpense({ id: editingId, ...payload }).unwrap();
         toast.success("Expense updated");
       } else {
-        await createExpense(newExpense).unwrap();
+        await createExpense(payload).unwrap();
         toast.success("Expense added");
       }
       setNewExpenseFormOpen(false);
       setEditingId(null);
-      setNewExpense({ name: "", amount: 0, frequency: "monthly", category: "Rent & Facilities" });
+      resetForm();
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to save expense");
     }
   };
 
   const handleEditExpense = (expense: any) => {
+    // A category outside the preset list was typed in via "Other".
+    const isCustom = !CATEGORY_NAMES.includes(expense.category);
     setEditingId(expense.id);
     setNewExpense({
       name: expense.name,
       amount: Number(expense.amount),
       frequency: expense.frequency,
-      category: expense.category,
+      category: isCustom ? OTHER_CATEGORY : expense.category,
     });
+    setCustomCategory(isCustom ? expense.category : "");
     setNewExpenseFormOpen(true);
   };
 
@@ -148,7 +226,7 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                 <Button
                   onClick={() => {
                     setEditingId(null);
-                    setNewExpense({ name: "", amount: 0, frequency: "monthly", category: "Rent & Facilities" });
+                    resetForm();
                     setNewExpenseFormOpen(true);
                   }}
                   className="bg-gray-800 text-white"
@@ -221,30 +299,31 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Monthly Expenses:</span>
-                        <span className="font-medium">
-                          ${overheadExpenses.filter((e: any) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount), 0).toLocaleString()}
-                        </span>
+                        <span className="font-medium">${monthlyExpenses.toLocaleString()}</span>
+                      </div>
+                      {/* Legacy rows only - the frequency is no longer offered */}
+                      {semiAnnualExpenses > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Semi-Annual Expenses:</span>
+                          <span className="font-medium">${semiAnnualExpenses.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Yearly Expenses:</span>
+                        <span className="font-medium">${yearlyExpenses.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Semi-Annual Expenses:</span>
-                        <span className="font-medium">
-                          ${overheadExpenses.filter((e: any) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount), 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Yearly/One-Time:</span>
-                        <span className="font-medium">
-                          ${overheadExpenses.filter((e: any) => ["yearly", "one-time"].includes(e.frequency)).reduce((sum: number, e: any) => sum + Number(e.amount), 0).toLocaleString()}
-                        </span>
+                        <span className="text-muted-foreground">One-Time Expenses:</span>
+                        <span className="font-medium">${oneTimeExpenses.toLocaleString()}</span>
                       </div>
                       <Separator className="my-2" />
                       <div className="flex justify-between text-sm font-medium">
                         <span>Monthly Equivalent:</span>
-                        <span className="text-primary">${monthlyEquivalent.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span className="text-blue-600">${monthlyEquivalent.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                       </div>
                       <div className="flex justify-between text-sm font-medium">
                         <span>Annual Total:</span>
-                        <span className="text-primary">${annualTotal.toLocaleString()}</span>
+                        <span className="text-blue-600">${annualTotal.toLocaleString()}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -255,29 +334,29 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                     <CardTitle className="text-base">Category Breakdown</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {expenseCategories.map((category) => {
-                      const categoryExpenses = overheadExpenses.filter((e: any) => e.category === category.name);
-                      if (categoryExpenses.length === 0) return null;
-                      const monthlyTotal =
-                        categoryExpenses.filter((e: any) => e.frequency === "monthly").reduce((sum: number, e: any) => sum + Number(e.amount), 0) +
-                        categoryExpenses.filter((e: any) => e.frequency === "semi-annually").reduce((sum: number, e: any) => sum + Number(e.amount) / 6, 0) +
-                        categoryExpenses.filter((e: any) => e.frequency === "yearly").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0) +
-                        categoryExpenses.filter((e: any) => e.frequency === "one-time").reduce((sum: number, e: any) => sum + Number(e.amount) / 12, 0);
-                      const percentage = monthlyEquivalent > 0 ? (monthlyTotal / monthlyEquivalent) * 100 : 0;
-
-                      return (
-                        <div key={category.id} className="space-y-1">
-                          <div className="flex justify-between items-center">
+                    {categoryBreakdown.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">No expenses to break down yet.</p>
+                    ) : (
+                      categoryBreakdown.map((category, i) => (
+                        <div key={category.name} className="space-y-1">
+                          <div className="flex justify-between items-center gap-2">
                             <span className="text-sm">{category.name}</span>
-                            <span className="text-sm font-medium">${monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                            <span className="text-sm font-medium whitespace-nowrap">
+                              ${category.monthlyTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
+                            </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div className="bg-primary h-1.5 rounded-full" style={{ width: `${percentage}%` }}></div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`${BAR_COLORS[i % BAR_COLORS.length]} h-1.5 rounded-full transition-all`}
+                              style={{ width: `${Math.min(100, category.percentage)}%` }}
+                            />
                           </div>
-                          <p className="text-xs text-muted-foreground">{percentage.toFixed(1)}% of total expenses</p>
+                          <p className="text-xs text-muted-foreground">
+                            {category.percentage.toFixed(1)}% of total expenses
+                          </p>
                         </div>
-                      );
-                    })}
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -325,9 +404,13 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                   <SelectTrigger id="expense-frequency"><SelectValue placeholder="Select frequency" /></SelectTrigger>
                   <SelectContent className="bg-white border border-gray-200">
                     <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="semi-annually">Semi-Annually</SelectItem>
                     <SelectItem value="yearly">Yearly</SelectItem>
                     <SelectItem value="one-time">One-Time</SelectItem>
+                    {/* Semi-annually is retired — kept selectable only while
+                        editing a legacy row that already uses it. */}
+                    {newExpense.frequency === "semi-annually" && (
+                      <SelectItem value="semi-annually">Semi-Annually (legacy)</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -340,15 +423,26 @@ export function OverheadExpensesModal({ open, onOpenChange }: OverheadExpensesMo
                   {expenseCategories.map((category) => (
                     <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
                   ))}
+                  <SelectItem value={OTHER_CATEGORY}>Other</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                {expenseCategories.find((cat) => cat.name === newExpense.category)?.description}
-              </p>
+              {isOtherCategory ? (
+                <Input
+                  autoFocus
+                  placeholder="Type the expense category"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="mt-2"
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {expenseCategories.find((cat) => cat.name === newExpense.category)?.description}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => { setNewExpenseFormOpen(false); setEditingId(null); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setNewExpenseFormOpen(false); setEditingId(null); resetForm(); }}>Cancel</Button>
             <Button onClick={handleAddOrUpdateExpense} className="bg-gray-800 text-white cursor-pointer" disabled={isCreating || isUpdating}>
               {editingId ? "Update Expense" : "Add Expense"}
             </Button>

@@ -16,6 +16,8 @@ export interface ProjectRequestPayload {
   state: string;
   city: string;
   streetAddress: string;
+  aptSuiteUnit?: string;
+  zipCode: string;
   additionalComments?: string;
   projectName: string;
   projectLocationSameAsClient?: boolean;
@@ -23,6 +25,7 @@ export interface ProjectRequestPayload {
   projectState: string;
   projectCity: string;
   projectStreetAddress: string;
+  projectAptSuiteUnit?: string;
   projectZipCode: string;
   serviceType:
     | "NEW_CONSTRUCTION"
@@ -64,6 +67,8 @@ export interface ProjectResponse {
   state: string;
   city: string;
   streetAddress: string;
+  aptSuiteUnit: string | null;
+  zipCode: string | null;
   additionalComments: string | null;
   projectName: string;
   projectLocationSameAsClient: boolean;
@@ -71,6 +76,7 @@ export interface ProjectResponse {
   projectState: string;
   projectCity: string;
   projectStreetAddress: string;
+  projectAptSuiteUnit: string | null;
   projectZipCode: string;
   serviceType: string;
   projectCategory: string;
@@ -113,6 +119,9 @@ export const projectApi = baseApi.injectEndpoints({
         formData.append("state", data.state);
         formData.append("city", data.city);
         formData.append("streetAddress", data.streetAddress);
+        if (data.aptSuiteUnit)
+          formData.append("aptSuiteUnit", data.aptSuiteUnit);
+        if (data.zipCode) formData.append("zipCode", data.zipCode);
         if (data.additionalComments)
           formData.append("additionalComments", data.additionalComments);
 
@@ -127,6 +136,8 @@ export const projectApi = baseApi.injectEndpoints({
         formData.append("projectState", data.projectState);
         formData.append("projectCity", data.projectCity);
         formData.append("projectStreetAddress", data.projectStreetAddress);
+        if (data.projectAptSuiteUnit)
+          formData.append("projectAptSuiteUnit", data.projectAptSuiteUnit);
         formData.append("projectZipCode", data.projectZipCode);
 
         formData.append("serviceType", data.serviceType);

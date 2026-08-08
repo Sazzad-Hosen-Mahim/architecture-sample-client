@@ -1,4 +1,5 @@
 import { ProjectRequest } from "@/redux/api/adminDashboard/proposalApi";
+import { toExternalUrl } from "@/utils/externalUrl";
 import {
     CalendarIcon,
     ClockIcon,
@@ -7,11 +8,14 @@ import {
     Loader2,
     ExternalLink,
     AlertCircle,
-    ArrowRight,
+    Check,
+    X,
+    Lock,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { useSendMeetingLinkMutation } from "@/redux/api/meetingApi";
+import { useSendMeetingLinkMutation, useRespondToMeetingMutation } from "@/redux/api/meetingApi";
+import PhaseMeetingCards from "../PhaseMeetingCards";
 
 type MeetingRequestTabProps = {
     project: ProjectRequest;
@@ -21,6 +25,8 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
     const meetingFormRef = useRef<HTMLDivElement>(null);
     const meetingUrlInputRef = useRef<HTMLInputElement>(null);
     const [sendMeetingLink, { isLoading: isSendingMeeting }] = useSendMeetingLinkMutation();
+    const [respondToMeeting, { isLoading: isResponding }] = useRespondToMeetingMutation();
+    const [respondingId, setRespondingId] = useState<string | null>(null);
 
     const [meetingForm, setMeetingForm] = useState({
         meetingUrl: "",
@@ -78,8 +84,65 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
         }, 800);
     };
 
+    const handleAcceptRequest = async (meeting: any) => {
+        setRespondingId(meeting.id);
+        try {
+            await respondToMeeting({ meetingId: meeting.id, action: "accept" }).unwrap();
+            toast.success("Request accepted. Now send the meeting link below.");
+            handleRespondToRequest(meeting);
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to accept request");
+        } finally {
+            setRespondingId(null);
+        }
+    };
+
+    const handleRejectRequest = async (meeting: any) => {
+        setRespondingId(meeting.id);
+        try {
+            await respondToMeeting({ meetingId: meeting.id, action: "reject" }).unwrap();
+            toast.success("Request declined. You can propose a new time below.");
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to decline request");
+        } finally {
+            setRespondingId(null);
+        }
+    };
+
     // Meetings logic
-    const pendingRequests = project.meetingLinks?.filter(m => m.meetingUrl === "https://pending.request") || [];
+    const pendingRequests = project.meetingLinks?.filter(m => (m as any).status === "PENDING_CLIENT_REQUEST") || [];
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case "PENDING_CLIENT_REQUEST":
+                return (
+                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-amber-200">
+                        Client Requested
+                    </span>
+                );
+            case "PENDING_RESPONSE":
+                return (
+                    <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-blue-200">
+                        Awaiting Client
+                    </span>
+                );
+            case "ACCEPTED":
+                return (
+                    <span className="text-[10px] font-black bg-green-100 text-green-700 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-green-200 inline-flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" />
+                        Confirmed
+                    </span>
+                );
+            case "DECLINED":
+                return (
+                    <span className="text-[10px] font-black bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-red-200">
+                        Declined
+                    </span>
+                );
+            default:
+                return null;
+        }
+    };
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -110,17 +173,8 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                     <div className="flex-1">
                         <h4 className="text-sm font-bold text-amber-900">New Meeting Request(s)</h4>
                         <p className="text-xs text-amber-700 mt-1">
-                            The client has requested a meeting. Please review the details below and provide a meeting link.
+                            The client has requested a meeting. Accept or decline the requested date below.
                         </p>
-                        <div className="mt-3 flex items-center gap-2">
-                            <button
-                                onClick={() => handleRespondToRequest(pendingRequests[0])}
-                                className="text-xs font-bold text-amber-800 bg-amber-200/50 hover:bg-amber-200 px-3 py-1.5 rounded-md flex items-center gap-1 transition-all"
-                            >
-                                Respond Now
-                                <ArrowRight className="w-3 h-3" />
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -132,22 +186,20 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                         <VideoIcon className="w-4 h-4" />
                         Meeting History & Requests
                     </h3>
-                    
+
                     <div className="space-y-3">
                         {project.meetingLinks && project.meetingLinks.length > 0 ? (
                             project.meetingLinks.map((meeting: any) => {
-                                const isRequest = meeting.meetingUrl === "https://pending.request";
+                                const isClientRequest = meeting.status === "PENDING_CLIENT_REQUEST";
+                                const isAccepted = meeting.status === "ACCEPTED";
+                                const isThisResponding = isResponding && respondingId === meeting.id;
                                 return (
-                                    <div key={meeting.id} className={`p-4 rounded-xl border transition-all ${isRequest ? 'bg-amber-50/50 border-amber-100 shadow-sm' : 'bg-gray-50 border-gray-100'}`}>
+                                    <div key={meeting.id} className={`p-4 rounded-xl border transition-all ${isClientRequest ? 'bg-amber-50/50 border-amber-100 shadow-sm' : isAccepted ? 'bg-green-50/40 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
                                         <div className="flex items-start justify-between">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <h4 className="text-sm font-bold text-gray-900">{meeting.title}</h4>
-                                                    {isRequest && (
-                                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-amber-200">
-                                                            Pending Task
-                                                        </span>
-                                                    )}
+                                                    {getStatusBadge(meeting.status)}
                                                 </div>
                                                 <div className="flex items-center gap-3 text-[11px] text-gray-500">
                                                     <span className="flex items-center gap-1">
@@ -165,17 +217,28 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                                                     </p>
                                                 )}
                                             </div>
-                                            {isRequest ? (
-                                                <button
-                                                    onClick={() => handleRespondToRequest(meeting)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 shadow-sm"
-                                                >
-                                                    <SendIcon className="w-3 h-3" />
-                                                    FIX
-                                                </button>
-                                            ) : (
+                                            {isClientRequest ? (
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => handleAcceptRequest(meeting)}
+                                                        disabled={isThisResponding}
+                                                        className="inline-flex items-center justify-center w-7 h-7 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                                                        title="Accept requested date"
+                                                    >
+                                                        {isThisResponding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRejectRequest(meeting)}
+                                                        disabled={isThisResponding}
+                                                        className="inline-flex items-center justify-center w-7 h-7 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                                                        title="Decline requested date"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : meeting.meetingUrl ? (
                                                 <a
-                                                    href={meeting.meetingUrl}
+                                                    href={toExternalUrl(meeting.meetingUrl) ?? undefined}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-2 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg text-blue-600 shadow-sm transition-all active:scale-95"
@@ -183,7 +246,7 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                                                 >
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                 );
@@ -203,7 +266,7 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                         <SendIcon className="w-4 h-4" />
                         Fix / Schedule Meeting
                     </h3>
-                    
+
                     <div ref={meetingFormRef} className="border border-blue-200 bg-blue-50 rounded-xl p-6 shadow-sm">
                         <p className="text-sm text-gray-600 mb-6">
                             Enter the meeting details below to send a link to the client.
@@ -219,7 +282,7 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                                     id="meetingUrl"
                                     value={meetingForm.meetingUrl}
                                     onChange={(e) => handleMeetingFormChange("meetingUrl", e.target.value)}
-                                    placeholder="https://meet.google.com/abc-def-ghi"
+                                    placeholder="Meeting Link"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                     required
                                     disabled={isSendingMeeting}
@@ -287,6 +350,9 @@ export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Per-phase meeting cards — appear once a proposal is accepted */}
+            <PhaseMeetingCards project={project} />
         </div>
     );
 }

@@ -30,6 +30,7 @@ export default function TotalProjectsFirm() {
 
   return (
     <div className="">
+      <h1 className="text-md ml-3">Firm Projects: </h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-1 bg-gray-50">
         {cards.map((card, index) => (
           <div

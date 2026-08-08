@@ -4,8 +4,8 @@ import {
   ArrowLeft,
   Bell,
   Key,
-  LogOut,
   Shield,
+  CalendarDays,
   ClipboardPenLine,
   FilePenLine,
   User,
@@ -19,6 +19,7 @@ const OwnerControlsTab = lazy(() => import("@/components/ProfileSetting/OwnerCon
 const ArchivedProjectsTab = lazy(() => import("@/components/ProfileSetting/ArchivedProjectsTab").then(module => ({ default: module.ArchivedProjectsTab })));
 const NotificationSettingsTab = lazy(() => import("@/components/ProfileSetting/NotificationSettingsTab").then(module => ({ default: module.NotificationSettingsTab })));
 const SecuritySettingsCard = lazy(() => import("@/components/ProfileSetting/SecuritySettingsCard").then(module => ({ default: module.SecuritySettingsCard })));
+const MasterScheduleTab = lazy(() => import("@/components/ProfileSetting/MasterScheduleTab"));
 const MasterContractTab = lazy(() => import("@/components/ProfileSetting/MasterContractTab"));
 const AmendmentContractTab = lazy(() => import("@/components/ProfileSetting/AmendmentContractTab"));
 
@@ -42,11 +43,33 @@ import { toast } from "sonner";
 import { useUpdatedProfileInfoMutation } from "@/redux/features/ProfileSettings/profileSettings";
 
 type ProfileData = {
-  name: string;
-  phone: string;
-  company: string;
-  bio: string;
+  firstName: string;
+  middleInitial: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  companyName: string;
+  streetAddress: string;
+  city: string;
+  stateRegion: string;
+  zipCode: string;
+  country: string;
   profileImg: string | File;
+};
+
+const EMPTY_PROFILE: ProfileData = {
+  firstName: "",
+  middleInitial: "",
+  lastName: "",
+  email: "",
+  phoneNumber: "",
+  companyName: "",
+  streetAddress: "",
+  city: "",
+  stateRegion: "",
+  zipCode: "",
+  country: "",
+  profileImg: "",
 };
 
 export function ProfileSettings() {
@@ -60,30 +83,36 @@ export function ProfileSettings() {
   const [activeTab, setActiveTab] = useState("profile");
   const [profilePhoto, setProfilePhoto] = useState<string>(user?.imagUrl || "");
 
-  const [profileData, setProfileData] = useState<ProfileData>({
-    name: "",
-    phone: "",
-    company: "",
-    bio: "",
-    profileImg: "",
-  });
+  const [profileData, setProfileData] = useState<ProfileData>(EMPTY_PROFILE);
 
   // when user data becomes available, populate the form
   useEffect(() => {
     if (user) {
+      const u = user as any;
+      // Fall back to splitting the legacy single `name` for pre-migration rows.
+      const nameParts = (u.name || "").trim().split(/\s+/);
       setProfileData({
-        name: user?.name || "",
-        phone: user?.phoneNumber || "",
-        company: user?.companyName || "",
-        bio: user?.bio || "",
-        profileImg: user?.imagUrl || "",
+        firstName: u.firstName || nameParts[0] || "",
+        middleInitial: u.middleInitial || "",
+        lastName: u.lastName || nameParts.slice(1).join(" ") || "",
+        email: u.email || "",
+        phoneNumber: u.phoneNumber || "",
+        companyName: u.companyName || "",
+        streetAddress: u.streetAddress || "",
+        city: u.city || "",
+        stateRegion: u.stateRegion || "",
+        zipCode: u.zipCode || "",
+        country: u.country || "",
+        profileImg: u.avatar || u.imagUrl || "",
       });
-      setProfilePhoto(user?.imagUrl || "");
+      setProfilePhoto(u.avatar || u.imagUrl || "");
     }
   }, [user]);
 
   const isOwner = user?.role === "Owner";
   const isStaff = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER";
+  // A client only ever sees Profile / Security / Notifications.
+  const isClient = !isOwner && !isStaff;
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -119,40 +148,35 @@ export function ProfileSettings() {
     setIsLoading(true);
 
     try {
-      // Build FormData as per Swagger
       const formData = new FormData();
-      formData.append("name", profileData.name || "");
-      formData.append("bio", profileData.bio || "");
-      formData.append("phoneNumber", profileData.phone || "");
-      formData.append("companyName", profileData.company || "");
+      const textFields: (keyof ProfileData)[] = [
+        "firstName",
+        "middleInitial",
+        "lastName",
+        "phoneNumber",
+        "companyName",
+        "streetAddress",
+        "city",
+        "stateRegion",
+        "zipCode",
+        "country",
+      ];
+      textFields.forEach((field) => {
+        formData.append(field, (profileData[field] as string) || "");
+      });
 
       if ((profileData.profileImg as any) instanceof File) {
         formData.append("file", profileData.profileImg as any);
       }
 
-      console.log(
-        "FormData before submit:",
-        Object.fromEntries(formData.entries())
-      );
-
-      // Call RTK Mutation
       const response: any = await updatedProfileInfo(formData).unwrap();
-      console.log("Profile update response:", response);
 
       if (response?.success && response?.data) {
         const updatedData = response.data;
-        console.log("i am comming data for dispatch", updatedData);
 
-        //   Update redux user data with new info
-        dispatch(
-          updateUser({
-            name: updatedData.name,
-            bio: updatedData.bio,
-            imagUrl: updatedData.imagUrl, // backend key (check spelling)
-            phoneNumber: updatedData.phoneNumber,
-            companyName: updatedData.companyName,
-          })
-        );
+        // Keep redux in step so the sidebar and avatar update immediately.
+        dispatch(updateUser(updatedData));
+        if (updatedData.avatar) setProfilePhoto(updatedData.avatar);
 
         toast.success(response?.message || "Profile updated successfully!");
       } else {
@@ -166,10 +190,6 @@ export function ProfileSettings() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleLogout = async () => {
-    // Handle logout logic
   };
 
   // Custom Tabs Components
@@ -210,14 +230,6 @@ export function ProfileSettings() {
           </Button>
           <h1 className="text-lg font-bold text-gray-900">Profile Settings</h1>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign out
-        </Button>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
@@ -298,20 +310,32 @@ export function ProfileSettings() {
               >
                 Notifications
               </TabButton>
-              <TabButton
-                value="masterContract"
-                icon={ClipboardPenLine}
-                isActive={activeTab === "masterContract"}
-              >
-                Master Contract
-              </TabButton>
-              <TabButton
-                value="amendmentContract"
-                icon={FilePenLine}
-                isActive={activeTab === "amendmentContract"}
-              >
-                Amendment Contract
-              </TabButton>
+              {/* Scheduling and contract templates are staff-only. */}
+              {!isClient && (
+                <>
+                  <TabButton
+                    value="masterSchedule"
+                    icon={CalendarDays}
+                    isActive={activeTab === "masterSchedule"}
+                  >
+                    Master Schedule
+                  </TabButton>
+                  <TabButton
+                    value="masterContract"
+                    icon={ClipboardPenLine}
+                    isActive={activeTab === "masterContract"}
+                  >
+                    Master Contract
+                  </TabButton>
+                  <TabButton
+                    value="amendmentContract"
+                    icon={FilePenLine}
+                    isActive={activeTab === "amendmentContract"}
+                  >
+                    Amendment Contract
+                  </TabButton>
+                </>
+              )}
               {isOwner && (
                 <TabButton
                   value="owner-controls"
@@ -346,74 +370,130 @@ export function ProfileSettings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Name row: First / MI / Last */}
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_1fr] gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Full Name</Label>
+                        <Label htmlFor="firstName">First Name</Label>
                         <Input
-                          id="name"
-                          name="name"
-                          value={profileData.name}
+                          id="firstName"
+                          name="firstName"
+                          value={profileData.firstName}
                           onChange={handleProfileChange}
-                          placeholder="Your full name"
+                          placeholder="First name"
                         />
                       </div>
-                      {/* <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={profileData.email}
-                        onChange={handleProfileChange}
-                        placeholder="Your email address"
-                      />
-                    </div> */}
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="middleInitial">MI</Label>
                         <Input
-                          id="phone"
-                          name="phone"
-                          value={profileData.phone}
+                          id="middleInitial"
+                          name="middleInitial"
+                          value={profileData.middleInitial}
+                          onChange={handleProfileChange}
+                          maxLength={4}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          value={profileData.lastName}
+                          onChange={handleProfileChange}
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={profileData.email}
+                          disabled
+                          title="Your sign-in email cannot be changed here"
+                          className="bg-gray-50 text-gray-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Phone Number</Label>
+                        <Input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          value={profileData.phoneNumber}
                           onChange={handleProfileChange}
                           placeholder="Your phone number"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Company</Label>
+                      <Input
+                        id="companyName"
+                        name="companyName"
+                        value={profileData.companyName}
+                        onChange={handleProfileChange}
+                        placeholder="Your company"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="company">Company</Label>
+                        <Label htmlFor="streetAddress">Address</Label>
                         <Input
-                          id="company"
-                          name="company"
-                          value={profileData.company}
+                          id="streetAddress"
+                          name="streetAddress"
+                          value={profileData.streetAddress}
                           onChange={handleProfileChange}
-                          placeholder="Your company"
+                          placeholder="Street address"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          name="city"
+                          value={profileData.city}
+                          onChange={handleProfileChange}
+                          placeholder="City"
                         />
                       </div>
                     </div>
-                    {/* <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Input
-                      id="role"
-                      name="role"
-                      value={profileData.role}
-                      onChange={handleProfileChange}
-                      placeholder="Your role"
-                    />
-                  </div> */}
-                    <div className="space-y-2">
-                      <Label htmlFor="bio">Bio</Label>
-                      <textarea
-                        id="bio"
-                        name="bio"
-                        value={profileData.bio}
-                        onChange={(e) =>
-                          setProfileData((prev) => ({
-                            ...prev,
-                            bio: e.target.value,
-                          }))
-                        }
-                        placeholder="Tell us about yourself"
-                        className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="stateRegion">State/Region</Label>
+                        <Input
+                          id="stateRegion"
+                          name="stateRegion"
+                          value={profileData.stateRegion}
+                          onChange={handleProfileChange}
+                          placeholder="State or region"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="zipCode">Zip Code</Label>
+                        <Input
+                          id="zipCode"
+                          name="zipCode"
+                          value={profileData.zipCode}
+                          onChange={handleProfileChange}
+                          placeholder="Zip code"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="country">Country</Label>
+                        <Input
+                          id="country"
+                          name="country"
+                          value={profileData.country}
+                          onChange={handleProfileChange}
+                          placeholder="Country"
+                        />
+                      </div>
                     </div>
                   </CardContent>
                   <CardFooter>
@@ -435,11 +515,14 @@ export function ProfileSettings() {
             {/* Notifications Tab */}
             {activeTab === "notifications" && <NotificationSettingsTab />}
 
+            {/* Master Schedule Tab */}
+            {!isClient && activeTab === "masterSchedule" && <MasterScheduleTab />}
+
             {/* Master Contract Tab */}
-            {activeTab === "masterContract" && <MasterContractTab />}
+            {!isClient && activeTab === "masterContract" && <MasterContractTab />}
 
             {/* Amendment Contract Tab */}
-            {activeTab === "amendmentContract" && <AmendmentContractTab />}
+            {!isClient && activeTab === "amendmentContract" && <AmendmentContractTab />}
 
             {/* Owner Controls Tab - Only visible to owners */}
             {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}

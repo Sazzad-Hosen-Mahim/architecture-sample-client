@@ -6,23 +6,41 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BarChart, DollarSign, TrendingUp, Users, Archive, Loader2 } from "lucide-react";
-import { useGetFinancialOverviewQuery, useArchiveCompletedProjectsMutation, useGetArchivedSummaryQuery } from "@/redux/api/financialApi";
+import {
+  BarChart, DollarSign, TrendingUp, Users, //Archive, Loader2
+  // 
+} from "lucide-react";
+import {
+  useGetFinancialOverviewQuery,
+  // useArchiveCompletedProjectsMutation, 
+  // useGetArchivedSummaryQuery
+} from "@/redux/api/financialApi";
 import { useState } from "react";
-import { toast } from "sonner";
+// import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
+import ScopeSelect from "@/components/Deshboard/Finacials/ScopeSelect";
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 export default function FinancialOverviewTab() {
-  const { data: overview, isLoading } = useGetFinancialOverviewQuery();
-  const [archiveCompleted, { isLoading: isArchiving }] = useArchiveCompletedProjectsMutation();
-  const { data: archivedSummary } = useGetArchivedSummaryQuery();
-  const [archiveYear, setArchiveYear] = useState(new Date().getFullYear());
+  // "All Time" is the running total for the whole firm; a year shows only the
+  // projects that belong to it (completed that year, or still running since).
+  const [scope, setScope] = useState<"all" | "year">("year");
+  const [scopeYear, setScopeYear] = useState(CURRENT_YEAR);
+
+  const { data: overview, isLoading } = useGetFinancialOverviewQuery({
+    scope,
+    year: scopeYear,
+  });
+  // const [archiveCompleted, { isLoading: isArchiving }] = useArchiveCompletedProjectsMutation();
+  // const { data: archivedSummary } = useGetArchivedSummaryQuery();
+  // const [archiveYear, setArchiveYear] = useState(new Date().getFullYear());
 
   if (isLoading) return <Loader />;
 
-  const labor = overview?.labor || { total: 0, totalSalaries: 0, totalTaxes: 0, employeeCount: 0, employees: [] };
+  const labor = overview?.labor || { total: 0, totalSalaries: 0, totalTaxes: 0, totalNetPay: 0, employeeCount: 0, employees: [], utilization: 0 };
   const overhead = overview?.overhead || { total: 0, monthlyExpenses: 0, annualExpenses: 0, projectOverhead: 0, categoryBreakdown: {}, expenseCount: 0 };
-  const revenue = overview?.revenue || { total: 0, activeProjectCount: 0 };
+  const revenue = overview?.revenue || { total: 0, activeProjectCount: 0, completedProjectCount: 0 };
   const projectFinancials = overview?.projectFinancials || { totalBurned: 0, totalLabor: 0, totalProjectOverhead: 0, totalStudioOverhead: 0, firmBillingRate: 0 };
   const profit = overview?.profit || { total: 0, margin: 0 };
 
@@ -37,9 +55,17 @@ export default function FinancialOverviewTab() {
               <div>
                 <CardTitle>Financial Summary</CardTitle>
                 <CardDescription>
-                  Live data from employees, expenses & projects
+                  Live data from employees, expenses &amp; projects
                 </CardDescription>
               </div>
+              <ScopeSelect
+                scope={scope}
+                year={scopeYear}
+                onChange={(nextScope, nextYear) => {
+                  setScope(nextScope);
+                  setScopeYear(nextYear);
+                }}
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -52,7 +78,7 @@ export default function FinancialOverviewTab() {
                     Profit
                   </h3>
                   <span className={`text-sm font-bold ${profit.total >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    ${profit.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${profit.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -89,8 +115,12 @@ export default function FinancialOverviewTab() {
                     <span className="font-medium">{revenue.activeProjectCount}</span>
                   </div>
                   <div className="flex justify-between text-sm">
+                    <span>Completed Projects</span>
+                    <span className="font-medium">{revenue.completedProjectCount ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span>Total Costs</span>
-                    <span className="font-medium">${totalCosts.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <span className="font-medium">${totalCosts.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
                 <div className="pt-2">
@@ -128,10 +158,16 @@ export default function FinancialOverviewTab() {
                     Overhead
                   </h3>
                   <span className="text-sm font-bold text-orange-600">
-                    ${overhead.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${overhead.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Monthly Overhead</span>
+                    <span className="font-medium">
+                      ${(overhead?.total / 12 || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
                   <div className="flex justify-between text-sm">
                     <span>Monthly Expenses</span>
                     <span className="font-medium">
@@ -145,13 +181,13 @@ export default function FinancialOverviewTab() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Project Overhead</span>
+                    <span>Labor Overhead</span>
                     <span className="font-medium">
                       ${(projectFinancials?.totalProjectOverhead || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500 italic text-[10px] mt-1">
-                    <span>* Project overhead derived from non-billable timecards at ${projectFinancials?.firmBillingRate || "N/A"}/hr</span>
+                    <span>* Labor overhead derived from non-billable timecards at ${projectFinancials?.firmBillingRate || "N/A"}/hr</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Expense Items</span>
@@ -190,12 +226,12 @@ export default function FinancialOverviewTab() {
                     Labor
                   </h3>
                   <span className="text-sm font-bold text-blue-600">
-                    ${(labor?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${(labor?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Total Salaries</span>
+                    <span>Total Salaries (Gross)</span>
                     <span className="font-medium">${(labor?.totalSalaries || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -207,6 +243,10 @@ export default function FinancialOverviewTab() {
                     <span className="font-medium">{labor?.employeeCount || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
+                    <span>Avg Utilization</span>
+                    <span className="font-medium">{(labor?.utilization || 0).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span>% of Revenue</span>
                     <span className="font-medium">
                       {revenue.total > 0 ? ((labor.total / revenue.total) * 100).toFixed(1) : "0.0"}%
@@ -214,7 +254,10 @@ export default function FinancialOverviewTab() {
                   </div>
                 </div>
                 <div className="pt-2">
-                  <div className="text-sm font-medium mb-1">Employee Costs</div>
+                  <div className="text-sm font-medium mb-1">
+                    Employee Costs
+                    <span className="ml-1 text-[10px] font-normal text-gray-400">(net pay)</span>
+                  </div>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {(labor.employees || []).map((emp: any) => (
                       <div key={emp.id} className="space-y-1">
@@ -231,7 +274,7 @@ export default function FinancialOverviewTab() {
                       </div>
                     ))}
                     {(labor.employees || []).length === 0 && (
-                      <p className="text-xs text-gray-400">No employee profiles with salary data</p>
+                      <p className="text-xs text-gray-400">No approved timecards in this period</p>
                     )}
                   </div>
                 </div>
@@ -334,16 +377,38 @@ export default function FinancialOverviewTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
         <Card className="col-span-1 md:col-span-3 border-gray-50">
           <CardHeader>
-            <CardTitle>Financial Performance</CardTitle>
-            <CardDescription>Monthly breakdown of key financial metrics</CardDescription>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Financial Performance</CardTitle>
+                <CardDescription>Monthly breakdown of key financial metrics</CardDescription>
+              </div>
+              <ScopeSelect
+                scope={scope}
+                year={scopeYear}
+                onChange={(nextScope, nextYear) => {
+                  setScope(nextScope);
+                  setScopeYear(nextYear);
+                }}
+              />
+            </div>
           </CardHeader>
           <CardContent>
-            <FinancialChart />
+            {/* Totals come from the summary above so both panels agree */}
+            <FinancialChart
+              scope={scope}
+              year={scopeYear}
+              totals={{
+                netRevenue: revenue.total || 0,
+                totalCosts,
+                totalProfit: profit.total || 0,
+                utilization: labor.utilization || 0,
+              }}
+            />
           </CardContent>
         </Card>
       </div>
       {/* Year-End Archive Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
         <Card className="col-span-1 md:col-span-3 border-gray-50">
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -434,7 +499,7 @@ export default function FinancialOverviewTab() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   );
 }

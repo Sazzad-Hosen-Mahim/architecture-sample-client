@@ -40,6 +40,7 @@ const TimecardsPage = lazy(() => import("@/pages/Dashboard/TimecardsPage"));
 const Teams = lazy(() => import("@/pages/Dashboard/Teams"));
 const RefundRequests = lazy(() => import("@/pages/Dashboard/RefundRequests"));
 const ClientUsers = lazy(() => import("@/pages/Dashboard/ClientUsers"));
+const AdjustRates = lazy(() => import("@/pages/Dashboard/AdjustRates"));
 
 // Loading component for Suspense
 const PageLoader = () => (
@@ -154,6 +155,7 @@ const routes = createBrowserRouter([
       { path: "teams", element: <SuspenseWrapper><Teams /></SuspenseWrapper> },
       { path: "refund-requests", element: <SuspenseWrapper><RefundRequests /></SuspenseWrapper> },
       { path: "client-users", element: <SuspenseWrapper><ClientUsers /></SuspenseWrapper> },
+      { path: "adjust-rates", element: <SuspenseWrapper><AdjustRates /></SuspenseWrapper> },
     ],
   },
   {

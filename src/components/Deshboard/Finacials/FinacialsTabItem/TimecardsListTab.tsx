@@ -2,95 +2,161 @@ import {
   useGetTimecardsByPayPeriodQuery,
   useGetAllTimecardsQuery,
   useGetBillingRateQuery,
-  useApproveTimecardMutation
+  useGetPayrollStartDateQuery,
+  useArchiveTimecardsMutation,
 } from "@/redux/api/financialApi";
 import { useState, useMemo } from "react";
 import {
   Search,
   Eye,
   Calendar,
-  // RotateCcw,
   CheckCircle2,
   Clock,
   AlertCircle,
   FileText,
-  Users
+  Users,
+  Filter,
+  Archive,
+  ChevronDown,
 } from "lucide-react";
-import TimesheetEntryFormDialog from "@/components/Deshboard/TimeCardDialog/TimesheetEntryFormDialog";
+import TimecardReviewDialog from "@/components/Deshboard/TimeCardDialog/TimecardReviewDialog";
 import { generatePayrollPDF } from "@/utils/payrollPDFGenerator";
+import { generatePayPeriods } from "@/utils/payPeriods";
+import { timecardBreakdown, formatCurrency } from "@/utils/payrollTax";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 
-// Helper to generate 26 periods (same logic as NewTimesheetDialog)
-function generatePayPeriods(year: number) {
-  const periods: { period: number; startDate: Date; endDate: Date; label: string }[] = [];
-  const jan1 = new Date(year, 0, 1);
-  const dayOfWeek = jan1.getDay();
-  const daysToFirstMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-  const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-
-  for (let i = 0; i < 26; i++) {
-    const startDate = new Date(firstMonday);
-    startDate.setDate(firstMonday.getDate() + i * 14);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 13);
-    const label = `Period ${i + 1} (${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`;
-    periods.push({ period: i + 1, startDate, endDate, label });
-  }
-  return periods;
-}
+const STATUS_FILTERS = ["ALL", "SUBMITTED", "APPROVED", "REJECTED", "DRAFT"] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const TimecardsListTab = () => {
   const currentYear = new Date().getFullYear();
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedPeriod, setSelectedPeriod] = useState(-1); // -1 means "All Periods"
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedTaxId, setExpandedTaxId] = useState<string | null>(null);
+  const [selectedTimecardId, setSelectedTimecardId] = useState<string | null>(null);
 
-  const periods = useMemo(() => generatePayPeriods(selectedYear), [selectedYear]);
-  const activePeriod = periods.find(p => p.period === selectedPeriod);
+  // Pay periods are anchored to the firm's payroll start date, not to Jan 1.
+  const { data: payrollSettings } = useGetPayrollStartDateQuery();
+  const periods = useMemo(
+    () => generatePayPeriods(selectedYear, payrollSettings?.payrollStartDate),
+    [selectedYear, payrollSettings]
+  );
+  const activePeriod = periods.find((p) => p.period === selectedPeriod);
 
   const { data: periodTimecards = [], isLoading: isLoadingPeriod } = useGetTimecardsByPayPeriodQuery(
     { year: selectedYear, period: selectedPeriod },
     { skip: selectedPeriod === -1 }
   );
 
-  const { data: allTimecards = [], isLoading: isLoadingAll } = useGetAllTimecardsQuery(
-    undefined,
-    { skip: selectedPeriod !== -1 }
-  );
+  const { data: allTimecards = [], isLoading: isLoadingAll } = useGetAllTimecardsQuery(undefined, {
+    skip: selectedPeriod !== -1,
+  });
 
   const timecards = selectedPeriod === -1 ? allTimecards : periodTimecards;
   const isLoadingTimecards = selectedPeriod === -1 ? isLoadingAll : isLoadingPeriod;
 
   const { data: billingRateData } = useGetBillingRateQuery();
-  const [approveTimecard, { isLoading: isApproving }] = useApproveTimecardMutation();
+  const [archiveTimecards, { isLoading: isArchiving }] = useArchiveTimecardsMutation();
 
-  const [selectedTimecardId, setSelectedTimecardId] = useState<string | null>(null);
-
-  // Map timecards to display items (Only show people who actually have a timecard)
+  /** One row per timecard, with all payroll figures resolved up front. */
   const payrollItems = useMemo(() => {
+    const query = search.toLowerCase();
     return timecards
       .filter((tc: any) => {
-        const userName = tc.user?.name || "";
-        const userEmail = tc.user?.email || "";
-        return (
-          userName.toLowerCase().includes(search.toLowerCase()) ||
-          userEmail.toLowerCase().includes(search.toLowerCase())
-        );
+        const matchesSearch =
+          (tc.user?.name || "").toLowerCase().includes(query) ||
+          (tc.user?.email || "").toLowerCase().includes(query);
+        const matchesStatus = statusFilter === "ALL" || tc.status === statusFilter;
+        return matchesSearch && matchesStatus;
       })
-      .map((tc: any) => ({
-        employee: tc.user,
-        timecard: tc,
-        status: tc.status
-      }));
-  }, [timecards, search]);
+      .map((tc: any) => {
+        const profile = tc.user?.employeeProfile;
+        const billable = Number(tc.billableHours || 0);
+        const total = Number(tc.totalHours || 0);
+        const breakdown = timecardBreakdown(tc);
 
-  const canProcessPayroll = useMemo(() => {
-    // Payroll can only be processed if a specific period is selected and there are APPROVED timecards
-    return selectedPeriod !== -1 && timecards.some((tc: any) => tc.status === "APPROVED");
-  }, [selectedPeriod, timecards]);
+        return {
+          id: tc.id,
+          timecard: tc,
+          employee: tc.user,
+          status: tc.status,
+          billableHours: billable,
+          overheadHours: total - billable,
+          utilization: total > 0 ? (billable / total) * 100 : 0,
+          hourlyRate: Number(profile?.hourlyRate || 0),
+          salary: Number(profile?.salary || 0),
+          location: profile?.state || null,
+          breakdown,
+        };
+      });
+  }, [timecards, search, statusFilter]);
+
+  /** Grand totals across every visible row. */
+  const grandTotals = useMemo(
+    () =>
+      payrollItems.reduce(
+        (acc, item) => ({
+          billableHours: acc.billableHours + item.billableHours,
+          overheadHours: acc.overheadHours + item.overheadHours,
+          gross: acc.gross + item.breakdown.gross,
+          tax: acc.tax + item.breakdown.totalTax,
+          net: acc.net + item.breakdown.net,
+        }),
+        { billableHours: 0, overheadHours: 0, gross: 0, tax: 0, net: 0 }
+      ),
+    [payrollItems]
+  );
+
+  const archivableIds = useMemo(
+    () => payrollItems.filter((i) => i.status === "APPROVED").map((i) => i.id),
+    [payrollItems]
+  );
+  const selectedArchivable = useMemo(
+    () => archivableIds.filter((id) => selectedIds.has(id)),
+    [archivableIds, selectedIds]
+  );
+  const allArchivableSelected =
+    archivableIds.length > 0 && selectedArchivable.length === archivableIds.length;
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allArchivableSelected ? new Set() : new Set(archivableIds));
+  };
+
+  const handleArchive = async () => {
+    if (selectedArchivable.length === 0) return;
+    try {
+      await archiveTimecards(selectedArchivable).unwrap();
+      toast.success(
+        `${selectedArchivable.length} timecard${selectedArchivable.length > 1 ? "s" : ""} archived`
+      );
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to archive");
+    }
+  };
+
+  const canProcessPayroll = useMemo(
+    () => selectedPeriod !== -1 && timecards.some((tc: any) => tc.status === "APPROVED"),
+    [selectedPeriod, timecards]
+  );
 
   const handleProcessPayroll = () => {
     if (!activePeriod) return;
@@ -101,20 +167,11 @@ const TimecardsListTab = () => {
         weekStarting: activePeriod.startDate.toISOString(),
         weekEnding: activePeriod.endDate.toISOString(),
         billingRate: billingRateData?.billingRate || 0,
-        timecards: timecards.filter((tc: any) => tc.status === "APPROVED")
+        timecards: timecards.filter((tc: any) => tc.status === "APPROVED"),
       });
       toast.success("Payroll PDF generated successfully");
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate payroll PDF");
-    }
-  };
-
-  const handleApprove = async (id: string) => {
-    try {
-      await approveTimecard(id).unwrap();
-      toast.success("Timecard approved");
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Failed to approve");
     }
   };
 
@@ -145,7 +202,26 @@ const TimecardsListTab = () => {
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
               >
-                {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
+                {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 sm:px-4 py-2 rounded-xl">
+              <Filter size={14} className="text-gray-400" />
+              <select
+                className="text-sm bg-transparent outline-none font-bold text-gray-700"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              >
+                {STATUS_FILTERS.map((s) => (
+                  <option key={s} value={s}>
+                    {s === "ALL" ? "All Statuses" : s.charAt(0) + s.slice(1).toLowerCase()}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -157,17 +233,36 @@ const TimecardsListTab = () => {
                 onChange={(e) => setSelectedPeriod(Number(e.target.value))}
               >
                 <option value={-1}>All Periods</option>
-                {periods.map(p => <option key={p.period} value={p.period}>{p.label}</option>)}
+                {periods.map((p) => (
+                  <option key={p.period} value={p.period}>
+                    {p.label}
+                  </option>
+                ))}
               </select>
             </div>
 
             <Button
+              onClick={handleArchive}
+              disabled={selectedArchivable.length === 0 || isArchiving}
+              variant="outline"
+              className={`font-black uppercase tracking-widest px-5 transition-all active:scale-95 ${
+                selectedArchivable.length > 0
+                  ? "border-amber-300 text-amber-700 hover:bg-amber-600 hover:text-white"
+                  : "text-gray-300"
+              }`}
+            >
+              <Archive size={16} className="mr-2" />
+              Archive{selectedArchivable.length > 0 ? ` (${selectedArchivable.length})` : ""}
+            </Button>
+
+            <Button
               onClick={handleProcessPayroll}
               disabled={!canProcessPayroll}
-              className={`font-black uppercase tracking-widest px-6 shadow-lg transition-all active:scale-95 ${canProcessPayroll
-                ? "bg-black text-white hover:bg-gray-800 shadow-black/10"
-                : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                }`}
+              className={`font-black uppercase tracking-widest px-6 shadow-lg transition-all active:scale-95 ${
+                canProcessPayroll
+                  ? "bg-black text-white hover:bg-gray-800 shadow-black/10"
+                  : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+              }`}
             >
               <FileText size={16} className="mr-2" />
               Process Payroll
@@ -192,15 +287,21 @@ const TimecardsListTab = () => {
           <div className="flex flex-wrap gap-3 sm:gap-6 items-center">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Approved: {timecards.filter(t => t.status === 'APPROVED').length}</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                Approved: {timecards.filter((t: any) => t.status === "APPROVED").length}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Pending: {timecards.filter(t => t.status === 'SUBMITTED').length}</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                Pending: {timecards.filter((t: any) => t.status === "SUBMITTED").length}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Rejected: {timecards.filter(t => t.status === 'REJECTED').length}</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                Rejected: {timecards.filter((t: any) => t.status === "REJECTED").length}
+              </span>
             </div>
           </div>
         </div>
@@ -208,120 +309,300 @@ const TimecardsListTab = () => {
 
       {/* Main Table */}
       <div className="bg-white border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
-        <table className="w-full text-sm min-w-[700px]">
+        <table className="w-full text-sm min-w-[1800px]">
           <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Employee</th>
-              <th className="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Hours Breakdown</th>
-              <th className="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Gross Pay</th>
-              <th className="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Status</th>
-              <th className="p-5 text-center font-black text-gray-400 uppercase tracking-widest text-[10px]">Action</th>
+            <tr className="[&>th]:p-4 [&>th]:text-left [&>th]:font-black [&>th]:text-gray-400 [&>th]:uppercase [&>th]:tracking-widest [&>th]:text-[10px] [&>th]:whitespace-nowrap">
+              <th className="w-12">
+                <input
+                  type="checkbox"
+                  checked={allArchivableSelected}
+                  onChange={toggleSelectAll}
+                  disabled={archivableIds.length === 0}
+                  title="Select all approved timecards"
+                  className="w-4 h-4 accent-black cursor-pointer disabled:cursor-not-allowed"
+                />
+              </th>
+              <th>Employee</th>
+              <th>Utilization Rate</th>
+              <th>Hours Breakdown</th>
+              <th>Hourly / Salary</th>
+              <th>Gross Pay</th>
+              <th>State/Region/Country</th>
+              <th>Total Taxes</th>
+              <th>Taxes Breakdown</th>
+              <th>Net Pay</th>
+              <th>Pay Period</th>
+              <th>Year</th>
+              <th>Status</th>
+              <th className="text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {payrollItems.map((item: any) => {
+            {payrollItems.map((item) => {
               const tc = item.timecard;
               const emp = item.employee;
-              const hourlyRate = Number(emp.employeeProfile?.hourlyRate || 0);
-              const gross = tc ? Number(tc.totalHours || 0) * hourlyRate : 0;
+              const isExpanded = expandedTaxId === item.id;
 
               return (
-                <tr key={emp.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="p-5">
+                <tr key={item.id} className="hover:bg-gray-50/50 transition-colors group align-top">
+                  <td className="p-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelected(item.id)}
+                      disabled={item.status !== "APPROVED"}
+                      title={
+                        item.status === "APPROVED"
+                          ? "Select for archiving"
+                          : "Only approved timecards can be archived"
+                      }
+                      className="w-4 h-4 accent-black cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                    />
+                  </td>
+
+                  <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-black text-gray-400 text-xs">
-                        {emp?.name?.split(' ').map((n: string) => n[0]).join('') || "?"}
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-black text-gray-400 text-xs flex-shrink-0">
+                        {emp?.name
+                          ?.split(" ")
+                          .map((n: string) => n[0])
+                          .join("") || "?"}
                       </div>
                       <div>
-                        <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{emp?.name || "Unknown User"}</div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{emp?.role?.replace(/_/g, ' ') || "Employee"}</div>
+                        <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors whitespace-nowrap">
+                          {emp?.name || "Unknown User"}
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                          {emp?.role?.replace(/_/g, " ") || "Employee"}
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="p-5">
-                    {tc ? (
-                      <div className="flex gap-4">
-                        <div className="space-y-0.5">
-                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Billable</div>
-                          <div className="text-sm font-bold text-gray-900">{Number(tc.billableHours || 0).toFixed(1)}h</div>
-                        </div>
-                        <div className="space-y-0.5">
-                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Overhead</div>
-                          <div className="text-sm font-bold text-gray-500">{(Number(tc.totalHours || 0) - Number(tc.billableHours || 0)).toFixed(1)}h</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-300 italic">No record</div>
-                    )}
+
+                  <td className="p-4">
+                    <span className="text-sm font-black text-blue-600">
+                      {item.utilization.toFixed(0)}%
+                    </span>
                   </td>
-                  <td className="p-5">
-                    {tc ? (
+
+                  <td className="p-4">
+                    <div className="flex gap-4">
                       <div className="space-y-0.5">
-                        <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Est. Gross</div>
-                        <div className="text-sm font-black text-green-700">${gross.toLocaleString()}</div>
+                        <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                          Billable
+                        </div>
+                        <div className="text-sm font-bold text-gray-900">
+                          {item.billableHours.toFixed(1)}h
+                        </div>
                       </div>
-                    ) : (
-                      <span className="text-gray-200">--</span>
+                      <div className="space-y-0.5">
+                        <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                          Overhead
+                        </div>
+                        <div className="text-sm font-bold text-gray-500">
+                          {item.overheadHours.toFixed(1)}h
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="p-4 whitespace-nowrap">
+                    <div className="text-sm font-bold text-gray-900">
+                      {formatCurrency(item.hourlyRate)}
+                      <span className="text-[10px] text-gray-400">/hr</span>
+                    </div>
+                    <div className="text-[10px] text-gray-400 font-bold">
+                      {item.salary > 0 ? `${formatCurrency(item.salary)}/yr` : "No salary set"}
+                    </div>
+                  </td>
+
+                  <td className="p-4">
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                      Est. Gross
+                    </div>
+                    <div className="text-sm font-black text-green-700 whitespace-nowrap">
+                      {formatCurrency(item.breakdown.gross)}
+                    </div>
+                  </td>
+
+                  <td className="p-4 text-xs font-bold text-gray-600 whitespace-nowrap">
+                    {item.location ? `${item.location}/United States` : "—"}
+                  </td>
+
+                  <td className="p-4">
+                    <div className="text-sm font-black text-red-600 whitespace-nowrap">
+                      {formatCurrency(item.breakdown.totalTax)}
+                    </div>
+                    <div className="text-[10px] text-gray-400 font-bold">
+                      {item.breakdown.totalTaxPercentage.toFixed(2)}%
+                    </div>
+                  </td>
+
+                  <td className="p-4">
+                    <button
+                      onClick={() => setExpandedTaxId(isExpanded ? null : item.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-black hover:text-white hover:border-black transition-all whitespace-nowrap"
+                    >
+                      See Breakdown
+                      <ChevronDown size={12} className={isExpanded ? "rotate-180" : ""} />
+                    </button>
+                    {isExpanded && (
+                      <div className="mt-2 w-56 bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1.5 animate-in slide-in-from-top-1 duration-150">
+                        {item.breakdown.lines.length === 0 ? (
+                          <p className="text-[10px] text-gray-400 italic font-bold">
+                            No tax lines on this employee's profile.
+                          </p>
+                        ) : (
+                          item.breakdown.lines.map((line) => (
+                            <div
+                              key={line.id}
+                              className="flex justify-between items-center text-[10px] font-bold"
+                            >
+                              <span className="text-gray-600">{line.label}</span>
+                              <span className="flex gap-2 items-center">
+                                <span className="text-gray-400">{line.percentage}%</span>
+                                <span className="text-red-600 w-16 text-right">
+                                  {formatCurrency(line.amount)}
+                                </span>
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
                   </td>
-                  <td className="p-5">
+
+                  <td className="p-4">
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                      Net
+                    </div>
+                    <div className="text-sm font-black text-gray-900 whitespace-nowrap">
+                      {formatCurrency(item.breakdown.net)}
+                    </div>
+                  </td>
+
+                  <td className="p-4 text-xs font-bold text-gray-600 whitespace-nowrap">
+                    Period {tc.payPeriod}
+                  </td>
+
+                  <td className="p-4 text-xs font-bold text-gray-600">{tc.payYear}</td>
+
+                  <td className="p-4">
                     <div className="flex items-center gap-2">
-                      {item.status === 'APPROVED' ? (
+                      {item.status === "APPROVED" ? (
                         <CheckCircle2 size={16} className="text-green-500" />
-                      ) : item.status === 'MISSING' ? (
-                        <AlertCircle size={16} className="text-red-300" />
+                      ) : item.status === "REJECTED" ? (
+                        <AlertCircle size={16} className="text-red-400" />
                       ) : (
                         <Clock size={16} className="text-blue-500" />
                       )}
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                        item.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-700' :
-                          item.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                            item.status === 'MISSING' ? 'bg-gray-100 text-gray-400' :
-                              'bg-gray-100 text-gray-600'
-                        }`}>
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${
+                          item.status === "APPROVED"
+                            ? "bg-green-100 text-green-700"
+                            : item.status === "SUBMITTED"
+                              ? "bg-blue-100 text-blue-700"
+                              : item.status === "REJECTED"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
                         {item.status}
                       </span>
                     </div>
                   </td>
-                  <td className="p-5">
+
+                  <td className="p-4">
+                    {/* View only — approving happens inside the review dialog */}
                     <div className="flex items-center justify-center gap-2">
-                      {tc ? (
-                        <>
-                          <button
-                            onClick={() => setSelectedTimecardId(tc.id)}
-                            className="p-2 border border-gray-100 rounded-xl text-gray-400 hover:text-black hover:bg-white hover:shadow-sm transition-all"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          {tc.status === 'SUBMITTED' && (
-                            <button
-                              onClick={() => handleApprove(tc.id)}
-                              disabled={isApproving}
-                              className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/10 hover:bg-gray-800 transition-all active:scale-95"
-                            >
-                              {isApproving ? "..." : "Approve"}
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-[10px] font-black text-gray-300 uppercase italic">Not Created</div>
+                      <button
+                        onClick={() => setSelectedTimecardId(item.id)}
+                        className="p-2 border border-gray-100 rounded-xl text-gray-400 hover:text-black hover:bg-white hover:shadow-sm transition-all"
+                        title="View & review timecard"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      {item.status === "APPROVED" && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await archiveTimecards([item.id]).unwrap();
+                              toast.success("Timecard archived");
+                            } catch (err: any) {
+                              toast.error(err?.data?.message || "Failed to archive");
+                            }
+                          }}
+                          disabled={isArchiving}
+                          className="p-2 border border-gray-100 rounded-xl text-gray-400 hover:text-amber-600 hover:border-amber-200 hover:bg-amber-50 transition-all disabled:opacity-50"
+                          title="Archive this timecard"
+                        >
+                          <Archive size={18} />
+                        </button>
                       )}
                     </div>
                   </td>
                 </tr>
               );
             })}
+
+            {payrollItems.length === 0 && (
+              <tr>
+                <td colSpan={14} className="p-12 text-center text-sm text-gray-400 font-medium italic">
+                  No timecards match the current filters.
+                </td>
+              </tr>
+            )}
           </tbody>
+
+          {payrollItems.length > 0 && (
+            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+              <tr className="[&>td]:p-4 [&>td]:whitespace-nowrap">
+                <td />
+                <td className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                  Grand Total ({payrollItems.length})
+                </td>
+                <td />
+                <td>
+                  <div className="flex gap-4">
+                    <div className="space-y-0.5">
+                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                        Billable
+                      </div>
+                      <div className="text-sm font-black text-gray-900">
+                        {grandTotals.billableHours.toFixed(1)}h
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                        Overhead
+                      </div>
+                      <div className="text-sm font-black text-gray-500">
+                        {grandTotals.overheadHours.toFixed(1)}h
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td />
+                <td className="text-sm font-black text-green-700">
+                  {formatCurrency(grandTotals.gross)}
+                </td>
+                <td />
+                <td className="text-sm font-black text-red-600">{formatCurrency(grandTotals.tax)}</td>
+                <td />
+                <td className="text-sm font-black text-gray-900">{formatCurrency(grandTotals.net)}</td>
+                <td colSpan={4} />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
       {selectedTimecardId && (
-        <TimesheetEntryFormDialog
+        <TimecardReviewDialog
           open={!!selectedTimecardId}
           onOpenChange={(open) => !open && setSelectedTimecardId(null)}
           timecardId={selectedTimecardId}
-          isReadOnly={true}
+          canReview
         />
       )}
     </div>

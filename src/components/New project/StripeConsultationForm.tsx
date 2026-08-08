@@ -36,9 +36,9 @@ const StripeConsultationForm: React.FC<StripeConsultationFormProps> = ({
       elements,
       confirmParams: {
         payment_method_data: {
-            billing_details: {
-                email: clientEmail
-            }
+          billing_details: {
+            email: clientEmail
+          }
         }
       },
       redirect: 'if_required',
@@ -53,8 +53,8 @@ const StripeConsultationForm: React.FC<StripeConsultationFormProps> = ({
       onSuccess(paymentIntent.id);
       setIsProcessing(false);
     } else {
-        setErrorMessage('Payment processing or failed.');
-        setIsProcessing(false);
+      setErrorMessage('Payment processing or failed.');
+      setIsProcessing(false);
     }
   };
 
@@ -73,7 +73,7 @@ const StripeConsultationForm: React.FC<StripeConsultationFormProps> = ({
       <Button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 rounded-xl transition-all shadow-lg hover:shadow-blue-200"
+        className="w-full cursor-pointer bg-gray-800 hover:bg-gray-900 text-white font-bold py-6 rounded-xl transition-all shadow-lg hover:shadow-blue-200"
       >
         {isProcessing ? (
           <>
@@ -81,10 +81,10 @@ const StripeConsultationForm: React.FC<StripeConsultationFormProps> = ({
             Processing Payment...
           </>
         ) : (
-          'Pay $250 Consultation Fee'
+          'Pay Consultation Fee'
         )}
       </Button>
-      
+
       <p className="text-xs text-center text-slate-500 mt-2">
         Secure payment processed by Stripe. Your project request will be submitted after payment.
       </p>

@@ -101,37 +101,6 @@ export default function ScheduleAppointmentSection({
                 unavailable: "border border-red-500 text-gray-400 opacity-50",
               }}
               showOutsideDays={false} // Hide previous/next month dates
-              classNames={{
-                months:
-                  "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                month: "space-y-4",
-                caption: "flex justify-center pt-1 relative items-center",
-                caption_label: "text-sm font-medium",
-                nav: "space-x-1 flex",
-                nav_button: cn(
-                  "h-7 w-7 bg-transparent p-0 opacity-100 hover:opacity-100",
-                  "rounded-md border border-input hover:bg-accent hover:text-accent-foreground"
-                ),
-                table: "w-full border-collapse space-y-1",
-                head_row: "flex",
-                head_cell:
-                  "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-                row: "flex w-full mt-2",
-                cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                day: cn(
-                  "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  "focus:bg-accent focus:text-accent-foreground"
-                ),
-                day_selected:
-                  "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                day_today: "bg-accent text-accent-foreground",
-                day_outside: "text-muted-foreground opacity-50",
-                day_disabled: "text-muted-foreground opacity-50",
-                day_range_end: "day-range-end",
-                day_range_start: "day-range-start",
-                day_hidden: "invisible",
-              }}
             />
             <div className="text-xs text-gray-500 mt-2">
               Greyed out dates indicate unavailability.

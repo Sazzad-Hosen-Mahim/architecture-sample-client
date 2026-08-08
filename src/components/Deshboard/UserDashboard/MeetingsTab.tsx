@@ -1,4 +1,5 @@
 import { useGetMyMeetingsQuery, UserMeeting } from "@/redux/api/meetingApi";
+import { toExternalUrl } from "@/utils/externalUrl";
 import { CalendarIcon, ClockIcon, VideoIcon, User, CheckCircle2, XCircle } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -142,14 +143,20 @@ const MeetingsTab = ({ searchQuery = "" }: MeetingsTabProps) => {
                         )}
 
                         {/* Action Button */}
-                        <a
-                            href={meeting.meetingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block w-full text-center bg-black hover:bg-gray-800 text-white text-sm font-medium py-2 rounded-md transition-colors"
-                        >
-                            Join Meeting
-                        </a>
+                        {meeting.status === "ACCEPTED" && meeting.meetingUrl ? (
+                            <a
+                                href={toExternalUrl(meeting.meetingUrl) ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block w-full text-center bg-black hover:bg-gray-800 text-white text-sm font-medium py-2 rounded-md transition-colors"
+                            >
+                                Join Meeting
+                            </a>
+                        ) : (
+                            <div className="block w-full text-center bg-gray-100 text-gray-400 text-sm font-medium py-2 rounded-md">
+                                {meeting.status === "PENDING_RESPONSE" ? "Awaiting your response" : meeting.status}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

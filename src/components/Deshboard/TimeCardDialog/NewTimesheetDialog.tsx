@@ -7,47 +7,31 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
-import { useCreateTimecardMutation, useGetMyTimecardsQuery } from "@/redux/api/financialApi";
+import {
+  useCreateTimecardMutation,
+  useGetMyTimecardsQuery,
+  useGetPayrollStartDateQuery,
+} from "@/redux/api/financialApi";
+import { generatePayPeriods, getCurrentPayPeriodIndex } from "@/utils/payPeriods";
 import { toast } from "sonner";
 import TimesheetEntryFormDialog from "./TimesheetEntryFormDialog";
 import { Info } from "lucide-react";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 
 interface NewTimesheetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// Generate all 26 bi-weekly pay period start dates for a given year
-function generatePayPeriods(year: number) {
-  const periods: { period: number; startDate: Date; label: string }[] = [];
-  // Find first Monday of the year
-  const jan1 = new Date(year, 0, 1);
-  const dayOfWeek = jan1.getDay();
-  const daysToFirstMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-  const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-
-  for (let i = 0; i < 26; i++) {
-    const startDate = new Date(firstMonday);
-    startDate.setDate(firstMonday.getDate() + i * 14);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 13);
-    const label = `Pay Period ${i + 1} — ${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} to ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-    periods.push({ period: i + 1, startDate, label });
-  }
-  return periods;
-}
-
-function getCurrentPayPeriodIndex(periods: { startDate: Date }[]) {
-  const today = new Date();
-  for (let i = periods.length - 1; i >= 0; i--) {
-    if (today >= periods[i].startDate) return i;
-  }
-  return 0;
-}
+// Pay periods are anchored to the firm's payroll start date - see
+// @/utils/payPeriods, shared with the payroll management table.
 
 export default function NewTimesheetDialog({ open, onOpenChange }: NewTimesheetDialogProps) {
+  const user = useSelector(selectCurrentUser);
+  const canAccessPastPeriods = user?.role === "SUPER_ADMIN" || user?.role === "FINANCE";
+
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [periods, setPeriods] = useState(() => generatePayPeriods(currentYear));
@@ -56,15 +40,17 @@ export default function NewTimesheetDialog({ open, onOpenChange }: NewTimesheetD
   const [newTimecardId, setNewTimecardId] = useState<string | null>(null);
 
   const { data: timecards = [] } = useGetMyTimecardsQuery(undefined, { skip: !open });
+  const { data: payrollSettings } = useGetPayrollStartDateQuery();
   const [createTimecard, { isLoading: isCreating }] = useCreateTimecardMutation();
+  const approvedTimecards = timecards.filter((tc: any) => tc.status === "APPROVED");
 
   useEffect(() => {
     if (open) {
-      const newPeriods = generatePayPeriods(selectedYear);
+      const newPeriods = generatePayPeriods(selectedYear, payrollSettings?.payrollStartDate);
       setPeriods(newPeriods);
       setSelectedPeriodIdx(getCurrentPayPeriodIndex(newPeriods));
     }
-  }, [open, selectedYear]);
+  }, [open, selectedYear, payrollSettings]);
 
   const selectedPeriod = periods[selectedPeriodIdx];
 
@@ -110,7 +96,7 @@ export default function NewTimesheetDialog({ open, onOpenChange }: NewTimesheetD
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
               >
-                {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+                {[currentYear].map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
@@ -124,27 +110,35 @@ export default function NewTimesheetDialog({ open, onOpenChange }: NewTimesheetD
                 value={selectedPeriodIdx}
                 onChange={(e) => setSelectedPeriodIdx(Number(e.target.value))}
               >
-                {periods.map((p, idx) => (
-                  <option key={idx} value={idx}>{p.label}</option>
-                ))}
+                {periods.map((p, idx) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const isPassed = today > p.endDate;
+                  const isDisabled = isPassed && !canAccessPastPeriods;
+                  return (
+                    <option key={idx} value={idx} disabled={isDisabled}>
+                      {p.label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
             {/* Previous Timecards */}
             <div>
               <Label className="text-sm font-medium text-gray-700 mb-1.5 block">Previous Timecards</Label>
-              <ScrollArea className="h-[120px] w-full border border-gray-200 rounded px-3 py-2">
+              <div className="h-[120px] max-h-[120px] overflow-y-auto w-full border border-gray-200 rounded px-3 py-2">
                 <div className="space-y-1">
-                  {timecards.map((tc: any) => (
+                  {approvedTimecards.map((tc: any) => (
                     <div key={tc.id} className="text-xs text-gray-600 py-1 hover:bg-gray-50 cursor-pointer rounded px-1">
                       Pay Period {tc.payPeriod || "—"} · {tc.weekStarting ? new Date(tc.weekStarting).toLocaleDateString() : new Date(tc.weekEnding).toLocaleDateString()} ({tc.status})
                     </div>
                   ))}
-                  {timecards.length === 0 && (
+                  {approvedTimecards.length === 0 && (
                     <div className="text-xs text-gray-400 py-1 italic">No previous timecards</div>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
 

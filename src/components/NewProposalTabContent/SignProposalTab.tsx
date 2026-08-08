@@ -9,6 +9,7 @@ import { pdf } from '@react-pdf/renderer';
 import { ContractPDF } from "@/components/Deshboard/ContractReviewModal";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
+import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
 
 interface ProposalSignProps {
   clientInfo: any;
@@ -17,6 +18,7 @@ interface ProposalSignProps {
   objectives: any[];
   objectiveCosts: Record<string, number>;
   objectiveTimelines: Record<string, number>;
+  objectiveOrders?: Record<string, number>;
   credits: any[];
   totalCost: number;
   finalCost: number;
@@ -40,6 +42,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   selectedObjectives,
   objectives,
   objectiveCosts,
+  objectiveOrders,
   totalCost,
   paymentMethod,
   architectSignatureRef,
@@ -52,8 +55,12 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   const proposalDataString = Cookies.get("proposal_data") || "";
   const parsedProposalData = proposalDataString ? JSON.parse(proposalDataString) : null;
   const id = parsedProposalData?.data?.id;
+  // Server-generated and unique per proposal (e.g. "PROP-2026-0016").
+  const proposalNumber = parsedProposalData?.data?.proposalNumber || "";
+  const proposalCreatedAt = parsedProposalData?.data?.createdAt;
 
   const [sendProposalToClient, { isLoading: isSending }] = useSendProposalToClientMutation();
+  const architectSigWrapperRef = useResponsiveSignatureCanvas(architectSignatureRef, 150);
   const { data: masterContractArticles } = useGetMasterContractArticlesQuery();
   const articles = masterContractArticles?.data || [];
 
@@ -106,8 +113,14 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
     try {
       // Include per-service scope notes in the payload
       const scopeNotesText = serializeScopeNotes();
-      await sendProposalToClient({ id, architectSignature, scopeNotes: scopeNotesText }).unwrap();
-      toast.success("Proposal sent to client successfully!");
+      const result: any = await sendProposalToClient({ id, architectSignature, scopeNotes: scopeNotesText }).unwrap();
+      // The proposal is sent even if the notification email bounces, so report
+      // what actually happened rather than a blanket success.
+      if (result?.data?.emailSent === false) {
+        toast.warning(result?.message || "Proposal sent, but the email could not be delivered.");
+      } else {
+        toast.success(result?.message || "Proposal sent to client successfully!");
+      }
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to send proposal");
     }
@@ -119,6 +132,8 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
 
       // Construct a mock contract object for the PDF generator
       const mockContract = {
+        proposalNumber,
+        createdAt: proposalCreatedAt,
         clientName: `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() || "Client Name",
         projectLocation: projectInfo?.streetAddress || projectInfo?.location || "Project Location",
         serviceType: projectInfo?.serviceType || "Design Services",
@@ -165,8 +180,12 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             </div>
             <div className="text-right text-sm">
               <p className="">Date:</p>
-              <p>{new Date().toLocaleDateString()}</p>
-              <p>File No. 25-0001</p>
+              <p>
+                {proposalCreatedAt
+                  ? new Date(proposalCreatedAt).toLocaleDateString()
+                  : new Date().toLocaleDateString()}
+              </p>
+              <p>File No. {proposalNumber || "—"}</p>
             </div>
           </div>
         </div>
@@ -349,6 +368,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             <table className="w-full mb-4 border-collapse">
               <thead>
                 <tr className="bg-gray-100">
+                  <th className="border p-2 text-left w-20">ORDER #</th>
                   <th className="border p-2 text-left">
                     PROFESSIONAL SERVICES FEE
                   </th>
@@ -356,10 +376,13 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {selectedObjectives.map((id) => {
+                {selectedObjectives.map((id, idx) => {
                   const objective = objectives.find((o) => o.id === id);
                   return objective ? (
                     <tr key={id}>
+                      <td className="border p-2">
+                        {objectiveOrders?.[id] ?? idx + 1}
+                      </td>
                       <td className="border p-2">{objective.label}</td>
                       <td className="border p-2 text-right">
                         ${objectiveCosts[id]?.toLocaleString() || "0"}
@@ -408,14 +431,12 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
           {/* Architect */}
           <div>
             <h4 className="font-semibold mb-4">ARCHITECT</h4>
-            <div className="w-full max-w-[430px]">
+            <div ref={architectSigWrapperRef} className="w-full max-w-[430px] border rounded-md overflow-hidden touch-none">
               <SignatureCanvas
                 ref={architectSignatureRef}
                 canvasProps={{
-                  width: 430,
-                  height: 150,
-                  className:
-                    "border rounded-md w-full h-[150px]",
+                  className: "block w-full cursor-crosshair",
+                  style: { height: "150px" },
                 }}
               />
             </div>

@@ -27,24 +27,23 @@ function FloatingMenu() {
       {!isMenuOpen && !hideFloatingButton && (
         <button
           onClick={toggleMenu}
-          className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 text-sm font-extralight rounded-full w-12 h-16 bg-gray-300 cursor-pointer text-black shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+          className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 text-sm font-semibold rounded-full w-20 h-24 bg-gray-300 cursor-pointer text-black shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
         >
           Menu
         </button>
       )}
       {/* Sliding Menu Panel */}
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out  ${
-          isMenuOpen ? "translate-y-0" : "translate-y-full"
-        }`}
+        className={`fixed bottom-0 left-0 right-0 bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out lg:py-[25px] py-[10px]  ${isMenuOpen ? "translate-y-0" : "translate-y-full"
+          }`}
       >
-        <div className="flex flex-col h-full rounded-t-2xl">
-          <div className="p-6 overflow-y-auto max-h-[65vh]">
+        <div className="flex flex-col h-[92vh] md:h-[88vh]">
+          <div className="p-6">
             {/* Close Button */}
             <div className="flex justify-between items-center mb-4">
               <button
                 onClick={toggleMenu}
-                className="text-gray-500 cursor-pointer hover:text-gray-700 hover:text-white p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                className="text-gray-500 cursor-pointer hover:text-white p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
               >
                 ✕
               </button>
@@ -55,12 +54,12 @@ function FloatingMenu() {
               <h3 className="text-base font-semibold mb-2 text-gray-700">
                 Media
               </h3>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <a
                   href="/newsFeed"
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
-                  News Feed
+                  Newsfeed
                 </a>
                 <a
                   href="/world-project"
@@ -76,7 +75,7 @@ function FloatingMenu() {
               <h3 className="text-base font-semibold mb-2 text-gray-700">
                 Services
               </h3>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <a
                   href="/new-project"
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
@@ -93,7 +92,7 @@ function FloatingMenu() {
             </div>
 
             {/* About Section */}
-            <div className="mb-6">
+            <div className="mb-2 space-y-2">
               <h3 className="text-base font-semibold mb-2 text-gray-700">
                 About
               </h3>
@@ -112,7 +111,7 @@ function FloatingMenu() {
             </div>
 
             {/* Login Section */}
-            <div className="mb-6">
+            <div className="mb-6 hidden md:block">
               <h3 className="text-base font-semibold mb-2 text-gray-700">
                 Account
               </h3>
@@ -124,7 +123,7 @@ function FloatingMenu() {
               </a>
             </div>
 
-            <hr className="border-t border-gray-300 mt-4" />
+
           </div>
 
           {/* Social Media Section */}

@@ -2,11 +2,13 @@ import { baseApi } from "@/redux/api/baseApi";
 
 export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    // GET all users (staffs)
-    getAllUsers: builder.query<any[], void>({
-      query: () => ({
+    // GET all users (staffs). The endpoint paginates at 20 by default, so the
+    // limit is raised to keep the whole directory on one page.
+    getAllUsers: builder.query<any[], { limit?: number; role?: string } | void>({
+      query: (params) => ({
         url: "/users",
         method: "GET",
+        params: { limit: 100, ...(params || {}) },
       }),
       transformResponse: (response: any) => response.data,
       providesTags: ["User"],
@@ -22,11 +24,12 @@ export const userApi = baseApi.injectEndpoints({
       invalidatesTags: ["User"],
     }),
 
-    // DELETE user
-    deleteUser: builder.mutation({
-      query: (id) => ({
+    // DELETE user - requires the acting admin's own password to confirm
+    deleteUser: builder.mutation<any, { id: string; password: string }>({
+      query: ({ id, password }) => ({
         url: `/users/${id}`,
         method: "DELETE",
+        body: { password },
       }),
       invalidatesTags: ["User"],
     }),

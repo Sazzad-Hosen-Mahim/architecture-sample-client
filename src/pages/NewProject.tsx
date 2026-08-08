@@ -1,3 +1,4 @@
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 import BeginNewProjectSection from "@/components/New project/TabItem/BeginNewProjectSection";
 import ClientInfoSection from "@/components/New project/TabItem/ClientInfoSection";
 import ConfirmationPage from "@/components/New project/TabItem/ConfirmationPage";
@@ -25,6 +26,7 @@ function NewProject() {
     phone: "",
     alternatePhone: "",
     streetAddress: "",
+    aptSuiteUnit: "",
     city: "",
     state: "",
     zipCode: "",
@@ -38,6 +40,7 @@ function NewProject() {
     // Project Details
     projectName: "",
     projectStreetAddress: "",
+    projectAptSuiteUnit: "",
     projectCity: "",
     projectState: "",
     projectZipCode: "",
@@ -97,11 +100,10 @@ function NewProject() {
                 {sections.map((section, index) => (
                   <button
                     key={index}
-                    className={`py-1 px-2 text-xs md:text-sm font-light whitespace-nowrap transition-colors duration-300 ease-in-out ${
-                      index === activeSection
-                        ? "text-primary border-b-2 border-primary"
-                        : "text-gray-400 hover:text-gray-600"
-                    }`}
+                    className={`py-1 px-2 text-xs md:text-[16px] cursor-pointer font-medium whitespace-nowrap transition-colors duration-300 ease-in-out ${index === activeSection
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-gray-400 hover:text-gray-600"
+                      }`}
                     onClick={() => setActiveSection(index)}
                   >
                     {section}
@@ -171,6 +173,9 @@ function NewProject() {
             )}
           </div>
         </div>
+      </div>
+      <div className="mb-32">
+        <HeroSocialMedia />
       </div>
     </div>
   );
