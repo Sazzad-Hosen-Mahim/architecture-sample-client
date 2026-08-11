@@ -45,6 +45,9 @@ export default function NewDynamicProposalPage({
         "client" | "project" | "services" | "sign"
     >("client");
     const [progress, setProgress] = useState(0);
+    // Once the proposal is with the client the wizard is over, so the step tabs
+    // and journey bar give way to the confirmation screen.
+    const [proposalSent, setProposalSent] = useState(false);
     const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
     const clientSignatureRef = useRef<SignatureCanvas | null>(null);
     const architectSignatureRef = useRef<SignatureCanvas | null>(null);
@@ -724,6 +727,7 @@ export default function NewDynamicProposalPage({
 
             {/* Progress Tabs */}
             <div className="max-w-7xl mx-auto px-4 py-6">
+                {!proposalSent && (
                 <div className="bg-white rounded-lg shadow-sm p-2 mb-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-4 overflow-x-auto md:overflow-x-visible">
@@ -754,8 +758,10 @@ export default function NewDynamicProposalPage({
                         </div>
                     </div>
                 </div>
+                )}
 
                 {/* Progress Indicator */}
+                {!proposalSent && (
                 <div className="mb-8">
                     <div className="flex justify-between mb-2">
                         <span className="text-sm font-medium">Proposal Journey</span>
@@ -822,6 +828,7 @@ export default function NewDynamicProposalPage({
                         </div>
                     </div>
                 </div>
+                )}
 
                 {/* Client Information Step */}
                 {activeStep === "client" && (
@@ -896,6 +903,8 @@ export default function NewDynamicProposalPage({
                         handleSubmit={handleSubmit}
                         handleBack={handleBack}
                         downloadPDF={downloadPDF}
+                        projectRequestId={id}
+                        onSent={() => setProposalSent(true)}
                     />
                 )}
             </div>

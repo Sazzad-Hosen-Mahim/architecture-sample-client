@@ -8,8 +8,9 @@ import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
 import { pdf } from '@react-pdf/renderer';
 import { ContractPDF } from "@/components/Deshboard/ContractReviewModal";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle, LayoutDashboard, Loader2, Plus, Trash2 } from "lucide-react";
 import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
+import { useNavigate } from "react-router-dom";
 
 interface ProposalSignProps {
   clientInfo: any;
@@ -34,6 +35,11 @@ interface ProposalSignProps {
   handleSubmit: () => void;
   handleBack: () => void;
   downloadPDF: () => void;
+  /** Project request this proposal belongs to — the "Back to Project Details"
+   *  button on the sent screen deep-links to its details modal. */
+  projectRequestId?: string;
+  /** Lets the wizard shell drop its step tabs once the proposal is on its way. */
+  onSent?: () => void;
 }
 
 const SignProposalTab: React.FC<ProposalSignProps> = ({
@@ -48,7 +54,10 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   architectSignatureRef,
   clearSignature,
   handleBack,
+  projectRequestId,
+  onSent,
 }) => {
+  const navigate = useNavigate();
   // inside SignProposalTab
 
 
@@ -99,6 +108,11 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
     return JSON.stringify(notesByLabel);
   };
 
+  // Set once the proposal reaches the client, which swaps this step for the
+  // confirmation screen. `emailSent` is reported separately because the
+  // proposal is sent even when the notification email bounces.
+  const [sentResult, setSentResult] = useState<{ emailSent: boolean } | null>(null);
+
   const handleSendProposalToClient = async () => {
     if (!id) {
       toast.error("Proposal ID not found. Please try again.");
@@ -116,11 +130,18 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
       const result: any = await sendProposalToClient({ id, architectSignature, scopeNotes: scopeNotesText }).unwrap();
       // The proposal is sent even if the notification email bounces, so report
       // what actually happened rather than a blanket success.
-      if (result?.data?.emailSent === false) {
-        toast.warning(result?.message || "Proposal sent, but the email could not be delivered.");
-      } else {
+      const emailSent = result?.data?.emailSent !== false;
+      if (emailSent) {
         toast.success(result?.message || "Proposal sent to client successfully!");
+      } else {
+        toast.warning(result?.message || "Proposal sent, but the email could not be delivered.");
       }
+
+      // The wizard is finished with this proposal — drop the draft cookie so a
+      // later "Make New Proposal" cannot resume the one just sent.
+      Cookies.remove("proposal_data");
+      setSentResult({ emailSent });
+      onSent?.();
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to send proposal");
     }
@@ -166,6 +187,103 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
       toast.error("Failed to generate PDF");
     }
   };
+
+  const clientFullName =
+    `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() || "the client";
+
+  if (sentResult) {
+    return (
+      <div className="max-w-2xl mx-auto py-8">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+          <div className="mx-auto w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-6">
+            <CheckCircle className="w-12 h-12 text-green-600" />
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Congratulations!</h2>
+          <p className="text-base text-gray-700 mb-6">
+            Your proposal was sent to{" "}
+            <span className="font-semibold text-gray-900">{clientFullName}</span>{" "}
+            successfully.
+          </p>
+
+          <div className="bg-gray-50 rounded-lg p-5 text-left space-y-2 mb-6">
+            {proposalNumber && (
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-gray-500">Proposal</span>
+                <span className="text-sm font-mono font-medium text-gray-900">
+                  {proposalNumber}
+                </span>
+              </div>
+            )}
+            {projectInfo?.projectName && (
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-gray-500">Project</span>
+                <span className="text-sm font-medium text-gray-900 text-right">
+                  {projectInfo.projectName}
+                </span>
+              </div>
+            )}
+            {clientInfo?.email && (
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-gray-500">Sent to</span>
+                <span className="text-sm font-medium text-gray-900 text-right break-all">
+                  {clientInfo.email}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between gap-4">
+              <span className="text-sm text-gray-500">Total</span>
+              <span className="text-sm font-semibold text-green-700">
+                ${totalCost.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {sentResult.emailSent ? (
+            <p className="text-sm text-gray-500 mb-8">
+              The client has been emailed a link to review and sign the contract.
+              You'll be notified as soon as they respond.
+            </p>
+          ) : (
+            // Sending succeeded but the notification did not — say so plainly
+            // rather than letting the PM assume the client was told.
+            <div className="flex items-start gap-3 text-left bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800">
+                The proposal is saved and available to the client in their
+                dashboard, but the notification email could not be delivered.
+                You may want to let them know directly.
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              onClick={() =>
+                navigate(
+                  projectRequestId
+                    ? `/dashboard?project=${projectRequestId}&tab=contracts`
+                    : "/dashboard"
+                )
+              }
+              className="bg-slate-800 hover:bg-slate-900 text-white cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Project Details
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/dashboard")}
+              className="cursor-pointer"
+            >
+              <LayoutDashboard className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6" id="proposal-content">

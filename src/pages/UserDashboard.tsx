@@ -1,6 +1,9 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Suspense, lazy, useState, useCallback, useMemo } from "react";
+import { BsFillClipboard2PlusFill } from "react-icons/bs";
+import { useNavigate } from "react-router-dom";
 
 // Lazy load tab components for code splitting
 const ProjectDataTable = lazy(() => import("@/components/Deshboard/UserDashboard/ProjectDataTable"));
@@ -10,6 +13,8 @@ type TabType = "projects";
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState<TabType>("projects");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const navigate = useNavigate()
 
   // Everything a client needs now lives inside a project's details modal.
   const tabs = useMemo(() => [
@@ -77,7 +82,7 @@ const UserDashboard = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 mb-6 flex items-center justify-between">
         <nav className="flex space-x-1">
           {tabs.map((tab) => (
             <button
@@ -95,6 +100,13 @@ const UserDashboard = () => {
             </button>
           ))}
         </nav>
+
+        <Button
+          onClick={() => navigate("/dashboard/new-inquiries")}
+          className="bg-black cursor-pointer my-2 text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
+        >
+          <span className="text-white"><BsFillClipboard2PlusFill /></span> Create New Proposal
+        </Button>
       </div>
 
       {/* Tab Content with Suspense for lazy loading */}

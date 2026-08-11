@@ -184,7 +184,7 @@ export default function ClientProposalsTab({ project, amendments }: ClientPropos
                         }
                         setIsAmendmentOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-slate-700 hover:bg-slate-800 rounded-lg transition-colors active:scale-95 flex-shrink-0"
+                    className="inline-flex items-center cursor-pointer gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-slate-700 hover:bg-slate-800 rounded-lg transition-colors active:scale-95 flex-shrink-0"
                 >
                     <FilePlus2 className="w-3.5 h-3.5" />
                     Request Amendment

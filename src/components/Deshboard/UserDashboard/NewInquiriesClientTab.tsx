@@ -17,7 +17,9 @@ import { Elements } from "@stripe/react-stripe-js";
 import StripeConsultationForm from "@/components/New project/StripeConsultationForm";
 import { toast } from "sonner";
 
-const stripePromise = loadStripe("pk_test_51SN4wpBw3rui1r0jfIlc5pU40gbKDEqp1EopPzfhZJWn8XptM48CmZmlNbBWffFErxAtalw8SqAnFIku3qwSoH5G000dmI9qmj");
+const stripePromise = loadStripe(
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+);
 
 interface NewInquiriesClientTabProps {
     searchQuery?: string;

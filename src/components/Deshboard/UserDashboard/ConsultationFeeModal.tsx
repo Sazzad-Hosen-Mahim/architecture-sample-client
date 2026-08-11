@@ -9,7 +9,7 @@ import { useAttachConsultationPaymentMutation } from "@/redux/api/newInquiryApi"
 import { useGetConsultationFeeQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
 
 const stripePromise = loadStripe(
-    "pk_test_51SN4wpBw3rui1r0jfIlc5pU40gbKDEqp1EopPzfhZJWn8XptM48CmZmlNbBWffFErxAtalw8SqAnFIku3qwSoH5G000dmI9qmj"
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 );
 
 interface ConsultationFeeModalProps {

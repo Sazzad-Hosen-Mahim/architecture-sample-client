@@ -20,7 +20,9 @@ import { useGetConsultationFeeQuery } from "@/redux/api/adminDashboard/siteSetti
 import ThumbprintButton from "../ThumbprintButton";
 
 // const stripePromise = loadStripe("pk_test_51TVdfBBWI93tV1QCki5PX3VSlmoRzRwyO5qWwvO9zFL13niyNZTqv5ZBPi8vVCHnGNWeCDY2RVFl2oJgbdPMRc0Q00jlx3EsiG");  //client's publishable key
-const stripePromise = loadStripe("pk_test_51SN4wpBw3rui1r0jfIlc5pU40gbKDEqp1EopPzfhZJWn8XptM48CmZmlNbBWffFErxAtalw8SqAnFIku3qwSoH5G000dmI9qmj"); //developers pk
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+);
 
 export default function ReviewConfirmSection({
   formData,
