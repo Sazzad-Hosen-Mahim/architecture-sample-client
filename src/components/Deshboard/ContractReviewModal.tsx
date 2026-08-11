@@ -20,6 +20,25 @@ import {
 import { toast } from "sonner";
 import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
 import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
+import { isLumpSum } from "@/utils/paymentPlan";
+
+/**
+ * Article 3's opening clause. The master contract only carries the boilerplate
+ * payment terms, so this per-proposal fee summary — the same "3.1 Payment
+ * Structure" the PM sees on the review step — is generated and shown ahead of
+ * that boilerplate rather than stored on the contract.
+ */
+const paymentStructureIntro = (contract: any) => {
+    const services = contract?.services || [];
+    const total = services.reduce(
+        (sum: number, s: any) => sum + Number(s.amount || 0),
+        0
+    );
+    const plan = isLumpSum(contract)
+        ? "lump sum"
+        : "installments upon task completion";
+    return `The total fee shall be (${plan}) for the amount of $${total.toLocaleString()} as follows:`;
+};
 
 // PDF related imports
 import {
@@ -119,6 +138,37 @@ export const ContractPDF = ({ contract, sections }: { contract: any; sections: C
                 return (
                     <View key={section.articleKey} style={{ marginBottom: 10 }}>
                         <Text style={pdfStyles.articleTitle} wrap={false}>{section.title}</Text>
+
+                        {/* 3.1 Payment Structure — generated per proposal, printed
+                            ahead of the master contract's standing payment terms. */}
+                        {isPayment && services.length > 0 && (
+                            <View style={{ marginBottom: 12 }}>
+                                <Text style={[pdfStyles.bold, { marginBottom: 6 }]}>3.1 Payment Structure</Text>
+                                <Text style={pdfStyles.content}>{paymentStructureIntro(contract)}</Text>
+                                <View style={pdfStyles.table} wrap={false}>
+                                    <View style={pdfStyles.tableHeader}>
+                                        <View style={{ width: 50 }}><Text style={pdfStyles.bold}>ORDER #</Text></View>
+                                        <View style={pdfStyles.tableCellLeft}><Text style={pdfStyles.bold}>PROFESSIONAL SERVICES FEE</Text></View>
+                                        <View style={pdfStyles.tableCellRight}><Text style={pdfStyles.bold}>AMOUNT</Text></View>
+                                    </View>
+                                    {services.map((s: any, idx: number) => (
+                                        <View key={`structure-${s.id}`} style={pdfStyles.tableRow}>
+                                            <View style={{ width: 50 }}><Text>{s.order ?? idx + 1}</Text></View>
+                                            <View style={pdfStyles.tableCellLeft}><Text>{s.name}</Text></View>
+                                            <View style={pdfStyles.tableCellRight}><Text>${Number(s.amount || 0).toLocaleString()}</Text></View>
+                                        </View>
+                                    ))}
+                                    <View style={pdfStyles.tableFooter}>
+                                        <View style={pdfStyles.tableCellLeft}><Text>TOTAL PROFESSIONAL ARCHITECTURAL FEE</Text></View>
+                                        <View style={pdfStyles.tableCellRight}>
+                                            <Text>
+                                                ${services.reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0).toLocaleString()}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
 
                         {/* Render content - handle bullet points (•) as structured items */}
                         {contentLines.map((line: string, lineIdx: number) => {
@@ -230,25 +280,6 @@ export const ContractPDF = ({ contract, sections }: { contract: any; sections: C
                             </View>
                         )}
 
-                        {/* Payment Terms - fee table */}
-                        {isPayment && services.length > 0 && (
-                            <View style={pdfStyles.table} wrap={false}>
-                                <View style={pdfStyles.tableHeader}>
-                                    <View style={pdfStyles.tableCellLeft}><Text style={pdfStyles.bold}>PROFESSIONAL SERVICES FEE</Text></View>
-                                    <View style={pdfStyles.tableCellRight}><Text style={pdfStyles.bold}>AMOUNT</Text></View>
-                                </View>
-                                {services.map((s: any) => (
-                                    <View key={s.id} style={pdfStyles.tableRow}>
-                                        <View style={pdfStyles.tableCellLeft}><Text>{s.name}</Text></View>
-                                        <View style={pdfStyles.tableCellRight}><Text>${Number(s.amount || 0).toLocaleString()}</Text></View>
-                                    </View>
-                                ))}
-                                <View style={pdfStyles.tableFooter}>
-                                    <View style={pdfStyles.tableCellLeft}><Text>TOTAL FEE</Text></View>
-                                    <View style={pdfStyles.tableCellRight}><Text>${services.reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0).toLocaleString()}</Text></View>
-                                </View>
-                            </View>
-                        )}
                     </View>
                 );
             })}
@@ -738,6 +769,66 @@ function ArticleRenderer({ section, contract, isForPdf = false }: { section: Con
 
     return (
         <div className="space-y-6">
+            {/* 3.1 Payment Structure — generated from this proposal, shown ahead
+                of the master contract's standing payment terms below. */}
+            {isPayment && services.length > 0 && (
+                <div className="space-y-3">
+                    <h4 className={`font-semibold text-gray-900 ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
+                        3.1 Payment Structure
+                    </h4>
+                    <p className={`text-gray-700 leading-relaxed ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
+                        {paymentStructureIntro(contract)}
+                    </p>
+                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                    <th className={`px-4 py-3 w-20 font-bold text-gray-600 uppercase tracking-widest ${isForPdf ? "text-[9pt]" : "text-[10px]"}`}>
+                                        Order #
+                                    </th>
+                                    <th className={`px-4 py-3 font-bold text-gray-600 uppercase tracking-widest ${isForPdf ? "text-[9pt]" : "text-[10px]"}`}>
+                                        Professional Services Fee
+                                    </th>
+                                    <th className={`px-4 py-3 font-bold text-gray-600 uppercase tracking-widest text-right ${isForPdf ? "text-[9pt]" : "text-[10px]"}`}>
+                                        Amount
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                                {services.map((service: any, idx: number) => (
+                                    <tr key={`structure-${service.id}`}>
+                                        <td className={`px-4 py-3 text-gray-500 ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
+                                            {service.order ?? idx + 1}
+                                        </td>
+                                        <td className={`px-4 py-3 text-gray-800 ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
+                                            {service.name}
+                                        </td>
+                                        <td className={`px-4 py-3 font-bold text-right text-gray-900 ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
+                                            ${Number(service.amount || 0).toLocaleString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot className="bg-gray-900 text-white">
+                                <tr>
+                                    <td
+                                        colSpan={2}
+                                        className={`px-4 py-4 font-bold uppercase tracking-widest ${isForPdf ? "text-[10pt]" : "text-xs"}`}
+                                    >
+                                        Total Professional Architectural Fee
+                                    </td>
+                                    <td className={`px-4 py-4 font-bold text-right ${isForPdf ? "text-[12pt]" : "text-base"}`}>
+                                        ${services
+                                            .reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0)
+                                            .toLocaleString()}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             <p className={`text-gray-700 leading-relaxed whitespace-pre-wrap ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
                 {section.content}
             </p>
@@ -834,44 +925,6 @@ function ArticleRenderer({ section, contract, isForPdf = false }: { section: Con
                 </div>
             )}
 
-            {isPayment && services.length > 0 && (
-                <div className={`${isForPdf ? "mt-6" : "overflow-hidden rounded-xl border border-gray-200"}`}>
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className={`${isForPdf ? "bg-gray-100" : "bg-gray-50"} border-b border-gray-200`}>
-                                <th className={`px-4 py-3 font-bold text-gray-600 uppercase tracking-widest ${isForPdf ? "text-[9pt]" : "text-[10px]"}`}>
-                                    Project Phase / Service Description
-                                </th>
-                                <th className={`px-4 py-3 font-bold text-gray-600 uppercase tracking-widest text-right ${isForPdf ? "text-[9pt]" : "text-[10px]"}`}>
-                                    Fee (USD)
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                            {services.map((service: any) => (
-                                <tr key={service.id}>
-                                    <td className={`px-4 py-4 text-gray-800 ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
-                                        {service.name}
-                                    </td>
-                                    <td className={`px-4 py-4 font-bold text-right text-gray-900 ${isForPdf ? "text-[11pt]" : "text-sm"}`}>
-                                        ${Number(service.amount || 0).toLocaleString()}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot className="bg-gray-900 text-white shadow-lg">
-                            <tr>
-                                <td className={`px-4 py-4 font-bold uppercase tracking-widest ${isForPdf ? "text-[10pt]" : "text-xs"}`}>
-                                    Total Professional Architectural Fee
-                                </td>
-                                <td className={`px-4 py-4 font-bold text-right ${isForPdf ? "text-[12pt]" : "text-base"}`}>
-                                    ${services.reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0).toLocaleString()}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            )}
         </div>
     );
 }

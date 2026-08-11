@@ -10,8 +10,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useSubmitNewProposalMutation } from "@/redux/api/adminDashboard/proposalApi";
+import {
+  useSubmitNewProposalMutation,
+  useUpdateProposalDetailsMutation,
+} from "@/redux/api/adminDashboard/proposalApi";
 import Cookies from "js-cookie";
+import { toast } from "sonner";
 
 interface ProjectFormProps {
   projectInfo: {
@@ -45,7 +49,29 @@ export default function ProjectTabForm({
   id,
 }: ProjectFormProps) {
 
-  const [submitNewProposal, { isLoading }] = useSubmitNewProposalMutation();
+  const [submitNewProposal, { isLoading: isCreating }] = useSubmitNewProposalMutation();
+  const [updateProposalDetails, { isLoading: isUpdating }] =
+    useUpdateProposalDetailsMutation();
+  const isLoading = isCreating || isUpdating;
+
+  // The proposal this wizard run is already working on, if any. Stepping back
+  // to this page and continuing again must edit that draft — creating a second
+  // proposal here is what used to leave empty $0 drafts on the project and
+  // strand the services added to the first one.
+  const openDraft = (() => {
+    try {
+      const parsed = JSON.parse(Cookies.get("proposal_data") || "null");
+      const draft = parsed?.data;
+      if (!draft?.id) return null;
+      // A cookie left over from another project must not be edited.
+      if (draft.projectRequestId && String(draft.projectRequestId) !== String(id)) {
+        return null;
+      }
+      return draft as { id: string; projectRequestId?: string };
+    } catch {
+      return null;
+    }
+  })();
 
   // Helper function to convert display values to API enum values
   const convertToApiFormat = (serviceType: string, projectType: string) => {
@@ -71,7 +97,7 @@ export default function ProjectTabForm({
 
   const handleContinue = async () => {
     if (!id) {
-      console.error("No project request ID available");
+      toast.error("No project is linked to this proposal.");
       return;
     }
 
@@ -99,45 +125,49 @@ export default function ProjectTabForm({
       // expectedTimeline: String(projectInfo.timeline || ""),
     };
 
+    // Persist the wizard's proposal id so the Services and Review steps keep
+    // writing to the very same row.
+    const rememberProposal = (proposal: any) => {
+      Cookies.set(
+        "proposal_data",
+        JSON.stringify({
+          data: {
+            id: proposal?.id,
+            proposalNumber: proposal?.proposalNumber,
+            createdAt: proposal?.createdAt,
+            projectRequestId: proposal?.projectRequestId || id,
+          },
+        }),
+        { expires: 7 }
+      );
+    };
+
+    if (openDraft) {
+      try {
+        const response = await updateProposalDetails({
+          id: openDraft.id,
+          ...cleanPayload,
+        }).unwrap();
+        rememberProposal(response?.data ?? { id: openDraft.id });
+        handleNext();
+        return;
+      } catch (error: any) {
+        // The draft is gone or no longer editable (already sent) — fall through
+        // and start a fresh proposal rather than dead-ending the PM here.
+        console.error("Failed to update the open draft, creating a new one:", error);
+        Cookies.remove("proposal_data");
+      }
+    }
+
     try {
-      console.log("SENDING CLEANED PAYLOAD:", JSON.stringify(cleanPayload));
-
       const response = await submitNewProposal(cleanPayload).unwrap();
-      console.log("PROPOSAL RESPONSE:", response);
-
-      // Save response to cookies
-      Cookies.set("proposal_data", JSON.stringify(response), { expires: 7 });
-
-      // Proceed to next step
+      rememberProposal(response?.data);
       handleNext();
     } catch (error: any) {
-      console.error("Failed to send proposal (RTK):", error);
-
-      // DEBUG: If it fails with 400, try a direct fetch to see if RTK Query is adding something hidden
-      if (error?.status === 400 || error?.data?.statusCode === 400) {
-        console.log("RTK FAILED WITH 400. ATTEMPTING DIRECT FETCH FOR DEBUGGING...");
-        try {
-          const fetchResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/proposals`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${Cookies.get("accessToken")}`
-            },
-            body: JSON.stringify(cleanPayload)
-          });
-
-          const result = await fetchResponse.json();
-          console.log("DIRECT FETCH RESULT:", result);
-
-          if (fetchResponse.ok) {
-            console.log("DIRECT FETCH SUCCEEDED! Proceeding...");
-            Cookies.set("proposal_data", JSON.stringify(result), { expires: 7 });
-            handleNext();
-          }
-        } catch (fetchErr) {
-          console.error("DIRECT FETCH ALSO FAILED:", fetchErr);
-        }
-      }
+      console.error("Failed to create proposal:", error);
+      toast.error(
+        error?.data?.message || "Could not save the project details. Please try again."
+      );
     }
   };
 

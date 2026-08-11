@@ -227,10 +227,12 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                     </span>
                 );
             case "UNDER_REVIEW":
+                // Set when the amendment proposal has been drafted — the request
+                // itself is settled and is waiting on the client, not the PM.
                 return (
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
                         <Clock className="w-3 h-3" />
-                        Under Review
+                        Proposal Drafted
                     </span>
                 );
             case "COMPLETED":
@@ -492,8 +494,11 @@ export default function ContractsTab({ project }: ContractsTabProps) {
 
                                     {/* Actions */}
                                     <div className="flex flex-col gap-2 flex-shrink-0">
-                                        {(amendment.status === "PENDING" ||
-                                            amendment.status === "UNDER_REVIEW") && (
+                                        {/* Only a request nobody has ruled on yet can be
+                                            accepted or rejected — the backend refuses a
+                                            second review, so offering the buttons again
+                                            once a proposal exists only leads to an error. */}
+                                        {amendment.status === "PENDING" && !amendment.amendmentProposalId && (
                                             <>
                                                 <button
                                                     onClick={() => handleReviewAmendment(amendment, "APPROVED")}
@@ -521,10 +526,24 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                                                 Create Proposal
                                             </button>
                                         )}
+                                        {amendment.amendmentProposalId &&
+                                            amendment.amendmentProposal?.status === "DRAFT" && (
+                                                <button
+                                                    onClick={() =>
+                                                        navigate(
+                                                            `/dashboard/new-proposal/${project.id}?proposalId=${amendment.amendmentProposalId}`
+                                                        )
+                                                    }
+                                                    className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <FileTextIcon className="w-3.5 h-3.5" />
+                                                    Continue Draft
+                                                </button>
+                                            )}
                                         {amendment.amendmentProposalId && (
                                             <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-green-200 bg-green-50 text-green-700">
                                                 <FileCheck className="w-3.5 h-3.5" />
-                                                Proposal Linked
+                                                {amendment.amendmentProposal?.proposalNumber || "Proposal Linked"}
                                             </span>
                                         )}
                                     </div>

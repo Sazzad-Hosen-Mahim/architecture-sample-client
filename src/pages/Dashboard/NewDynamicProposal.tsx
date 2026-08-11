@@ -52,6 +52,10 @@ export default function NewDynamicProposalPage({
     const [searchParams] = useSearchParams();
     const draftProposalId = searchParams.get("proposalId");
     const [draftHydrated, setDraftHydrated] = useState(false);
+    // Adding a service invalidates the "Project" tag, which refetches the draft
+    // query below. Without this latch the hydration effect would re-run on that
+    // refetch and yank the PM back to the Services step mid-navigation.
+    const hydratedFor = useRef<string | null>(null);
 
     // Form state
     const [clientInfo, setClientInfo] = useState({
@@ -285,15 +289,28 @@ export default function NewDynamicProposalPage({
     );
 
     useEffect(() => {
+        // Starting a brand-new proposal: drop any draft the previous wizard run
+        // left behind so the Project step creates a fresh row instead of
+        // silently editing an unrelated proposal.
+        if (!draftProposalId) {
+            Cookies.remove("proposal_data");
+            hydratedFor.current = null;
+        }
+    }, [draftProposalId]);
+
+    useEffect(() => {
         if (!draftProposalId) return;
+        if (hydratedFor.current === draftProposalId) return;
         const proposal = draftProposalData?.data;
         if (!proposal) {
             if (isDraftError) {
                 toast.error("Could not load the draft proposal. Starting a new one instead.");
+                hydratedFor.current = draftProposalId;
                 setDraftHydrated(true);
             }
             return;
         }
+        hydratedFor.current = draftProposalId;
 
         const services = proposal.services || [];
 
@@ -354,6 +371,8 @@ export default function NewDynamicProposalPage({
 
         // Seed the cookie downstream steps (Services/Sign) expect, so they
         // keep writing to this same proposal instead of creating a new one.
+        // projectRequestId lets the Project step tell "my draft" apart from a
+        // leftover draft belonging to some other project.
         Cookies.set(
             "proposal_data",
             JSON.stringify({
@@ -361,6 +380,7 @@ export default function NewDynamicProposalPage({
                     id: draftProposalId,
                     proposalNumber: proposal.proposalNumber,
                     createdAt: proposal.createdAt,
+                    projectRequestId: proposal.projectRequestId || id,
                 },
             }),
             { expires: 7 }
@@ -369,7 +389,7 @@ export default function NewDynamicProposalPage({
         setActiveStep("services");
         setProgress(66);
         setDraftHydrated(true);
-    }, [draftProposalId, draftProposalData, isDraftError]);
+    }, [draftProposalId, draftProposalData, isDraftError, id]);
 
     const handleClientInfoChange = (field: string, value: string) => {
         setClientInfo((prev) => ({ ...prev, [field]: value }));

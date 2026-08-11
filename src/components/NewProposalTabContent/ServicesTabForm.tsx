@@ -10,13 +10,22 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { FileText } from "lucide-react";
+import { Check, FileText, Loader2, Trash2 } from "lucide-react";
 // import { useParams } from "react-router-dom";
 import {
   useAddServiceMutation,
+  useDeleteProposalServiceMutation,
+  useGetProposalFullQuery,
   useReorderProposalServicesMutation,
   useUpdateProposalPaymentPlanMutation,
+  type ProposalService,
 } from "@/redux/api/adminDashboard/proposalApi";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
 
@@ -94,53 +103,216 @@ export default function ServicesTabForm({
 
   // const { id } = useParams();
 
-  const proposalData = Cookies.get("proposal_data") || "";
+  const proposalCookie = Cookies.get("proposal_data") || "";
   let parsedProposalData: any = null;
   try {
-    parsedProposalData = proposalData ? JSON.parse(proposalData) : null;
+    parsedProposalData = proposalCookie ? JSON.parse(proposalCookie) : null;
   } catch {
     parsedProposalData = null;
   }
   const id = parsedProposalData?.data?.id;
 
   const [addService] = useAddServiceMutation();
+  const [deleteProposalService] = useDeleteProposalServiceMutation();
   const [reorderServices] = useReorderProposalServicesMutation();
   const [updatePaymentPlan] = useUpdateProposalPaymentPlanMutation();
 
-  // objective id -> the service row the backend created for it, so a later
-  // change to the Order box can still be pushed before moving on.
-  const [addedServiceIds, setAddedServiceIds] = useState<Record<string, string>>({});
+  // The saved services are the source of truth for what has actually been added
+  // — deriving the button state from them (rather than from local state) keeps
+  // "Added" correct after a reload or when resuming a draft.
+  const { data: proposalData } = useGetProposalFullQuery(id || "", { skip: !id });
+  const fetchedServices: ProposalService[] = proposalData?.data?.services || [];
+
+  const normalize = (value: string) => value.trim().toLowerCase();
+
+  // The refetch triggered by adding a service lands a moment after the mutation
+  // resolves; holding the row the mutation returned keeps the button on "Added"
+  // instead of flickering back to "Add" during that gap.
+  const [justSaved, setJustSaved] = useState<Record<string, ProposalService>>({});
+
+  const savedServices: ProposalService[] = [
+    ...fetchedServices,
+    ...Object.values(justSaved).filter(
+      (local) => !fetchedServices.some((s) => s.id === local.id)
+    ),
+  ];
+
+  const savedServiceFor = (label: string) => {
+    const key = normalize(label || "");
+    if (!key) return undefined;
+    return savedServices.find((s) => normalize(s.name) === key);
+  };
+
+  // A saved service whose cost/weeks/order no longer match the form has
+  // unsaved edits, so the button offers "Update" instead of showing "Added".
+  const hasUnsavedEdits = (objectiveId: string, saved: ProposalService) =>
+    Number(saved.amount) !== (Number(objectiveCosts[objectiveId]) || 0) ||
+    Number(saved.timelineWeeks || 0) !== (Number(objectiveTimelines[objectiveId]) || 0) ||
+    (objectiveOrders?.[objectiveId] !== undefined &&
+      Number(saved.order) !== Number(objectiveOrders[objectiveId]));
+
+  const [pendingObjectiveId, setPendingObjectiveId] = useState<string | null>(null);
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [showServicesModal, setShowServicesModal] = useState(false);
+  const [removalSelection, setRemovalSelection] = useState<Record<string, boolean>>({});
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  const handleAddService = async (objective: Objective) => {
+    if (!id) {
+      toast.error("Proposal not found. Please start again from the Project step.");
+      return;
+    }
+
+    const name = objective.label.trim();
+    if (!name) {
+      toast.error("Please give this phase a name before adding it");
+      return;
+    }
+
+    const cost = Number(objectiveCosts[objective.id]) || 0;
+    const timelineWeeks = Number(objectiveTimelines[objective.id]) || 0;
+
+    if (cost === 0 || timelineWeeks === 0) {
+      toast.error("Please enter both cost and timeline before adding the service");
+      return;
+    }
+
+    setPendingObjectiveId(objective.id);
+    try {
+      const result = await addService({
+        id,
+        name,
+        cost,
+        timelineWeeks,
+        order: Number(objectiveOrders?.[objective.id]) || undefined,
+      }).unwrap();
+
+      if (result?.data) {
+        setJustSaved((prev) => ({ ...prev, [result.data.id]: result.data }));
+      }
+
+      // Adding a service is what puts it in the proposal, so the checkbox and
+      // the summary totals follow the save rather than the other way round.
+      if (!selectedObjectives.includes(objective.id)) {
+        toggleObjective(objective.id);
+      }
+      toast.success(result?.message || `Service "${name}" added successfully!`);
+    } catch (error: any) {
+      console.error("Failed to add service:", error);
+      toast.error(error?.data?.message || "Failed to add service. Please try again.");
+    } finally {
+      setPendingObjectiveId(null);
+    }
+  };
+
+  const removeSavedService = async (service: ProposalService, objectiveId?: string) => {
+    if (!id) return false;
+    try {
+      await deleteProposalService({ proposalId: id, serviceId: service.id }).unwrap();
+      setJustSaved((prev) => {
+        const next = { ...prev };
+        delete next[service.id];
+        return next;
+      });
+      if (objectiveId && selectedObjectives.includes(objectiveId)) {
+        toggleObjective(objectiveId);
+      }
+      return true;
+    } catch (error: any) {
+      toast.error(
+        error?.data?.message || `Could not remove "${service.name}". Please try again.`
+      );
+      return false;
+    }
+  };
+
+  // Unticking a phase that has already been saved takes it off the proposal —
+  // otherwise the checkbox and the saved services would silently disagree.
+  const handleToggleObjective = async (objective: Objective) => {
+    const saved = savedServiceFor(objective.label);
+    if (saved && selectedObjectives.includes(objective.id)) {
+      setPendingObjectiveId(objective.id);
+      const removed = await removeSavedService(saved, objective.id);
+      setPendingObjectiveId(null);
+      if (removed) toast.success(`Service "${saved.name}" removed.`);
+      return;
+    }
+    toggleObjective(objective.id);
+  };
+
+  const openServicesModal = () => {
+    // Every saved service starts checked; unchecking marks it for removal.
+    setRemovalSelection(
+      Object.fromEntries(savedServices.map((s) => [s.id, true]))
+    );
+    setShowServicesModal(true);
+  };
+
+  const objectiveIdForService = (service: ProposalService) =>
+    objectives.find((o) => normalize(o.label) === normalize(service.name))?.id;
+
+  const handleRemoveDeselected = async () => {
+    if (!id) return;
+    const toRemove = savedServices.filter((s) => removalSelection[s.id] === false);
+    if (toRemove.length === 0) return;
+
+    setIsRemoving(true);
+    let removed = 0;
+    for (const service of toRemove) {
+      const ok = await removeSavedService(service, objectiveIdForService(service));
+      if (ok) removed += 1;
+    }
+    setIsRemoving(false);
+
+    if (removed > 0) {
+      toast.success(`${removed} service${removed > 1 ? "s" : ""} removed.`);
+      setShowServicesModal(false);
+    }
+  };
 
   const persistOrderThenContinue = async () => {
-    const items = Object.entries(addedServiceIds)
-      .map(([objectiveId, serviceId]) => ({
-        id: serviceId,
-        order: Number(objectiveOrders?.[objectiveId]) || 0,
-      }))
-      .filter((i) => i.order > 0);
-
-    if (id && items.length > 0) {
-      try {
-        await reorderServices({ id, items }).unwrap();
-      } catch {
-        toast.error("Could not save the service order. Please try again.");
-        return;
-      }
+    if (savedServices.length === 0) {
+      toast.error("Please add at least one service before continuing.");
+      return;
     }
 
-    // The payment plan is chosen here but the proposal was created back on the
-    // Project step, so it has to be pushed explicitly. Without this the row
-    // keeps the backend's LUMP_SUM default no matter what the PM picked.
-    if (id) {
-      try {
-        await updatePaymentPlan({ id, paymentMethod }).unwrap();
-      } catch {
-        toast.error("Could not save the payment type. Please try again.");
-        return;
-      }
-    }
+    setIsContinuing(true);
+    try {
+      const items = savedServices
+        .map((service) => {
+          const objectiveId = objectiveIdForService(service);
+          return {
+            id: service.id,
+            order: objectiveId ? Number(objectiveOrders?.[objectiveId]) || 0 : 0,
+          };
+        })
+        .filter((i) => i.order > 0);
 
-    handleNext();
+      if (id && items.length > 0) {
+        try {
+          await reorderServices({ id, items }).unwrap();
+        } catch {
+          toast.error("Could not save the service order. Please try again.");
+          return;
+        }
+      }
+
+      // The payment plan is chosen here but the proposal was created back on the
+      // Project step, so it has to be pushed explicitly. Without this the row
+      // keeps the backend's LUMP_SUM default no matter what the PM picked.
+      if (id) {
+        try {
+          await updatePaymentPlan({ id, paymentMethod }).unwrap();
+        } catch {
+          toast.error("Could not save the payment type. Please try again.");
+          return;
+        }
+      }
+
+      handleNext();
+    } finally {
+      setIsContinuing(false);
+    }
   };
 
   return (
@@ -190,7 +362,8 @@ export default function ServicesTabForm({
                 <Checkbox
                   id={objective.id}
                   checked={selectedObjectives.includes(objective.id)}
-                  onCheckedChange={() => toggleObjective(objective.id)}
+                  onCheckedChange={() => handleToggleObjective(objective)}
+                  disabled={pendingObjectiveId === objective.id}
                   className="mr-3"
                 />
                 {objective.custom && updatePhaseLabel ? (
@@ -251,63 +424,46 @@ export default function ServicesTabForm({
                     <span className="text-sm text-gray-500 ml-1">wks</span>
                   </div>
                   <div>
-                    <button
-                      className="bg-teal-700 cursor-pointer hover:bg-teal-800 text-white px-4 py-2 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={async () => {
-                        if (!id) {
-                          toast.error("Project ID is missing");
-                          return;
-                        }
+                    {(() => {
+                      const saved = savedServiceFor(objective.label);
+                      const isAdding = pendingObjectiveId === objective.id;
+                      const needsUpdate = saved ? hasUnsavedEdits(objective.id, saved) : false;
+                      const isAdded = !!saved && !needsUpdate;
 
-                        const name = objective.label.trim();
-                        if (!name) {
-                          toast.error("Please give this phase a name before adding it");
-                          return;
-                        }
-
-                        const cost = Number(objectiveCosts[objective.id]) || 0;
-                        const timelineWeeks = Number(objectiveTimelines[objective.id]) || 0;
-
-                        if (cost === 0 || timelineWeeks === 0) {
-                          toast.error("Please enter both cost and timeline before adding the service");
-                          return;
-                        }
-
-                        const payload = {
-                          name,
-                          cost: cost,
-                          timelineWeeks: timelineWeeks,
-                          order: Number(objectiveOrders?.[objective.id]) || undefined,
-                          id: id
-                        };
-
-                        console.log("=== ADDING SERVICE ===");
-                        console.log("Objective:", objective);
-                        console.log("Payload:", payload);
-                        console.log("Name type:", typeof payload.name, "Value:", payload.name);
-                        console.log("Cost type:", typeof payload.cost, "Value:", payload.cost);
-                        console.log("TimelineWeeks type:", typeof payload.timelineWeeks, "Value:", payload.timelineWeeks);
-                        console.log("ID type:", typeof payload.id, "Value:", payload.id);
-
-                        try {
-                          const result: any = await addService(payload).unwrap();
-                          const createdId = result?.data?.id;
-                          if (createdId) {
-                            setAddedServiceIds((prev) => ({
-                              ...prev,
-                              [objective.id]: createdId,
-                            }));
+                      return (
+                        <button
+                          className={`min-w-[92px] cursor-pointer text-white px-4 py-2 rounded text-sm inline-flex items-center justify-center gap-1.5 disabled:cursor-not-allowed ${isAdded
+                            ? "bg-green-600 disabled:opacity-100"
+                            : "bg-teal-700 hover:bg-teal-800 disabled:opacity-50"
+                            }`}
+                          onClick={() => handleAddService(objective)}
+                          disabled={
+                            isAdding ||
+                            isAdded ||
+                            !id ||
+                            !objective.label.trim() ||
+                            (objectiveCosts[objective.id] || 0) === 0 ||
+                            (objectiveTimelines[objective.id] || 0) === 0
                           }
-                          toast.success(`Service "${name}" added successfully!`);
-                        } catch (error) {
-                          console.error("Failed to add service:", error);
-                          toast.error("Failed to add service. Please try again.");
-                        }
-                      }}
-                      disabled={!id || !objective.label.trim() || (objectiveCosts[objective.id] || 0) === 0 || (objectiveTimelines[objective.id] || 0) === 0}
-                    >
-                      Add
-                    </button>
+                        >
+                          {isAdding ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Adding...
+                            </>
+                          ) : isAdded ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              Added
+                            </>
+                          ) : needsUpdate ? (
+                            "Update"
+                          ) : (
+                            "Add"
+                          )}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -343,8 +499,21 @@ export default function ServicesTabForm({
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Services</p>
-                <p className="font-medium">{selectedObjectives.length}</p>
-                <p className="text-xs text-gray-500">objectives</p>
+                {savedServices.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={openServicesModal}
+                    title="View and remove added services"
+                    className="font-medium text-teal-700 underline underline-offset-4 decoration-dotted hover:text-teal-900 cursor-pointer"
+                  >
+                    {savedServices.length}
+                  </button>
+                ) : (
+                  <p className="font-medium">0</p>
+                )}
+                <p className="text-xs text-gray-500">
+                  {savedServices.length > 0 ? "added" : "objectives"}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Cost</p>
@@ -572,17 +741,122 @@ export default function ServicesTabForm({
         <Button
           variant="outline"
           onClick={handleBack}
+          disabled={isContinuing}
           className="cursor-pointer"
         >
           Back
         </Button>
         <Button
           onClick={persistOrderThenContinue}
-          className="bg-gray-800 text-white cursor-pointer hover:bg-black"
+          disabled={isContinuing}
+          className="bg-gray-800 text-white cursor-pointer hover:bg-black min-w-[180px]"
         >
-          Continue to Review
+          {isContinuing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Review"
+          )}
         </Button>
       </div>
+
+      {/* Added services — deselect any the PM no longer wants and remove them */}
+      <Dialog
+        open={showServicesModal}
+        onOpenChange={(open) => {
+          if (!open && !isRemoving) setShowServicesModal(false);
+        }}
+      >
+        <DialogContent className="max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle>Added Services</DialogTitle>
+            <p className="text-sm text-gray-500">
+              Uncheck any service you want to take off this proposal, then remove it.
+            </p>
+          </DialogHeader>
+
+          <div className="max-h-[50vh] overflow-y-auto space-y-2 py-1">
+            {savedServices.map((service) => {
+              const isKept = removalSelection[service.id] !== false;
+              return (
+                <label
+                  key={service.id}
+                  htmlFor={`saved-service-${service.id}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isKept
+                    ? "border-gray-200 bg-white"
+                    : "border-red-200 bg-red-50"
+                    }`}
+                >
+                  <Checkbox
+                    id={`saved-service-${service.id}`}
+                    checked={isKept}
+                    onCheckedChange={(checked) =>
+                      setRemovalSelection((prev) => ({
+                        ...prev,
+                        [service.id]: checked === true,
+                      }))
+                    }
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-sm font-medium truncate ${isKept ? "text-gray-900" : "text-red-700 line-through"
+                        }`}
+                    >
+                      {service.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      ${Number(service.amount || 0).toLocaleString()} ·{" "}
+                      {service.timelineWeeks || 0} wks · order{" "}
+                      {service.order}
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
+
+            {savedServices.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-6">
+                No services have been added yet.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowServicesModal(false)}
+              disabled={isRemoving}
+              className="cursor-pointer"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={handleRemoveDeselected}
+              disabled={
+                isRemoving ||
+                savedServices.every((s) => removalSelection[s.id] !== false)
+              }
+              className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+            >
+              {isRemoving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Remove{" "}
+                  {savedServices.filter((s) => removalSelection[s.id] === false).length ||
+                    ""}
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

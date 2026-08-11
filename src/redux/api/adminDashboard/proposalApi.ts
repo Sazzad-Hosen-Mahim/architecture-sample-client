@@ -254,7 +254,7 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             providesTags: ["Project"],
         }),
-        submitNewProposal: builder.mutation<ProjectRequest, SendProposalRequest>({
+        submitNewProposal: builder.mutation<{ success: boolean; message: string; data: Proposal }, SendProposalRequest>({
             query: (payload) => ({
                 url: `/proposals`,
                 method: "POST",
@@ -262,11 +262,28 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
-        addService: builder.mutation<ProjectRequest, { name: string; cost: number; timelineWeeks?: number; description?: string; order?: number; id: string }>({
+        // Re-submitting the Project step (the PM stepped back to it) must edit
+        // the draft that is already open instead of minting a second proposal.
+        updateProposalDetails: builder.mutation<{ success: boolean; data: Proposal }, { id: string } & Partial<SendProposalRequest>>({
+            query: ({ id, ...body }) => ({
+                url: `/proposals/${id}`,
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        addService: builder.mutation<{ success: boolean; message: string; data: ProposalService }, { name: string; cost: number; timelineWeeks?: number; description?: string; order?: number; id: string }>({
             query: ({ name, cost, timelineWeeks, description, order, id }) => ({
                 url: `/proposals/${id}/services`,
                 method: "POST",
                 body: { name, cost, timelineWeeks, description, order },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+        deleteProposalService: builder.mutation<{ success: boolean; message: string }, { proposalId: string; serviceId: string }>({
+            query: ({ proposalId, serviceId }) => ({
+                url: `/proposals/${proposalId}/services/${serviceId}`,
+                method: "DELETE",
             }),
             invalidatesTags: ["Project"],
         }),
@@ -542,7 +559,9 @@ export const {
     useGetProposalInfoQuery,
     useGetProposalFullQuery,
     useSubmitNewProposalMutation,
+    useUpdateProposalDetailsMutation,
     useAddServiceMutation,
+    useDeleteProposalServiceMutation,
     useUpdateProposalPaymentPlanMutation,
     useReorderProposalServicesMutation,
     useSendProposalToClientMutation,

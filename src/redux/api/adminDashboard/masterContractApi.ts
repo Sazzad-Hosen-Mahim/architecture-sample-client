@@ -20,6 +20,15 @@ export interface ContractSection {
 
 export interface ProposalContract {
     id: string;
+    proposalNumber: string;
+    createdAt: string;
+    proposalType?: "NORMAL" | "AMENDMENT";
+    // Drive the generated "3.1 Payment Structure" summary inside Article 3, so
+    // the client sees the same fee breakdown the PM signed off on.
+    paymentType?: string | null;
+    paymentMethod?: string | null;
+    subtotal?: string | null;
+    totalAmount?: string | null;
     contractSections: ContractSection[] | null;
     architectContractSignature: string | null;
     clientContractSignature: string | null;
@@ -39,7 +48,13 @@ export interface ProposalContract {
     status: string;
     userId: string;
     notes: string | null;
-    services: { id: string; name: string; amount: number }[];
+    services: {
+        id: string;
+        name: string;
+        amount: number;
+        order?: number;
+        timelineWeeks?: number | null;
+    }[];
 }
 
 export const masterContractApi = baseApi.injectEndpoints({

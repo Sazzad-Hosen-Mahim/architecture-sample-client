@@ -139,10 +139,13 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
         serviceType: projectInfo?.serviceType || "Design Services",
         projectName: projectInfo?.projectName || "New Project",
         notes: scopeNotesText, // Pass the per-service scope notes
-        services: selectedObjectives.map((id) => ({
+        // Drives the generated "3.1 Payment Structure" clause in the PDF.
+        paymentMethod,
+        services: selectedObjectives.map((id, idx) => ({
           id,
           name: objectives.find((o) => o.id === id)?.label || id,
-          amount: objectiveCosts[id] || 0
+          amount: objectiveCosts[id] || 0,
+          order: objectiveOrders?.[id] ?? idx + 1,
         })),
         architectContractSignature: architectSignatureRef.current?.isEmpty() ? null : architectSignatureRef.current?.toDataURL(),
         architectSignedAt: new Date().toISOString()
