@@ -102,7 +102,7 @@ const UserDashboard = () => {
         </nav>
 
         <Button
-          onClick={() => navigate("/dashboard/new-inquiries")}
+          onClick={() => navigate("/new-project")}
           className="bg-black cursor-pointer my-2 text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
         >
           <span className="text-white"><BsFillClipboard2PlusFill /></span> Create New Proposal
