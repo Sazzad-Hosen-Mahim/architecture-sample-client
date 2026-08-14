@@ -22,7 +22,7 @@ const Navbar: React.FC = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);
 
-  // never showing back button in home page 
+  // never showing back button in home page
   const location = useLocation();
   const isHomePage = location.pathname === "/";
 
@@ -40,11 +40,8 @@ const Navbar: React.FC = () => {
       <div className=" mx-auto px-4 sm:px-6 lg:px-16">
         <div className="flex items-center justify-between h-12">
           {/* Logo */}
-          <div className="">
-            {!isHomePage && <Backbutton />}
-          </div>
+          <div className="">{!isHomePage && <Backbutton />}</div>
           <div className="flex shrink w-full justify-center">
-
             <Link to="/" className="text-black text-2xl ">
               <div className="flex content-center gap-2">
                 <img src={logo} alt="" className="w-8 h-8" />
@@ -77,10 +74,27 @@ const Navbar: React.FC = () => {
 
                 <PopoverContent className="mr-3 bg-website-color-darkGray border-none text-white space-y-2">
                   <Button
-                    onClick={() => navigate(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE" || user?.role === "DRAFTER" || user?.role === "EMPLOYEE" ? "/dashboard" : "/user-dashboard")}
+                    onClick={() =>
+                      navigate(
+                        user?.role === "SUPER_ADMIN" ||
+                          user?.role === "ADMIN" ||
+                          user?.role === "PROJECT_MANAGER" ||
+                          user?.role === "FINANCE" ||
+                          user?.role === "DRAFTER" ||
+                          user?.role === "EMPLOYEE"
+                          ? "/dashboard"
+                          : "/user-dashboard",
+                      )
+                    }
                     className="bg-website-color-lightGray text-black w-full cursor-pointer"
                   >
                     Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => navigate("/profile-settings")}
+                    className="bg-website-color-lightGray text-black w-full cursor-pointer"
+                  >
+                    Settings
                   </Button>
                   <Button
                     onClick={handleLogout}
@@ -124,11 +138,26 @@ const Navbar: React.FC = () => {
                 <PopoverContent className="mr-3 bg-white border border-gray-200 shadow-md text-black space-y-2 p-2 rounded-xl z-[60]">
                   <Button
                     onClick={() => {
-                      navigate(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE" || user?.role === "DRAFTER" || user?.role === "EMPLOYEE" ? "/dashboard" : "/user-dashboard");
+                      navigate(
+                        user?.role === "SUPER_ADMIN" ||
+                          user?.role === "ADMIN" ||
+                          user?.role === "PROJECT_MANAGER" ||
+                          user?.role === "FINANCE" ||
+                          user?.role === "DRAFTER" ||
+                          user?.role === "EMPLOYEE"
+                          ? "/dashboard"
+                          : "/user-dashboard",
+                      );
                     }}
                     className="bg-black text-white hover:bg-gray-800 w-full cursor-pointer rounded-lg text-xs"
                   >
                     Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => navigate("/profile-settings")}
+                    className="bg-website-color-lightGray text-black w-full cursor-pointer"
+                  >
+                    Settings
                   </Button>
                   <Button
                     onClick={handleLogout}

@@ -16,6 +16,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MeetingSlotPicker, {
+    EMPTY_SLOT_SELECTION,
+    toMeetingWindow,
+    type SlotSelection,
+} from "@/components/Common/MeetingSlotPicker";
 
 const NewInquiriesPMTab = () => {
     const { data: response, isLoading } = useGetAllNewInquiriesQuery();
@@ -31,9 +36,11 @@ const NewInquiriesPMTab = () => {
     const [meetingForm, setMeetingForm] = useState({
         title: "",
         meetingUrl: "",
-        scheduledAt: "",
         notes: "",
     });
+    // Booked against the assigned manager's master schedule, on the shared
+    // 30-minute grid.
+    const [slot, setSlot] = useState<SlotSelection>(EMPTY_SLOT_SELECTION);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -75,8 +82,9 @@ const NewInquiriesPMTab = () => {
     const handleSendMeeting = async () => {
         if (!selectedInquiry) return;
 
-        if (!meetingForm.title || !meetingForm.meetingUrl || !meetingForm.scheduledAt) {
-            toast.error("Please fill in all required fields");
+        const window = toMeetingWindow(slot);
+        if (!meetingForm.title || !meetingForm.meetingUrl || !window) {
+            toast.error("Please fill in all required fields and pick a time slot");
             return;
         }
 
@@ -85,14 +93,16 @@ const NewInquiriesPMTab = () => {
                 projectRequestId: selectedInquiry.id,
                 title: meetingForm.title,
                 meetingUrl: meetingForm.meetingUrl,
-                scheduledAt: meetingForm.scheduledAt,
                 notes: meetingForm.notes || "",
+                meetingType: "INITIAL_CONSULTATION",
+                ...window,
             }).unwrap();
 
             toast.success("Meeting link sent successfully!");
             setMeetingModalOpen(false);
             setSelectedInquiry(null);
-            setMeetingForm({ title: "", meetingUrl: "", scheduledAt: "", notes: "" });
+            setMeetingForm({ title: "", meetingUrl: "", notes: "" });
+            setSlot(EMPTY_SLOT_SELECTION);
         } catch (error: any) {
             toast.error(error?.data?.message || "Failed to send meeting link");
         }
@@ -308,17 +318,13 @@ const NewInquiriesPMTab = () => {
                                     placeholder="https://meet.google.com/..."
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="scheduledAt" className="mb-2 block text-sm font-medium">
-                                    Date & Time *
-                                </Label>
-                                <Input
-                                    id="scheduledAt"
-                                    type="datetime-local"
-                                    value={meetingForm.scheduledAt}
-                                    onChange={(e) => setMeetingForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                                />
-                            </div>
+                            <MeetingSlotPicker
+                                value={slot}
+                                onChange={setSlot}
+                                projectRequestId={selectedInquiry.id}
+                                disabled={isSendingMeeting}
+                                accent="emerald"
+                            />
                             <div>
                                 <Label htmlFor="meetingNotes" className="mb-2 block text-sm font-medium">
                                     Notes (optional)

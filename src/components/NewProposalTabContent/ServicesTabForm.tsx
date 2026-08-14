@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+// import { Label } from "@/components/ui/label";
+// import {
+//   Select,
+//   SelectTrigger,
+//   SelectValue,
+//   SelectContent,
+//   SelectItem,
+// } from "@/components/ui/select";
 import { Check, FileText, Loader2, Trash2 } from "lucide-react";
 // import { useParams } from "react-router-dom";
 import {
@@ -83,7 +83,7 @@ export default function ServicesTabForm({
   updatePhaseLabel,
   removeCustomPhase,
   credits,
-  setCredits,
+  // setCredits,
   calculateTotalCredits,
   totalCost,
   totalWeeks,
@@ -93,13 +93,13 @@ export default function ServicesTabForm({
   handleNext,
   handleBack,
 }: ServicesFormProps) {
-  const [showAddCredit, setShowAddCredit] = useState(false);
-  const [newCredit, setNewCredit] = useState<Credit>({
-    id: "",
-    type: "dollar",
-    amount: 0,
-    description: "",
-  });
+  // const [showAddCredit, setShowAddCredit] = useState(false);
+  // const [newCredit, setNewCredit] = useState<Credit>({
+  //   id: "",
+  //   type: "dollar",
+  //   amount: 0,
+  //   description: "",
+  // });
 
   // const { id } = useParams();
 
@@ -120,7 +120,9 @@ export default function ServicesTabForm({
   // The saved services are the source of truth for what has actually been added
   // — deriving the button state from them (rather than from local state) keeps
   // "Added" correct after a reload or when resuming a draft.
-  const { data: proposalData } = useGetProposalFullQuery(id || "", { skip: !id });
+  const { data: proposalData } = useGetProposalFullQuery(id || "", {
+    skip: !id,
+  });
   const fetchedServices: ProposalService[] = proposalData?.data?.services || [];
 
   const normalize = (value: string) => value.trim().toLowerCase();
@@ -128,12 +130,14 @@ export default function ServicesTabForm({
   // The refetch triggered by adding a service lands a moment after the mutation
   // resolves; holding the row the mutation returned keeps the button on "Added"
   // instead of flickering back to "Add" during that gap.
-  const [justSaved, setJustSaved] = useState<Record<string, ProposalService>>({});
+  const [justSaved, setJustSaved] = useState<Record<string, ProposalService>>(
+    {},
+  );
 
   const savedServices: ProposalService[] = [
     ...fetchedServices,
     ...Object.values(justSaved).filter(
-      (local) => !fetchedServices.some((s) => s.id === local.id)
+      (local) => !fetchedServices.some((s) => s.id === local.id),
     ),
   ];
 
@@ -147,19 +151,26 @@ export default function ServicesTabForm({
   // unsaved edits, so the button offers "Update" instead of showing "Added".
   const hasUnsavedEdits = (objectiveId: string, saved: ProposalService) =>
     Number(saved.amount) !== (Number(objectiveCosts[objectiveId]) || 0) ||
-    Number(saved.timelineWeeks || 0) !== (Number(objectiveTimelines[objectiveId]) || 0) ||
+    Number(saved.timelineWeeks || 0) !==
+      (Number(objectiveTimelines[objectiveId]) || 0) ||
     (objectiveOrders?.[objectiveId] !== undefined &&
       Number(saved.order) !== Number(objectiveOrders[objectiveId]));
 
-  const [pendingObjectiveId, setPendingObjectiveId] = useState<string | null>(null);
+  const [pendingObjectiveId, setPendingObjectiveId] = useState<string | null>(
+    null,
+  );
   const [isContinuing, setIsContinuing] = useState(false);
   const [showServicesModal, setShowServicesModal] = useState(false);
-  const [removalSelection, setRemovalSelection] = useState<Record<string, boolean>>({});
+  const [removalSelection, setRemovalSelection] = useState<
+    Record<string, boolean>
+  >({});
   const [isRemoving, setIsRemoving] = useState(false);
 
   const handleAddService = async (objective: Objective) => {
     if (!id) {
-      toast.error("Proposal not found. Please start again from the Project step.");
+      toast.error(
+        "Proposal not found. Please start again from the Project step.",
+      );
       return;
     }
 
@@ -173,7 +184,9 @@ export default function ServicesTabForm({
     const timelineWeeks = Number(objectiveTimelines[objective.id]) || 0;
 
     if (cost === 0 || timelineWeeks === 0) {
-      toast.error("Please enter both cost and timeline before adding the service");
+      toast.error(
+        "Please enter both cost and timeline before adding the service",
+      );
       return;
     }
 
@@ -199,16 +212,24 @@ export default function ServicesTabForm({
       toast.success(result?.message || `Service "${name}" added successfully!`);
     } catch (error: any) {
       console.error("Failed to add service:", error);
-      toast.error(error?.data?.message || "Failed to add service. Please try again.");
+      toast.error(
+        error?.data?.message || "Failed to add service. Please try again.",
+      );
     } finally {
       setPendingObjectiveId(null);
     }
   };
 
-  const removeSavedService = async (service: ProposalService, objectiveId?: string) => {
+  const removeSavedService = async (
+    service: ProposalService,
+    objectiveId?: string,
+  ) => {
     if (!id) return false;
     try {
-      await deleteProposalService({ proposalId: id, serviceId: service.id }).unwrap();
+      await deleteProposalService({
+        proposalId: id,
+        serviceId: service.id,
+      }).unwrap();
       setJustSaved((prev) => {
         const next = { ...prev };
         delete next[service.id];
@@ -220,7 +241,8 @@ export default function ServicesTabForm({
       return true;
     } catch (error: any) {
       toast.error(
-        error?.data?.message || `Could not remove "${service.name}". Please try again.`
+        error?.data?.message ||
+          `Could not remove "${service.name}". Please try again.`,
       );
       return false;
     }
@@ -243,7 +265,7 @@ export default function ServicesTabForm({
   const openServicesModal = () => {
     // Every saved service starts checked; unchecking marks it for removal.
     setRemovalSelection(
-      Object.fromEntries(savedServices.map((s) => [s.id, true]))
+      Object.fromEntries(savedServices.map((s) => [s.id, true])),
     );
     setShowServicesModal(true);
   };
@@ -253,13 +275,18 @@ export default function ServicesTabForm({
 
   const handleRemoveDeselected = async () => {
     if (!id) return;
-    const toRemove = savedServices.filter((s) => removalSelection[s.id] === false);
+    const toRemove = savedServices.filter(
+      (s) => removalSelection[s.id] === false,
+    );
     if (toRemove.length === 0) return;
 
     setIsRemoving(true);
     let removed = 0;
     for (const service of toRemove) {
-      const ok = await removeSavedService(service, objectiveIdForService(service));
+      const ok = await removeSavedService(
+        service,
+        objectiveIdForService(service),
+      );
       if (ok) removed += 1;
     }
     setIsRemoving(false);
@@ -283,7 +310,9 @@ export default function ServicesTabForm({
           const objectiveId = objectiveIdForService(service);
           return {
             id: service.id,
-            order: objectiveId ? Number(objectiveOrders?.[objectiveId]) || 0 : 0,
+            order: objectiveId
+              ? Number(objectiveOrders?.[objectiveId]) || 0
+              : 0,
           };
         })
         .filter((i) => i.order > 0);
@@ -317,8 +346,6 @@ export default function ServicesTabForm({
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div className="flex justify-between items-center mb-6">
@@ -354,7 +381,9 @@ export default function ServicesTabForm({
                       min="1"
                       aria-label={`Display order for ${objective.label || "new phase"}`}
                       value={objectiveOrders?.[objective.id]?.toString() || ""}
-                      onChange={(e) => handleOrderChange(objective.id, e.target.value)}
+                      onChange={(e) =>
+                        handleOrderChange(objective.id, e.target.value)
+                      }
                       className="w-14 h-8 text-sm text-center"
                     />
                   </div>
@@ -370,7 +399,9 @@ export default function ServicesTabForm({
                   <div className="flex items-center gap-2 flex-grow mr-2">
                     <Input
                       value={objective.label}
-                      onChange={(e) => updatePhaseLabel(objective.id, e.target.value)}
+                      onChange={(e) =>
+                        updatePhaseLabel(objective.id, e.target.value)
+                      }
                       placeholder="Phase name"
                       className="h-8 text-sm font-medium"
                     />
@@ -427,15 +458,18 @@ export default function ServicesTabForm({
                     {(() => {
                       const saved = savedServiceFor(objective.label);
                       const isAdding = pendingObjectiveId === objective.id;
-                      const needsUpdate = saved ? hasUnsavedEdits(objective.id, saved) : false;
+                      const needsUpdate = saved
+                        ? hasUnsavedEdits(objective.id, saved)
+                        : false;
                       const isAdded = !!saved && !needsUpdate;
 
                       return (
                         <button
-                          className={`min-w-[92px] cursor-pointer text-white px-4 py-2 rounded text-sm inline-flex items-center justify-center gap-1.5 disabled:cursor-not-allowed ${isAdded
-                            ? "bg-green-600 disabled:opacity-100"
-                            : "bg-teal-700 hover:bg-teal-800 disabled:opacity-50"
-                            }`}
+                          className={`min-w-[92px] cursor-pointer text-white px-4 py-2 rounded text-sm inline-flex items-center justify-center gap-1.5 disabled:cursor-not-allowed ${
+                            isAdded
+                              ? "bg-green-600 disabled:opacity-100"
+                              : "bg-teal-700 hover:bg-teal-800 disabled:opacity-50"
+                          }`}
                           onClick={() => handleAddService(objective)}
                           disabled={
                             isAdding ||
@@ -528,7 +562,7 @@ export default function ServicesTabForm({
             </div>
 
             {/* Credits */}
-            <div className="mb-4">
+            {/* <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-medium">Credits</p>
                 <Button
@@ -677,7 +711,7 @@ export default function ServicesTabForm({
                   Total Credits: ${calculateTotalCredits().toLocaleString()}
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Final Cost */}
             <div className="border-t border-gray-300 pt-4 mb-4">
@@ -773,7 +807,8 @@ export default function ServicesTabForm({
           <DialogHeader>
             <DialogTitle>Added Services</DialogTitle>
             <p className="text-sm text-gray-500">
-              Uncheck any service you want to take off this proposal, then remove it.
+              Uncheck any service you want to take off this proposal, then
+              remove it.
             </p>
           </DialogHeader>
 
@@ -784,10 +819,11 @@ export default function ServicesTabForm({
                 <label
                   key={service.id}
                   htmlFor={`saved-service-${service.id}`}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isKept
-                    ? "border-gray-200 bg-white"
-                    : "border-red-200 bg-red-50"
-                    }`}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    isKept
+                      ? "border-gray-200 bg-white"
+                      : "border-red-200 bg-red-50"
+                  }`}
                 >
                   <Checkbox
                     id={`saved-service-${service.id}`}
@@ -801,15 +837,15 @@ export default function ServicesTabForm({
                   />
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`text-sm font-medium truncate ${isKept ? "text-gray-900" : "text-red-700 line-through"
-                        }`}
+                      className={`text-sm font-medium truncate ${
+                        isKept ? "text-gray-900" : "text-red-700 line-through"
+                      }`}
                     >
                       {service.name}
                     </p>
                     <p className="text-xs text-gray-500">
                       ${Number(service.amount || 0).toLocaleString()} ·{" "}
-                      {service.timelineWeeks || 0} wks · order{" "}
-                      {service.order}
+                      {service.timelineWeeks || 0} wks · order {service.order}
                     </p>
                   </div>
                 </label>
@@ -849,8 +885,8 @@ export default function ServicesTabForm({
                 <>
                   <Trash2 className="w-4 h-4 mr-2" />
                   Remove{" "}
-                  {savedServices.filter((s) => removalSelection[s.id] === false).length ||
-                    ""}
+                  {savedServices.filter((s) => removalSelection[s.id] === false)
+                    .length || ""}
                 </>
               )}
             </Button>

@@ -229,6 +229,8 @@ export default function NewDynamicProposalPage({
 
             // The intake form stores slugs ("100k-250k"); this form's Select uses
             // display labels ("$100k-$250k"). Older records already hold the label.
+            // Budget is now free text. Legacy rows still hold the old slug
+            // values, so translate those; anything else passes through as typed.
             const formatBudgetRange = (budget: string) => {
                 const mapping: Record<string, string> = {
                     'under-100k': 'Under $100k',
@@ -237,11 +239,8 @@ export default function NewDynamicProposalPage({
                     '500k-1m': '$500k-$1M',
                     'over-1m': 'Over $1M',
                 };
-                const options = Object.values(mapping);
                 const raw = String(budget || "").trim();
-                if (mapping[raw.toLowerCase()]) return mapping[raw.toLowerCase()];
-                if (options.includes(raw)) return raw;
-                return "";
+                return mapping[raw.toLowerCase()] ?? raw;
             };
 
             const { squareFootage, projectSizeUnit } = parseProjectSize(

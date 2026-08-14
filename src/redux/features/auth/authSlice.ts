@@ -8,9 +8,21 @@ interface User {
   name: string;
   role: string;
   imagUrl?: string | null;
+  avatar?: string | null;
   phoneNumber?: string | null;
   companyName?: string | null;
   bio?: string | null;
+
+  // Profile details — set at sign-up or in Profile Settings, and reused to
+  // prefill the Client Information step of a new project.
+  firstName?: string | null;
+  middleInitial?: string | null;
+  lastName?: string | null;
+  streetAddress?: string | null;
+  city?: string | null;
+  stateRegion?: string | null;
+  zipCode?: string | null;
+  country?: string | null;
 }
 
 interface AuthState {

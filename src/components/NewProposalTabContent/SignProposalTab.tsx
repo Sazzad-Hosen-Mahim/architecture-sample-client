@@ -2,9 +2,19 @@ import { Button } from "@/components/ui/button";
 import SignatureCanvas from "react-signature-canvas";
 import React, { useState } from "react";
 import Cookies from "js-cookie";
-import { useSendProposalToClientMutation } from "@/redux/api/adminDashboard/proposalApi";
+import {
+  useSendProposalToClientMutation,
+  useGetProposalFullQuery,
+} from "@/redux/api/adminDashboard/proposalApi";
 import { useGetMasterContractArticlesQuery } from "@/redux/api/adminDashboard/masterContractApi";
 import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
+import {
+  getArticleNumber,
+  isCoreArticle,
+  isPaymentArticle,
+  isScopeArticle,
+} from "@/utils/contractArticles";
+import { useGetAmendmentContractArticlesQuery } from "@/redux/api/adminDashboard/amendmentContractApi";
 import { pdf } from '@react-pdf/renderer';
 import { ContractPDF } from "@/components/Deshboard/ContractReviewModal";
 import { toast } from "sonner";
@@ -70,8 +80,42 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
 
   const [sendProposalToClient, { isLoading: isSending }] = useSendProposalToClientMutation();
   const architectSigWrapperRef = useResponsiveSignatureCanvas(architectSignatureRef, 150);
+  // An amendment is governed by the Amendment Contract articles, a first
+  // proposal by the Master Contract ones. The send flow already snapshots the
+  // right set onto the proposal — this review has to read from the same source
+  // or the PM signs off on wording the client never sees.
+  const { data: proposalFull } = useGetProposalFullQuery(id || "", { skip: !id });
+  const isAmendment = proposalFull?.data?.proposalType === "AMENDMENT";
+
+  // Both sets are fetched and cached; picking between them here avoids the
+  // articles flickering from one template to the other as the type resolves.
   const { data: masterContractArticles } = useGetMasterContractArticlesQuery();
-  const articles = masterContractArticles?.data || [];
+  const { data: amendmentContractArticles } = useGetAmendmentContractArticlesQuery();
+  const articles: any[] =
+    (isAmendment
+      ? amendmentContractArticles?.data
+      : masterContractArticles?.data) || [];
+
+  // Articles 2 and 3 are part-static, part-generated: the studio's standing
+  // wording comes from the master contract, the services table and fee
+  // breakdown from this proposal. Pull the matching master articles out so this
+  // review renders the same text the client sees when they sign.
+  const scopeArticle = articles.find(isScopeArticle);
+  const paymentArticle = articles.find(isPaymentArticle);
+  // Article 1 differs by template — "Definitions" on a master contract,
+  // "Purpose of Amendment" on an amendment — so an amendment renders its
+  // stored article rather than the hard-coded definitions below.
+  const firstArticle = articles.find((a: any) => getArticleNumber(a) === 1);
+
+  // Project Understanding names the phases this proposal actually covers. They
+  // used to be hard-coded to "[schematic], [design development],
+  // [construction drawings]", which was wrong for any other selection — an
+  // amendment adding a single "CCU Extension" phase still claimed all three.
+  const selectedPhaseLabels: string[] = selectedObjectives
+    .map((objectiveId: string) => objectives.find((o) => o.id === objectiveId)?.label)
+    .filter((label): label is string => Boolean(label));
+
+  const phasesText = selectedPhaseLabels.map((label) => `[${label}]`).join(", ");
 
   // Per-service scope notes state - each service gets its own notes
   const [perServiceNotes, setPerServiceNotes] = useState<Record<string, string[]>>({});
@@ -357,11 +401,29 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             )}
 
             <p>
-              Owner has requested this design services proposal from Architecture Simple to provide pre-design, [schematic], [design development], [construction drawings] for the proposed building; coordinate with the owner’s consultant; and provide plan check bidding, construction support, and record drawings.
+              Owner has requested this design services proposal from Architecture
+              Simple to provide pre-design
+              {phasesText ? <>, {phasesText}</> : ""} for the proposed building;
+              coordinate with the owner’s consultant; and provide plan check
+              bidding, construction support, and record drawings.
             </p>
           </div>
 
-          {/* article 1 - Definition  */}
+          {/* Article 1 — an amendment's opening article ("Purpose of
+              Amendment") comes from the Amendment Contract template; a first
+              proposal keeps the standing Definitions wording below. */}
+          {isAmendment ? (
+            firstArticle && (
+              <div className="mb-8 pt-8">
+                <h3 className="text-base font-semibold mb-4">
+                  {firstArticle.title}
+                </h3>
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {firstArticle.content}
+                </div>
+              </div>
+            )
+          ) : (
           <div className="mb-8  pt-8">
             <h3 className="text-base font-semibold mb-4">
               Article 1 - Definition
@@ -381,16 +443,24 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
               <li> 	<strong>"Completion"</strong> refers to the final completion of all construction work, including punch list items and final inspections, after which the Project is fully delivered to the Owner.</li>
             </ul>
           </div>
+          )}
 
           {/* Article 2 - Scope of Services (Specialized section) */}
           <div className="mb-8  pt-8">
             <h3 className="text-base font-semibold mb-4">
-              Article 2 - Scope of Services
+              {scopeArticle?.title || "Article 2 - Scope of Services"}
             </h3>
-            <p className="mb-4">
-              The Architect agrees to provide the following services for the
-              Project as outlined in the Proposal.
-            </p>
+            {scopeArticle?.content ? (
+              // Standing wording from Profile Settings › Master Contract.
+              <div className="mb-4 whitespace-pre-wrap leading-relaxed">
+                {scopeArticle.content}
+              </div>
+            ) : (
+              <p className="mb-4">
+                The Architect agrees to provide the following services for the
+                Project as outlined in the Proposal.
+              </p>
+            )}
             {selectedObjectives.length > 0 ? (
               <div className="space-y-6 mb-4">
                 {selectedObjectives.map((id) => {
@@ -474,7 +544,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
           {/* Article 3 - Payment Terms */}
           <div className="mb-8">
             <h3 className="text-base font-semibold mb-4">
-              Article 3 - Payment Terms
+              {paymentArticle?.title || "Article 3 - Payment Terms"}
             </h3>
             {/* ... table and details ... */}
             <h4 className="font-semibold mb-2">3.1 Payment Structure</h4>
@@ -514,20 +584,23 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                 {/* ... credits and totals ... */}
               </tbody>
             </table>
+
+            {/* The master contract's standing payment terms, below the fee
+                breakdown generated from this proposal. */}
+            {paymentArticle?.content && (
+              <div className="whitespace-pre-wrap leading-relaxed">
+                {paymentArticle.content}
+              </div>
+            )}
           </div>
 
           {/* Dynamic Contract Articles from Settings (remaining articles after the core sections above) */}
           {articles.length > 0 &&
             articles
-              .filter((article: any) => {
-                const key = (article.articleKey || "").toLowerCase();
-                const title = (article.title || "").toLowerCase();
-                // Skip articles already rendered above (definitions, scope, payment)
-                const isDefinition = key.includes("definition") || title.includes("definition");
-                const isScope = key.includes("scope") || title.includes("scope of services");
-                const isPayment = key.includes("payment") || title.includes("payment terms");
-                return !isDefinition && !isScope && !isPayment;
-              })
+              // Skip Articles 1-3 — each is rendered in its own block above.
+              // Matched by article number, so retitling Article 4 to
+              // "Scope Changes & Additional Services" doesn't drop it here.
+              .filter((article: any) => !isCoreArticle(article))
               .map((article: any) => (
                 <div key={article.id} className="mb-8">
                   <h3 className="text-base font-semibold mb-4">{article.title}</h3>

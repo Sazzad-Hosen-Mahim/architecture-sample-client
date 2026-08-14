@@ -21,6 +21,11 @@ import { toast } from "sonner";
 import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
 import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
 import { isLumpSum } from "@/utils/paymentPlan";
+import {
+    getArticleNumber,
+    isPaymentArticle,
+    isScopeArticle,
+} from "@/utils/contractArticles";
 
 /**
  * Article 3's opening clause. The master contract only carries the boilerplate
@@ -126,10 +131,11 @@ export const ContractPDF = ({ contract, sections }: { contract: any; sections: C
             </View>
 
             {sections.map((section) => {
-                const sectionKey = (section.articleKey || "").toLowerCase();
-                const sectionTitle = (section.title || "").toLowerCase();
-                const isScope = sectionKey.includes("scope") || sectionTitle.includes("scope");
-                const isPayment = sectionKey.includes("payment") || sectionTitle.includes("payment");
+                // Keyed off the article number, not a title substring — an
+                // Article 4 named "Scope Changes & Additional Services" must
+                // not pick up Article 2's service list.
+                const isScope = isScopeArticle(section);
+                const isPayment = isPaymentArticle(section);
                 const services = contract?.services || [];
 
                 // Split content into paragraphs/lines for proper rendering
@@ -339,6 +345,9 @@ export default function ContractReviewModal({
     const [showSignature, setShowSignature] = useState(false);
     const signatureRef = useRef<SignatureCanvas>(null);
     const signatureWrapperRef = useResponsiveSignatureCanvas(signatureRef, 120);
+    // One node per article, keyed by articleKey — used to scroll the next
+    // section's heading into view when the current one is marked read.
+    const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const contract = contractData?.data;
     const rawSections = contract?.contractSections;
@@ -352,14 +361,10 @@ export default function ContractReviewModal({
 
     // Ensure Scope and Payment are present if missing to match PM view
     const sections = [...originalSections];
-    const hasScope = sections.some(s =>
-        (s.articleKey || "").toLowerCase().includes("scope") ||
-        (s.title || "").toLowerCase().includes("scope")
-    );
-    const hasPayment = sections.some(s =>
-        (s.articleKey || "").toLowerCase().includes("payment") ||
-        (s.title || "").toLowerCase().includes("payment")
-    );
+    // By article number — a differently-titled Article 4 must not be mistaken
+    // for the scope section and suppress the fallback below.
+    const hasScope = sections.some(isScopeArticle);
+    const hasPayment = sections.some(isPaymentArticle);
 
     if (!hasScope) {
         sections.push({
@@ -411,10 +416,7 @@ export default function ContractReviewModal({
     }
 
     // Ensure Article 1 - Definition is present
-    const hasDefinition = sections.some(s =>
-        (s.articleKey || "").toLowerCase().includes("definition") ||
-        (s.title || "").toLowerCase().includes("definition")
-    );
+    const hasDefinition = sections.some((s) => getArticleNumber(s) === 1);
     if (!hasDefinition) {
         const clientNameVal = contract?.clientName || 'the Owner';
         const serviceTypeDisplay = contract?.serviceType?.replace(/_/g, ' ').toLowerCase() || 'new construction';
@@ -459,7 +461,17 @@ export default function ContractReviewModal({
         // Auto-expand next section or show signature if all read
         const currentIndex = sections.findIndex((s) => s.articleKey === key);
         if (currentIndex < sections.length - 1) {
-            setExpandedSection(sections[currentIndex + 1].articleKey);
+            const nextKey = sections[currentIndex + 1].articleKey;
+            setExpandedSection(nextKey);
+
+            // Expanding the next article makes it taller than the viewport, and
+            // the browser leaves the scroll position at its tail. Park the view
+            // on the section's heading instead so it's read from the top.
+            requestAnimationFrame(() => {
+                const el = sectionRefs.current[nextKey];
+                if (!el) return;
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
         } else {
             setExpandedSection(null);
         }
@@ -573,6 +585,12 @@ export default function ContractReviewModal({
                                     return (
                                         <div
                                             key={section.articleKey}
+                                            ref={(node) => {
+                                                sectionRefs.current[section.articleKey] = node;
+                                            }}
+                                            // Keeps the heading clear of the sticky modal header
+                                            // when scrolled to.
+                                            style={{ scrollMarginTop: "12px" }}
                                             className={`border rounded-lg overflow-hidden transition-all ${isRead || isAlreadySigned
                                                 ? "border-green-100 bg-green-50/20"
                                                 : "border-gray-200"
@@ -753,17 +771,11 @@ export default function ContractReviewModal({
 }
 
 function ArticleRenderer({ section, contract, isForPdf = false }: { section: ContractSection; contract: any; isForPdf?: boolean }) {
-    const sectionKey = (section.articleKey || "").toLowerCase();
-    const sectionTitle = (section.title || "").toLowerCase();
-
-    // Flexible detection for Scope and Payment sections
-    const isScope = sectionKey.includes("scope") ||
-        sectionTitle.includes("scope") ||
-        sectionKey === "article_2_scope";
-
-    const isPayment = sectionKey.includes("payment") ||
-        sectionTitle.includes("payment") ||
-        sectionKey === "article_3_payment";
+    // Identified by article number rather than a title substring: a retitled
+    // "Article 4 - Scope Changes & Additional Services" used to match here and
+    // get the whole service scope duplicated underneath it.
+    const isScope = isScopeArticle(section);
+    const isPayment = isPaymentArticle(section);
 
     const services = contract?.services || [];
 

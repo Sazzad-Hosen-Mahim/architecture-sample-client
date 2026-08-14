@@ -8,7 +8,10 @@ interface StagePaymentInfo {
     stageName: string;
     amount: number;
     paid: boolean;
+    /** The PM has marked this phase complete. */
+    completed?: boolean;
     canPay: boolean;
+    /** Paid *and* completed — the server applies the same rule to the URL. */
     canViewFiles: boolean;
 }
 
@@ -29,11 +32,12 @@ interface ClientAttachmentsTabProps {
  * The client's intake uploads are read-only here — they were submitted with the
  * original project request.
  *
- * Final deliverables are published per phase, and each phase's folder stays
- * locked until it is paid for. On a by-phase plan that is one phase at a time;
- * on a lump-sum plan every phase unlocks together on the single payment. The
- * server withholds the URL for locked phases, so these buttons reflect a gate
- * that is actually enforced rather than merely drawn.
+ * Final deliverables are published per phase, and a phase's folder opens only
+ * when it has been both paid for and completed by the PM. On a by-phase plan
+ * that is one phase at a time; on a lump-sum plan the single payment covers
+ * every phase, but each still waits on its own completion. The server withholds
+ * the URL under the same rule, so these buttons reflect a gate that is actually
+ * enforced rather than merely drawn.
  */
 export default function ClientAttachmentsTab({
     project,
@@ -96,17 +100,25 @@ export default function ClientAttachmentsTab({
 
     const PhaseDeliverable = ({ stage, index }: { stage: any; index: number }) => {
         const payment = paymentByStageId.get(stage.id);
-        // The server nulls driveLink on locked phases, so a URL here already
-        // means "paid". canViewFiles is the reason we can explain the lock.
         const deliverablesUrl = toExternalUrl(stage.driveLink);
-        const unlocked = !!deliverablesUrl;
-        const paid = payment?.canViewFiles ?? false;
 
-        const lockReason = paid
-            ? "Your project manager has not published this phase's deliverables yet."
-            : lumpSum
-                ? "Unlocks for every phase once the project payment is complete."
-                : `Unlocks once the ${stage.name} payment is complete.`;
+        // A folder needs both halves: the phase paid for AND finished by the
+        // PM. `canViewFiles` already carries both, and the server strips the
+        // URL under the same rule — requiring both here keeps the button from
+        // opening on a stale link if the two ever disagree.
+        const paid = payment?.paid ?? false;
+        const completed =
+            payment?.completed ?? stage.status === "COMPLETED";
+        const canView = payment?.canViewFiles ?? (paid && completed);
+        const unlocked = !!deliverablesUrl && canView;
+
+        const lockReason = !paid
+            ? lumpSum
+                ? "Unlocks for every completed phase once the project payment is complete."
+                : `Unlocks once the ${stage.name} payment is complete.`
+            : !completed
+                ? "Unlocks once your project manager completes this phase."
+                : "Your project manager has not published this phase's deliverables yet.";
 
         return (
             <div className="border border-gray-200 rounded-xl p-4 bg-white">
@@ -123,12 +135,14 @@ export default function ClientAttachmentsTab({
                         )}
                     </div>
                     <span
-                        className={`text-[10px] font-bold uppercase tracking-tight px-2 py-0.5 rounded-full border flex-shrink-0 ${paid
-                            ? "bg-green-50 text-green-700 border-green-100"
-                            : "bg-amber-50 text-amber-700 border-amber-100"
+                        className={`text-[10px] font-bold uppercase tracking-tight px-2 py-0.5 rounded-full border flex-shrink-0 ${!paid
+                            ? "bg-amber-50 text-amber-700 border-amber-100"
+                            : completed
+                                ? "bg-green-50 text-green-700 border-green-100"
+                                : "bg-blue-50 text-blue-700 border-blue-100"
                             }`}
                     >
-                        {paid ? "Paid" : "Payment due"}
+                        {!paid ? "Payment due" : completed ? "Paid" : "In progress"}
                     </span>
                 </div>
 
@@ -207,8 +221,8 @@ export default function ClientAttachmentsTab({
                 </div>
                 <p className="text-xs text-gray-400 mb-3">
                     {lumpSum
-                        ? "Every phase folder unlocks once the project payment is complete."
-                        : "Each phase folder unlocks once that phase is paid for."}
+                        ? "Once the project payment is complete, each phase folder opens as your project manager completes that phase."
+                        : "Each phase folder opens once that phase is both paid for and completed."}
                 </p>
 
                 {stages.length === 0 ? (

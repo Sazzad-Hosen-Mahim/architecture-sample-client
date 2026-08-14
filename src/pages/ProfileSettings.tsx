@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
+  // ArrowLeft,
   Bell,
   Key,
   Shield,
@@ -15,13 +15,35 @@ import {
 } from "lucide-react";
 import { Loader } from "@/components/ui/loader";
 
-const OwnerControlsTab = lazy(() => import("@/components/ProfileSetting/OwnerControlsTab").then(module => ({ default: module.OwnerControlsTab })));
-const ArchivedProjectsTab = lazy(() => import("@/components/ProfileSetting/ArchivedProjectsTab").then(module => ({ default: module.ArchivedProjectsTab })));
-const NotificationSettingsTab = lazy(() => import("@/components/ProfileSetting/NotificationSettingsTab").then(module => ({ default: module.NotificationSettingsTab })));
-const SecuritySettingsCard = lazy(() => import("@/components/ProfileSetting/SecuritySettingsCard").then(module => ({ default: module.SecuritySettingsCard })));
-const MasterScheduleTab = lazy(() => import("@/components/ProfileSetting/MasterScheduleTab"));
-const MasterContractTab = lazy(() => import("@/components/ProfileSetting/MasterContractTab"));
-const AmendmentContractTab = lazy(() => import("@/components/ProfileSetting/AmendmentContractTab"));
+const OwnerControlsTab = lazy(() =>
+  import("@/components/ProfileSetting/OwnerControlsTab").then((module) => ({
+    default: module.OwnerControlsTab,
+  })),
+);
+const ArchivedProjectsTab = lazy(() =>
+  import("@/components/ProfileSetting/ArchivedProjectsTab").then((module) => ({
+    default: module.ArchivedProjectsTab,
+  })),
+);
+const NotificationSettingsTab = lazy(() =>
+  import("@/components/ProfileSetting/NotificationSettingsTab").then(
+    (module) => ({ default: module.NotificationSettingsTab }),
+  ),
+);
+const SecuritySettingsCard = lazy(() =>
+  import("@/components/ProfileSetting/SecuritySettingsCard").then((module) => ({
+    default: module.SecuritySettingsCard,
+  })),
+);
+const MasterScheduleTab = lazy(
+  () => import("@/components/ProfileSetting/MasterScheduleTab"),
+);
+const MasterContractTab = lazy(
+  () => import("@/components/ProfileSetting/MasterContractTab"),
+);
+const AmendmentContractTab = lazy(
+  () => import("@/components/ProfileSetting/AmendmentContractTab"),
+);
 
 const TabLoader = () => <Loader fullScreen={false} />;
 import { Button } from "@/components/ui/button";
@@ -77,7 +99,7 @@ export function ProfileSettings() {
   const [updatedProfileInfo] = useUpdatedProfileInfoMutation();
   const dispatch = useAppDispatch();
 
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState("profile");
@@ -110,7 +132,10 @@ export function ProfileSettings() {
   }, [user]);
 
   const isOwner = user?.role === "Owner";
-  const isStaff = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER";
+  const isStaff =
+    user?.role === "ADMIN" ||
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "PROJECT_MANAGER";
   // A client only ever sees Profile / Security / Notifications.
   const isClient = !isOwner && !isStaff;
 
@@ -181,7 +206,7 @@ export function ProfileSettings() {
         toast.success(response?.message || "Profile updated successfully!");
       } else {
         toast.error(
-          response?.message || "Something went wrong while updating."
+          response?.message || "Something went wrong while updating.",
         );
       }
     } catch (error: any) {
@@ -206,10 +231,11 @@ export function ProfileSettings() {
   }) => (
     <button
       onClick={() => setActiveTab(value)}
-      className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${isActive
-        ? "bg-white border-b-2 border-gray-800"
-        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-        }`}
+      className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+        isActive
+          ? "bg-white border-b-2 border-gray-800"
+          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+      }`}
     >
       <Icon className="h-4 w-4 mr-2" />
       {children}
@@ -220,14 +246,14 @@ export function ProfileSettings() {
     <div className="container mx-auto py-4 sm:py-6 max-w-5xl px-4 sm:px-8 md:px-0">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/dashboard")}
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="h-5 w-5" />
-          </Button>
+          </Button> */}
           <h1 className="text-lg font-bold text-gray-900">Profile Settings</h1>
         </div>
       </div>
@@ -516,13 +542,19 @@ export function ProfileSettings() {
             {activeTab === "notifications" && <NotificationSettingsTab />}
 
             {/* Master Schedule Tab */}
-            {!isClient && activeTab === "masterSchedule" && <MasterScheduleTab />}
+            {!isClient && activeTab === "masterSchedule" && (
+              <MasterScheduleTab />
+            )}
 
             {/* Master Contract Tab */}
-            {!isClient && activeTab === "masterContract" && <MasterContractTab />}
+            {!isClient && activeTab === "masterContract" && (
+              <MasterContractTab />
+            )}
 
             {/* Amendment Contract Tab */}
-            {!isClient && activeTab === "amendmentContract" && <AmendmentContractTab />}
+            {!isClient && activeTab === "amendmentContract" && (
+              <AmendmentContractTab />
+            )}
 
             {/* Owner Controls Tab - Only visible to owners */}
             {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}

@@ -18,16 +18,6 @@ const EMPTY_FORM: AmendmentRequestForm = {
     description: "",
 };
 
-// Same vocabulary the proposal builder uses, so an approved amendment maps
-// straight onto a proposal without translation.
-const BUDGET_OPTIONS = [
-    "Under $100k",
-    "$100k-$250k",
-    "$250k-$500k",
-    "$500k-$1M",
-    "Over $1M",
-];
-
 interface CreateAmendmentRequestModalProps {
     isOpen: boolean;
     isLoading?: boolean;
@@ -133,18 +123,13 @@ export default function CreateAmendmentRequestModal({
 
                     <div>
                         <label className="block text-sm font-semibold text-gray-900 mb-1.5">Budget Range</label>
-                        <select
+                        <input
+                            type="text"
                             value={form.budgetRange}
                             onChange={(e) => setForm((p) => ({ ...p, budgetRange: e.target.value }))}
+                            placeholder="e.g. $250,000"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        >
-                            <option value="">Select budget range</option>
-                            {BUDGET_OPTIONS.map((b) => (
-                                <option key={b} value={b}>
-                                    {b}
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     <div>

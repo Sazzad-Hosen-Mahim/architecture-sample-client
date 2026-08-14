@@ -5,7 +5,9 @@ import ConfirmationPage from "@/components/New project/TabItem/ConfirmationPage"
 import ProjectDetailsSection from "@/components/New project/TabItem/ProjectDetailsSection";
 import ReviewConfirmSection from "@/components/New project/TabItem/ReviewConfirmSection";
 import ScheduleAppointmentSection from "@/components/New project/TabItem/ScheduleAppointmentSection";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAppSelector } from "@/hooks/useRedux";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 
 const sections = [
   "1. Service Details",
@@ -25,6 +27,9 @@ function NewProject() {
     email: "",
     phone: "",
     alternatePhone: "",
+    // `address` is the key ClientInfoSection and the payload builder use for
+    // the client's street address; `streetAddress` below is the legacy name.
+    address: "",
     streetAddress: "",
     aptSuiteUnit: "",
     city: "",
@@ -73,8 +78,49 @@ function NewProject() {
   const [paymentSuccessful, setPaymentSuccessful] = useState(false);
   //   const { toast } = useToast();
 
+  const user = useAppSelector(selectCurrentUser) as any;
+  // Prefill runs once. Without the guard, a later store update (e.g. saving
+  // Profile Settings in another tab) would overwrite what's been typed here.
+  const hasPrefilled = useRef(false);
+
+  // A signed-in client has already given us their details — at sign-up or in
+  // Profile Settings — so the Client Information step starts filled in rather
+  // than asking for the same thing twice. Anything they change here stays
+  // local to this project request.
+  useEffect(() => {
+    if (!user || hasPrefilled.current) return;
+    hasPrefilled.current = true;
+
+    // Older accounts predate the split name columns; fall back to `name`.
+    const nameParts = (user.name || "").trim().split(/\s+/);
+    const prefill = {
+      firstName: user.firstName || nameParts[0] || "",
+      middleInitial: user.middleInitial || "",
+      lastName: user.lastName || nameParts.slice(1).join(" ") || "",
+      email: user.email || "",
+      phone: user.phoneNumber || "",
+      companyName: user.companyName || "",
+      // ClientInfoSection and the payload builder both key off `address`.
+      address: user.streetAddress || "",
+      city: user.city || "",
+      state: user.stateRegion || "",
+      zipCode: user.zipCode || "",
+      country: user.country || "",
+    };
+
+    setFormData((prev: any) => {
+      const next = { ...prev };
+      // Never clobber a field the user already touched, and never write an
+      // empty string over an existing default (e.g. country).
+      for (const [key, value] of Object.entries(prefill)) {
+        if (value && !next[key]) next[key] = value;
+      }
+      return next;
+    });
+  }, [user]);
+
   const updateFormData = (newData: any) => {
-    setFormData({ ...formData, ...newData });
+    setFormData((prev) => ({ ...prev, ...newData }));
   };
 
   // const goToNextSection = () => {

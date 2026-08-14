@@ -6,6 +6,54 @@ export type MeetingStatus =
     | "ACCEPTED"
     | "DECLINED";
 
+export type MeetingType =
+    | "INITIAL_CONSULTATION"
+    | "PROJECT_KICKOFF"
+    | "PHASE_PROGRESS"
+    | "GENERAL";
+
+/** Booking granularity shared by every calendar in the app. */
+export const SLOT_MINUTES = 30;
+
+/** One occupied range on a manager's calendar — a meeting or blocked-off time. */
+export interface BusyRange {
+    type: "MEETING" | "BLOCK";
+    start: string;
+    end: string;
+    /**
+     * Whether this range actually reserves the slot. Confirmed meetings and
+     * blocked time do; a proposal still awaiting a reply is shown as tentative
+     * but stays selectable.
+     */
+    blocking: boolean;
+    label: string;
+    projectName: string | null;
+    status: MeetingStatus | null;
+}
+
+export interface AvailabilityResponse {
+    success: boolean;
+    message: string;
+    data: {
+        managerId: string | null;
+        slotMinutes: number;
+        busy: BusyRange[];
+    };
+}
+
+export interface ScheduleBlock {
+    id: string;
+    userId: string;
+    title: string;
+    notes: string | null;
+    startAt: string;
+    endAt: string;
+    allDay: boolean;
+    createdById: string;
+    createdAt: string;
+    user?: { id: string; name: string | null; email: string };
+}
+
 // Meeting interface based on API response
 export interface Meeting {
     id: string;
@@ -46,8 +94,11 @@ export interface SendMeetingRequest {
     meetingUrl: string;
     title: string;
     scheduledAt: string;
+    /** End of the booked window. Omitted means a single 30-minute slot. */
+    endsAt?: string;
     notes: string;
     stageId?: string;
+    meetingType?: MeetingType;
 }
 
 export interface SendMeetingResponse {
@@ -108,8 +159,10 @@ export interface ScheduleMeeting {
     id: string;
     title: string;
     scheduledAt: string;
+    endsAt: string;
     notes: string | null;
     status: MeetingStatus;
+    meetingType: MeetingType;
     meetingUrl: string | null;
     stageId: string | null;
     projectRequestId: string | null;
@@ -127,7 +180,7 @@ export const meetingApi = baseApi.injectEndpoints({
                 method: "POST",
                 body,
             }),
-            invalidatesTags: ["Project"],
+            invalidatesTags: ["Project", "Schedule"],
         }),
 
         getMyMeetings: builder.query<GetUserMeetingsResponse, string | void>({
@@ -152,19 +205,143 @@ export const meetingApi = baseApi.injectEndpoints({
                     ...(to ? { to } : {}),
                 },
             }),
-            providesTags: ["Project"],
+            providesTags: ["Schedule"],
         }),
 
         requestMeeting: builder.mutation<
             { success: boolean; message: string },
-            { projectRequestId: string; scheduledAt: string; notes?: string; stageId?: string }
+            {
+                projectRequestId: string;
+                scheduledAt: string;
+                endsAt?: string;
+                notes?: string;
+                stageId?: string;
+                meetingType?: MeetingType;
+            }
         >({
             query: (body) => ({
                 url: "/project-requests-admin/request-meeting",
                 method: "POST",
                 body,
             }),
-            invalidatesTags: ["Project"],
+            invalidatesTags: ["Project", "Schedule"],
+        }),
+
+        /**
+         * Free/busy for the calendar a booking would land on. Clients pass
+         * `projectRequestId` (their assigned manager is resolved server-side);
+         * staff may target a manager directly.
+         */
+        getAvailability: builder.query<
+            AvailabilityResponse,
+            {
+                projectRequestId?: string;
+                managerId?: string;
+                from: string;
+                to: string;
+                /** Ignore this meeting — used when re-timing or linking one. */
+                excludeMeetingId?: string;
+            }
+        >({
+            query: ({ projectRequestId, managerId, from, to, excludeMeetingId }) => ({
+                url: "/project-requests-admin/availability",
+                method: "GET",
+                params: {
+                    from,
+                    to,
+                    ...(projectRequestId ? { projectRequestId } : {}),
+                    ...(managerId ? { managerId } : {}),
+                    ...(excludeMeetingId ? { excludeMeetingId } : {}),
+                },
+            }),
+            providesTags: ["Schedule"],
+        }),
+
+        /**
+         * Add the joining link to a meeting that already exists — the follow-up
+         * after accepting a client's requested time. Updates that booking in
+         * place rather than creating a second one on the same slot.
+         */
+        attachMeetingLink: builder.mutation<
+            SendMeetingResponse,
+            {
+                meetingId: string;
+                meetingUrl: string;
+                title?: string;
+                notes?: string;
+                scheduledAt?: string;
+                endsAt?: string;
+            }
+        >({
+            query: ({ meetingId, ...body }) => ({
+                url: `/project-requests-admin/meetings/${meetingId}/link`,
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["Project", "Schedule"],
+        }),
+
+        /** Remove a meeting entirely — frees its slot and clears the history. */
+        deleteMeeting: builder.mutation<
+            { success: boolean; message: string },
+            string
+        >({
+            query: (meetingId) => ({
+                url: `/project-requests-admin/meetings/${meetingId}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Project", "Schedule"],
+        }),
+
+        getScheduleBlocks: builder.query<
+            { success: boolean; message: string; data: ScheduleBlock[] },
+            { managerId?: string; from?: string; to?: string }
+        >({
+            query: ({ managerId, from, to }) => ({
+                url: "/project-requests-admin/schedule-blocks",
+                method: "GET",
+                params: {
+                    ...(managerId ? { managerId } : {}),
+                    ...(from ? { from } : {}),
+                    ...(to ? { to } : {}),
+                },
+            }),
+            providesTags: ["Schedule"],
+        }),
+
+        createScheduleBlock: builder.mutation<
+            {
+                success: boolean;
+                message: string;
+                data: ScheduleBlock;
+                conflicts: { id: string; title: string; projectName: string | null }[];
+            },
+            {
+                userId?: string;
+                title: string;
+                notes?: string;
+                startAt: string;
+                endAt: string;
+                allDay?: boolean;
+            }
+        >({
+            query: (body) => ({
+                url: "/project-requests-admin/schedule-blocks",
+                method: "POST",
+                body,
+            }),
+            invalidatesTags: ["Schedule"],
+        }),
+
+        deleteScheduleBlock: builder.mutation<
+            { success: boolean; message: string },
+            string
+        >({
+            query: (id) => ({
+                url: `/project-requests-admin/schedule-blocks/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Schedule"],
         }),
 
         // Client opts out of the progress call for a completed phase. Payment is
@@ -203,7 +380,7 @@ export const meetingApi = baseApi.injectEndpoints({
                 method: "PATCH",
                 body: { action },
             }),
-            invalidatesTags: ["Project"],
+            invalidatesTags: ["Project", "Schedule"],
         }),
     }),
 });
@@ -216,4 +393,10 @@ export const {
     useRespondToMeetingMutation,
     useBypassPhaseMeetingMutation,
     useSetPhaseMeetingRequiredMutation,
+    useGetAvailabilityQuery,
+    useAttachMeetingLinkMutation,
+    useDeleteMeetingMutation,
+    useGetScheduleBlocksQuery,
+    useCreateScheduleBlockMutation,
+    useDeleteScheduleBlockMutation,
 } = meetingApi;

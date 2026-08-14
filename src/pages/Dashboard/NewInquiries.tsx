@@ -595,21 +595,13 @@ function ProjectTabFormForInquiry({
 
                 <div className="flex flex-col gap-2">
                     <Label htmlFor="budgetRange">Budget Range</Label>
-                    <Select
+                    <Input
+                        id="budgetRange"
                         value={projectInfo.budgetRange}
-                        onValueChange={(value: any) => handleProjectInfoChange("budgetRange", value)}
-                    >
-                        <SelectTrigger id="budgetRange" className="w-full">
-                            <SelectValue placeholder="Select budget range" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                            <SelectItem value="Under $100k">Under $100k</SelectItem>
-                            <SelectItem value="$100k-$250k">$100k-$250k</SelectItem>
-                            <SelectItem value="$250k-$500k">$250k-$500k</SelectItem>
-                            <SelectItem value="$500k-$1M">$500k-$1M</SelectItem>
-                            <SelectItem value="Over $1M">Over $1M</SelectItem>
-                        </SelectContent>
-                    </Select>
+                        onChange={(e) => handleProjectInfoChange("budgetRange", e.target.value)}
+                        placeholder="e.g. $250,000"
+                        className="w-full"
+                    />
                 </div>
 
                 <div className="flex flex-col gap-2">

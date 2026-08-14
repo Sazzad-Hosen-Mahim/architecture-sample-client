@@ -12,14 +12,6 @@ export interface AmendmentProposalForm {
     notes: string;
 }
 
-const BUDGET_OPTIONS = [
-    "Under $100k",
-    "$100k-$250k",
-    "$250k-$500k",
-    "$500k-$1M",
-    "Over $1M",
-];
-
 interface CreateProposalFromAmendmentModalProps {
     isOpen: boolean;
     isLoading?: boolean;
@@ -134,18 +126,13 @@ export default function CreateProposalFromAmendmentModal({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-sm font-semibold text-gray-900 mb-1.5">Budget Range</label>
-                            <select
+                            <input
+                                type="text"
                                 value={form.budgetRange}
                                 onChange={(e) => setForm((p) => ({ ...p, budgetRange: e.target.value }))}
+                                placeholder="e.g. $250,000"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">Select</option>
-                                {BUDGET_OPTIONS.map((b) => (
-                                    <option key={b} value={b}>
-                                        {b}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-900 mb-1.5">

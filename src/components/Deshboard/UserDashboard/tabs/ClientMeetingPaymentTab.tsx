@@ -208,6 +208,7 @@ export default function ClientMeetingPaymentTab({
 
     const handleSubmitMeeting = async (form: {
         scheduledAt: string;
+        endsAt: string;
         notes: string;
         notNecessary: boolean;
     }) => {
@@ -225,7 +226,7 @@ export default function ClientMeetingPaymentTab({
         }
 
         if (!form.scheduledAt) {
-            toast.error("Please select a preferred date and time");
+            toast.error("Please select a preferred date and time slot");
             return;
         }
 
@@ -233,8 +234,10 @@ export default function ClientMeetingPaymentTab({
             await requestMeeting({
                 projectRequestId: project.id,
                 scheduledAt: form.scheduledAt,
+                endsAt: form.endsAt || undefined,
                 notes: form.notes,
                 stageId: phaseForMeeting?.id,
+                meetingType: phaseForMeeting ? "PHASE_PROGRESS" : "INITIAL_CONSULTATION",
             }).unwrap();
             toast.success("Meeting request sent! The project manager will get back to you.");
             setIsMeetingModalOpen(false);
@@ -926,6 +929,7 @@ export default function ClientMeetingPaymentTab({
                 isOpen={isMeetingModalOpen}
                 isLoading={isRequesting || isBypassing}
                 projectName={project.projectName}
+                projectRequestId={project.id}
                 phaseName={phaseForMeeting?.name}
                 consultationFee={phaseForMeeting ? undefined : consultationFee}
                 consultationFeePaid={consultationPaid}

@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { X, CalendarPlus, Loader2 } from "lucide-react";
+import MeetingSlotPicker, {
+    EMPTY_SLOT_SELECTION,
+    toMeetingWindow,
+    type SlotSelection,
+} from "@/components/Common/MeetingSlotPicker";
 
 export interface RequestMeetingForm {
+    /** ISO start of the requested window. */
     scheduledAt: string;
+    /** ISO end of the requested window. */
+    endsAt: string;
     notes: string;
     notNecessary: boolean;
 }
-
-const EMPTY_FORM: RequestMeetingForm = {
-    scheduledAt: "",
-    notes: "",
-    notNecessary: false,
-};
 
 interface RequestMeetingModalProps {
     isOpen: boolean;
     isLoading?: boolean;
     projectName: string;
+    /** Booking is checked against this project's assigned manager's calendar. */
+    projectRequestId: string;
     /** Present when booking the progress call for a specific phase. */
     phaseName?: string;
     /** Shown for the initial consultation only. Comes from site settings. */
@@ -33,6 +37,7 @@ export default function RequestMeetingModal({
     isOpen,
     isLoading,
     projectName,
+    projectRequestId,
     phaseName,
     consultationFee,
     consultationFeePaid,
@@ -40,13 +45,31 @@ export default function RequestMeetingModal({
     onClose,
     onSubmit,
 }: RequestMeetingModalProps) {
-    const [form, setForm] = useState<RequestMeetingForm>(EMPTY_FORM);
+    const [slot, setSlot] = useState<SlotSelection>(EMPTY_SLOT_SELECTION);
+    const [notes, setNotes] = useState("");
+    const [notNecessary, setNotNecessary] = useState(false);
 
     if (!isOpen) return null;
 
+    const reset = () => {
+        setSlot(EMPTY_SLOT_SELECTION);
+        setNotes("");
+        setNotNecessary(false);
+    };
+
     const close = () => {
-        setForm(EMPTY_FORM);
+        reset();
         onClose();
+    };
+
+    const handleSubmit = () => {
+        const window = toMeetingWindow(slot);
+        onSubmit({
+            scheduledAt: window?.scheduledAt ?? "",
+            endsAt: window?.endsAt ?? "",
+            notes,
+            notNecessary,
+        });
     };
 
     const heading = phaseName ? `${phaseName} Meeting` : "Initial Consultation Meeting";
@@ -59,7 +82,7 @@ export default function RequestMeetingModal({
                         <h3 className="text-lg font-bold text-gray-900">Request a Meeting</h3>
                         <p className="text-xs text-gray-500 mt-1">{projectName}</p>
                     </div>
-                    <button onClick={close} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <button onClick={close} className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
                         <X className="w-4 h-4 text-gray-400" />
                     </button>
                 </div>
@@ -70,10 +93,8 @@ export default function RequestMeetingModal({
                             <span className="text-sm font-semibold text-gray-900">Meeting Not Necessary</span>
                             <input
                                 type="checkbox"
-                                checked={form.notNecessary}
-                                onChange={(e) =>
-                                    setForm((p) => ({ ...p, notNecessary: e.target.checked }))
-                                }
+                                checked={notNecessary}
+                                onChange={(e) => setNotNecessary(e.target.checked)}
                                 className="w-4 h-4 accent-emerald-600 cursor-pointer"
                             />
                         </label>
@@ -81,26 +102,24 @@ export default function RequestMeetingModal({
 
                     <p className="text-sm font-bold text-gray-900">{heading}</p>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-1">
-                            Preferred Date &amp; Time{" "}
-                            {!form.notNecessary && <span className="text-red-500">*</span>}
-                        </label>
-                        <input
-                            type="datetime-local"
-                            value={form.scheduledAt}
-                            disabled={form.notNecessary}
-                            onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:text-gray-400"
+                    {/* Times already taken on the assigned manager's calendar — or
+                        blocked off while they're away — are greyed out here. */}
+                    {!notNecessary && (
+                        <MeetingSlotPicker
+                            value={slot}
+                            onChange={setSlot}
+                            projectRequestId={projectRequestId}
+                            disabled={isLoading}
+                            accent="emerald"
                         />
-                    </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-semibold text-gray-900 mb-1">Notes (optional)</label>
                         <textarea
-                            value={form.notes}
-                            disabled={form.notNecessary}
-                            onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                            value={notes}
+                            disabled={notNecessary}
+                            onChange={(e) => setNotes(e.target.value)}
                             placeholder="What would you like to discuss?"
                             rows={3}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none disabled:bg-gray-100 disabled:text-gray-400"
@@ -134,7 +153,7 @@ export default function RequestMeetingModal({
                         Cancel
                     </button>
                     <button
-                        onClick={() => onSubmit(form)}
+                        onClick={handleSubmit}
                         disabled={isLoading}
                         className="flex-1 px-4 cursor-pointer py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
                     >
@@ -145,7 +164,7 @@ export default function RequestMeetingModal({
                         ) : (
                             <>
                                 <CalendarPlus className="w-4 h-4 mr-2" />
-                                {form.notNecessary ? "Confirm Skip" : "Send Request"}
+                                {notNecessary ? "Confirm Skip" : "Send Request"}
                             </>
                         )}
                     </button>

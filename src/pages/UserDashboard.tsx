@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Suspense, lazy, useState, useCallback, useMemo } from "react";
 import { BsFillClipboard2PlusFill } from "react-icons/bs";
 import { useNavigate } from "react-router-dom";
+import {
+  useGetMyProjectRequestsQuery,
+  useGetMyProposalsQuery,
+} from "@/redux/api/adminDashboard/proposalApi";
+import { getProjectProgress } from "@/utils/projectProgress";
 
 // Lazy load tab components for code splitting
 const ProjectDataTable = lazy(() => import("@/components/Deshboard/UserDashboard/ProjectDataTable"));
@@ -15,6 +20,49 @@ const UserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate()
+
+  // Stat cards read from the same data the Projects table renders, so the
+  // numbers can never drift from the list underneath them.
+  const { data: projectsResponse, isLoading: isLoadingProjects } =
+    useGetMyProjectRequestsQuery();
+  const { data: proposalsResponse, isLoading: isLoadingProposals } =
+    useGetMyProposalsQuery();
+
+  const stats = useMemo(() => {
+    const projects: any[] = projectsResponse?.data || [];
+    const proposals: any[] = proposalsResponse?.data || [];
+
+    // "Active" = still awaiting the client's decision.
+    const activeProposals = proposals.filter((p) =>
+      ["SENT", "VIEWED"].includes(p?.status)
+    ).length;
+
+    const activeProjects = projects.filter((p) => p?.status === "ACTIVE");
+
+    // Completion rate = average progress across the client's active projects.
+    const completionRate = activeProjects.length
+      ? Math.round(
+          activeProjects.reduce((sum, project) => {
+            const stages: any[] = project.stages || [];
+            const completed = stages.filter(
+              (s: any) => s.status === "COMPLETED"
+            ).length;
+            return (
+              sum + getProjectProgress(project.status, completed, stages.length)
+            );
+          }, 0) / activeProjects.length
+        )
+      : 0;
+
+    return {
+      totalProjects: projects.length,
+      activeProposals,
+      activeProjectCount: activeProjects.length,
+      completionRate,
+    };
+  }, [projectsResponse, proposalsResponse]);
+
+  const isLoadingStats = isLoadingProjects || isLoadingProposals;
 
   // Everything a client needs now lives inside a project's details modal.
   const tabs = useMemo(() => [
@@ -68,15 +116,28 @@ const UserDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="text-sm text-blue-600 font-medium">Total Projects</div>
-            <div className="text-2xl font-semibold mt-1">12</div>
+            <div className="text-2xl font-semibold mt-1">
+              {isLoadingStats ? "—" : stats.totalProjects}
+            </div>
           </div>
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="text-sm text-green-600 font-medium">Active Proposals</div>
-            <div className="text-2xl font-semibold mt-1">5</div>
+            <div className="text-2xl font-semibold mt-1">
+              {isLoadingStats ? "—" : stats.activeProposals}
+            </div>
           </div>
           <div className="bg-purple-50 p-4 rounded-lg">
             <div className="text-sm text-purple-600 font-medium">Completion Rate</div>
-            <div className="text-2xl font-semibold mt-1">85%</div>
+            <div className="text-2xl font-semibold mt-1">
+              {isLoadingStats ? "—" : `${stats.completionRate}%`}
+            </div>
+            <div className="text-xs text-purple-500 mt-0.5">
+              {isLoadingStats
+                ? " "
+                : stats.activeProjectCount > 0
+                  ? `Average across ${stats.activeProjectCount} active project${stats.activeProjectCount === 1 ? "" : "s"}`
+                  : "No active projects yet"}
+            </div>
           </div>
         </div>
       </div>

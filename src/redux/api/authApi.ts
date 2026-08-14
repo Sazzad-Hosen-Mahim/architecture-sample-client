@@ -6,9 +6,18 @@ interface LoginRequest {
 }
 
 interface RegisterRequest {
+  /** Username — stored as the user's display name. */
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
+  // Optional address details
+  country?: string;
+  state?: string;
+  city?: string;
+  streetAddress?: string;
+  zipCode?: string;
 }
 
 export const authApi = baseApi.injectEndpoints({
@@ -39,9 +48,36 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+
+    forgotPassword: builder.mutation<
+      { success: boolean; message: string },
+      { email: string }
+    >({
+      query: (body) => ({
+        url: "/auth/forgot-password",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    resetPassword: builder.mutation<
+      { success: boolean; message: string },
+      { token: string; password: string }
+    >({
+      query: (body) => ({
+        url: "/auth/reset-password",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
 
-export const { useLoginMutation, useRegisterMutation, useVerifyEmailMutation } =
-  authApi;
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useVerifyEmailMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+} = authApi;

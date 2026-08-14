@@ -507,21 +507,14 @@ export default function ProjectDetailsSection({
               <Label className="mb-2" htmlFor="budgetRange" >
                 Budget Range
               </Label>
-              <Select
+              <Input
+                id="budgetRange"
+                name="budgetRange"
                 value={localFormData.budgetRange}
-                onValueChange={(v) => handleSelectChange("budgetRange", v)}
-              >
-                <SelectTrigger className="mt-1 w-full">
-                  <SelectValue placeholder="Select budget range" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="under-100k" className="hover:bg-gray-800 hover:text-white cursor-pointer">Under $100,000</SelectItem>
-                  <SelectItem value="100k-250k" className="hover:bg-gray-800 hover:text-white cursor-pointer">$100,000 - $250,000</SelectItem>
-                  <SelectItem value="250k-500k" className="hover:bg-gray-800 hover:text-white cursor-pointer">$250,000 - $500,000</SelectItem>
-                  <SelectItem value="500k-1m" className="hover:bg-gray-800 hover:text-white cursor-pointer">$500,000 - $1 million</SelectItem>
-                  <SelectItem value="over-1m" className="hover:bg-gray-800 hover:text-white cursor-pointer">Over $1 million</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={handleInputChange}
+                placeholder="e.g. $250,000"
+                className="mt-1 w-full"
+              />
             </div>
           </div>
 
