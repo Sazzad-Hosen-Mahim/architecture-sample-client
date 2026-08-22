@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Play, MoreVertical, Globe, Pencil, Trash2, Archive, RotateCcw } from "lucide-react";
+import { Play, MoreVertical, Globe, Pencil, Trash2, Archive, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useGetAllMediaAdminQuery, useUpdateMediaMutation, useDeleteMediaMutation } from "@/redux/features/Media/mediaApi";
 import { toast } from "sonner";
 import {
@@ -29,6 +29,8 @@ const getStatusColor = (status: string) => {
 
 type FilterType = "ALL" | "PORTFOLIO" | "WORLD_PROJECT" | "NEWS";
 
+const PAGE_SIZE = 10;
+
 export default function RecentActivity() {
   const [filter, setFilter] = useState<FilterType>("ALL");
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -36,9 +38,13 @@ export default function RecentActivity() {
   const [editId, setEditId] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
+  // The list grows without bound, so it is paged and the page itself scrolls
+  // inside the card rather than stretching the column down the screen.
+  const [page, setPage] = useState(1);
   const { data: mediaResponse, isLoading } = useGetAllMediaAdminQuery({
     type: filter === "ALL" ? undefined : filter,
-    limit: 10
+    page,
+    limit: PAGE_SIZE,
   });
 
   const [updateMedia] = useUpdateMediaMutation();
@@ -75,6 +81,13 @@ export default function RecentActivity() {
   };
 
   const activities = mediaResponse?.data || [];
+  // The admin list returns `pagination`; fall back to "a full page means there
+  // is probably another one" if that ever changes shape.
+  const meta: any = (mediaResponse as any)?.pagination ?? null;
+  const totalPages: number | null = meta?.totalPages ?? null;
+  const hasNextPage = totalPages
+    ? page < totalPages
+    : activities.length === PAGE_SIZE;
 
   return (
     <Card className="bg-white shadow-lg border-gray-200">
@@ -86,7 +99,10 @@ export default function RecentActivity() {
               key={f}
               variant={filter === f ? "default" : "outline"}
               size="sm"
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f);
+                setPage(1);
+              }}
               className="text-[10px] h-7 px-2"
             >
               {f === "NEWS" ? "NEWSFEED" : f.replace("_", " ")}
@@ -95,7 +111,7 @@ export default function RecentActivity() {
         </div>
       </CardHeader>
       <CardContent className="pt-6">
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
           {isLoading ? (
             <p className="text-center text-sm text-gray-500 py-4">Loading activity...</p>
           ) : activities.length === 0 ? (
@@ -180,6 +196,39 @@ export default function RecentActivity() {
             ))
           )}
 
+        </div>
+
+        {/* Pagination sits outside the scroll area so it stays reachable. */}
+        {!isLoading && (activities.length > 0 || page > 1) && (
+          <div className="flex items-center justify-between gap-2 pt-4 mt-2 border-t border-gray-100">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              Page {page}
+              {totalPages ? ` of ${totalPages}` : ""}
+            </span>
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="h-7 w-7 p-0 cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasNextPage}
+                onClick={() => setPage((p) => p + 1)}
+                className="h-7 w-7 p-0 cursor-pointer"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
           {/* YouTube Channel Section (Placeholder for now) */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between mb-4">

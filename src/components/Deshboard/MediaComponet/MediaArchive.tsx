@@ -27,9 +27,12 @@ export default function MediaArchive() {
             Browse archived media
           </p>
         </div>
+        {/* Was a dead button — it now opens the full archive list, the same
+            state "View More" toggles into. */}
         <Button
           variant="outline"
           size="sm"
+          onClick={() => setIsExpanded(true)}
           className="text-xs border-gray-300 text-gray-700 bg-transparent cursor-pointer"
         >
           Open Archive

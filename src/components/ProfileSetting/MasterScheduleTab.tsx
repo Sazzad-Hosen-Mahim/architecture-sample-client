@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     ChevronLeft,
     ChevronRight,
@@ -7,6 +7,7 @@ import {
     X,
     Ban,
     Plus,
+    Pencil,
     Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,11 +16,16 @@ import {
     useRespondToMeetingMutation,
     useGetScheduleBlocksQuery,
     useCreateScheduleBlockMutation,
+    useUpdateScheduleBlockMutation,
     useDeleteScheduleBlockMutation,
     type ScheduleMeeting,
     type ScheduleBlock,
 } from "@/redux/api/meetingApi";
 import { useGetProjectManagersQuery } from "@/redux/api/adminDashboard/proposalApi";
+import {
+    useGetOfficeHoursQuery,
+    useUpdateOfficeHoursMutation,
+} from "@/redux/api/adminDashboard/siteSettingsApi";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import {
@@ -31,6 +37,10 @@ import {
 } from "@/utils/scheduleSlots";
 
 const DAY_LABELS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+/** Local "HH:MM" for an <input type="time">. */
+const toTimeInputValue = (date: Date) =>
+    `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
 /** Rows rendered in the grid — one per 30-minute slot. The body scrolls. */
 const SLOT_INDEXES = Array.from({ length: SLOTS_PER_DAY }, (_, i) => i);
@@ -81,6 +91,8 @@ export default function MasterScheduleTab() {
     const [selected, setSelected] = useState<ScheduleMeeting | null>(null);
     const [selectedBlock, setSelectedBlock] = useState<ScheduleBlock | null>(null);
     const [isBlockFormOpen, setIsBlockFormOpen] = useState(false);
+    /** Set while the form is editing an existing block rather than creating one. */
+    const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
     const [blockForm, setBlockForm] = useState(EMPTY_BLOCK_FORM);
 
     const weekEnd = useMemo(() => {
@@ -105,6 +117,7 @@ export default function MasterScheduleTab() {
 
     const [respondToMeeting, { isLoading: isResponding }] = useRespondToMeetingMutation();
     const [createScheduleBlock, { isLoading: isBlocking }] = useCreateScheduleBlockMutation();
+    const [updateScheduleBlock, { isLoading: isUpdatingBlock }] = useUpdateScheduleBlockMutation();
     const [deleteScheduleBlock, { isLoading: isDeletingBlock }] = useDeleteScheduleBlockMutation();
 
     const meetings = data?.data || [];
@@ -199,11 +212,29 @@ export default function MasterScheduleTab() {
 
     const openBlockForm = () => {
         const today = toDateInputValue(new Date());
+        setEditingBlockId(null);
         setBlockForm({ ...EMPTY_BLOCK_FORM, date: today, endDate: today });
         setIsBlockFormOpen(true);
     };
 
-    const handleCreateBlock = async () => {
+    /** Reopen the form on an existing block so its dates/hours can be changed. */
+    const openBlockForEdit = (block: ScheduleBlock) => {
+        const start = new Date(block.startAt);
+        const end = new Date(block.endAt);
+        setEditingBlockId(block.id);
+        setBlockForm({
+            title: block.title || "",
+            notes: block.notes || "",
+            date: toDateInputValue(start),
+            endDate: toDateInputValue(end),
+            startTime: toTimeInputValue(start),
+            endTime: toTimeInputValue(end),
+            allDay: !!block.allDay,
+        });
+        setIsBlockFormOpen(true);
+    };
+
+    const handleSaveBlock = async () => {
         if (!blockForm.title.trim()) {
             toast.error("Give the time off a name (e.g. Site visit).");
             return;
@@ -226,22 +257,40 @@ export default function MasterScheduleTab() {
         }
 
         try {
-            const res = await createScheduleBlock({
-                // Privileged users may block another manager's calendar via the
-                // filter above; a PM always blocks their own.
-                userId: isPrivileged && managerId ? managerId : undefined,
-                title: blockForm.title.trim(),
-                notes: blockForm.notes.trim() || undefined,
-                startAt: startAt.toISOString(),
-                endAt: endAt.toISOString(),
-                allDay: blockForm.allDay,
-            }).unwrap();
+            const res = editingBlockId
+                ? await updateScheduleBlock({
+                    id: editingBlockId,
+                    title: blockForm.title.trim(),
+                    notes: blockForm.notes.trim() || "",
+                    startAt: startAt.toISOString(),
+                    endAt: endAt.toISOString(),
+                    allDay: blockForm.allDay,
+                }).unwrap()
+                : await createScheduleBlock({
+                    // Privileged users may block another manager's calendar via
+                    // the filter above; a PM always blocks their own.
+                    userId: isPrivileged && managerId ? managerId : undefined,
+                    title: blockForm.title.trim(),
+                    notes: blockForm.notes.trim() || undefined,
+                    startAt: startAt.toISOString(),
+                    endAt: endAt.toISOString(),
+                    allDay: blockForm.allDay,
+                }).unwrap();
 
-            toast.success(res.message || "Time blocked off.");
+            toast.success(
+                res.message ||
+                (editingBlockId ? "Time off updated." : "Time blocked off."),
+            );
             setIsBlockFormOpen(false);
+            setEditingBlockId(null);
             setBlockForm(EMPTY_BLOCK_FORM);
         } catch (error: any) {
-            toast.error(error?.data?.message || "Failed to block off this time");
+            toast.error(
+                error?.data?.message ||
+                (editingBlockId
+                    ? "Failed to update this time off"
+                    : "Failed to block off this time"),
+            );
         }
     };
 
@@ -252,6 +301,46 @@ export default function MasterScheduleTab() {
             setSelectedBlock(null);
         } catch (error: any) {
             toast.error(error?.data?.message || "Failed to remove time off");
+        }
+    };
+
+    // ── Office hours (super admin only) ────────────────────────────────────
+    // The firm-wide window clients may book meetings in. The backend enforces
+    // it on every client booking; this is just where it gets set.
+    const isSuperAdmin = user?.role === "SUPER_ADMIN";
+    const { data: officeHoursData } = useGetOfficeHoursQuery(undefined, {
+        skip: !isSuperAdmin,
+    });
+    const [updateOfficeHours, { isLoading: isSavingHours }] =
+        useUpdateOfficeHoursMutation();
+    const [officeHours, setOfficeHours] = useState({ start: "", end: "" });
+
+    // Seed the inputs once the saved window arrives, without clobbering edits.
+    useEffect(() => {
+        if (officeHoursData?.data) {
+            setOfficeHours({
+                start: officeHoursData.data.start,
+                end: officeHoursData.data.end,
+            });
+        }
+    }, [officeHoursData]);
+
+    const handleSaveOfficeHours = async () => {
+        if (!officeHours.start || !officeHours.end) {
+            toast.error("Set both a start and an end time.");
+            return;
+        }
+        if (officeHours.end <= officeHours.start) {
+            toast.error("Office hours have to end after they start.");
+            return;
+        }
+        try {
+            await updateOfficeHours(officeHours).unwrap();
+            toast.success(
+                `Office hours set to ${officeHours.start}–${officeHours.end}. Clients can only book inside this window.`,
+            );
+        } catch (error: any) {
+            toast.error(error?.data?.message || "Failed to save office hours");
         }
     };
 
@@ -291,6 +380,58 @@ export default function MasterScheduleTab() {
                                 </option>
                             ))}
                         </select>
+                    )}
+
+                    {/* Super admin only — everyone else never sees this. */}
+                    {isSuperAdmin && (
+                        <div className="flex items-end gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                            <div>
+                                <label
+                                    htmlFor="officeHoursStart"
+                                    className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1"
+                                >
+                                    Office Hours
+                                </label>
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        id="officeHoursStart"
+                                        type="time"
+                                        value={officeHours.start}
+                                        onChange={(e) =>
+                                            setOfficeHours((prev) => ({
+                                                ...prev,
+                                                start: e.target.value,
+                                            }))
+                                        }
+                                        className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-800"
+                                    />
+                                    <span className="text-xs text-gray-400">to</span>
+                                    <input
+                                        aria-label="Office hours end"
+                                        type="time"
+                                        value={officeHours.end}
+                                        onChange={(e) =>
+                                            setOfficeHours((prev) => ({
+                                                ...prev,
+                                                end: e.target.value,
+                                            }))
+                                        }
+                                        className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-800"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleSaveOfficeHours}
+                                disabled={isSavingHours}
+                                title="Clients can only book meetings inside this window"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-black text-white rounded-md text-xs font-bold disabled:opacity-50 cursor-pointer"
+                            >
+                                {isSavingHours && (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                )}
+                                Save
+                            </button>
+                        </div>
                     )}
 
                     <button
@@ -462,16 +603,16 @@ export default function MasterScheduleTab() {
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={handleCreateBlock}
-                            disabled={isBlocking}
+                            onClick={handleSaveBlock}
+                            disabled={isBlocking || isUpdatingBlock}
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 cursor-pointer"
                         >
-                            {isBlocking ? (
+                            {isBlocking || isUpdatingBlock ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                                 <Plus className="w-4 h-4" />
                             )}
-                            Block This Time
+                            {editingBlockId ? "Save Changes" : "Block This Time"}
                         </button>
                         <button
                             onClick={() => setIsBlockFormOpen(false)}
@@ -655,6 +796,13 @@ export default function MasterScheduleTab() {
                                             : `${new Date(b.startAt).toLocaleString()} – ${new Date(b.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                                     </p>
                                 </div>
+                                <button
+                                    onClick={() => openBlockForEdit(b)}
+                                    title="Edit this time off"
+                                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg cursor-pointer"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </button>
                                 <button
                                     onClick={() => handleDeleteBlock(b.id)}
                                     disabled={isDeletingBlock}

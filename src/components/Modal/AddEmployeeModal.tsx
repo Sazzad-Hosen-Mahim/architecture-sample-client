@@ -1,4 +1,8 @@
 import { useCreateStaffMutation, useUpdateUserMutation } from "@/redux/api/userApi";
+import {
+  CountrySelect,
+  StateSelect,
+} from "@/components/Common/LocationSelects";
 import { useUpdateEmployeeProfileMutation } from "@/redux/api/financialApi";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -275,11 +279,10 @@ const AddEmployeeModal = ({ onClose, member, readOnly = false }: AddEmployeeModa
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">State / Region</label>
-                  <input
-                    placeholder="e.g. CA"
-                    className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                  <StateSelect
+                    country={form.country}
                     value={form.stateRegion}
-                    onChange={(e) => setForm({ ...form, stateRegion: e.target.value })}
+                    onChange={(value) => setForm({ ...form, stateRegion: value })}
                     disabled={readOnly}
                   />
                 </div>
@@ -297,11 +300,17 @@ const AddEmployeeModal = ({ onClose, member, readOnly = false }: AddEmployeeModa
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Country</label>
-                  <input
-                    placeholder="United States"
-                    className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                  <CountrySelect
                     value={form.country}
-                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    // A new country invalidates the state chosen under the old one.
+                    onChange={(value) =>
+                      setForm({
+                        ...form,
+                        country: value,
+                        stateRegion:
+                          value === form.country ? form.stateRegion : "",
+                      })
+                    }
                     disabled={readOnly}
                   />
                 </div>

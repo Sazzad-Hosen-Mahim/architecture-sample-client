@@ -527,7 +527,10 @@ export default function ServicesTabForm({
 
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-1">Active Objectives:</p>
-              <p className="font-medium">{selectedObjectives.length} / 8</p>
+              {/* Denominator tracks the phase list, which grows with custom phases */}
+              <p className="font-medium">
+                {selectedObjectives.length} / {objectives.length}
+              </p>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-4">

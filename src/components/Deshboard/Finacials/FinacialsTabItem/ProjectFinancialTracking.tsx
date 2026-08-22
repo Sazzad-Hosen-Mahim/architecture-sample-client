@@ -224,10 +224,22 @@ export default function ProjectFinancialTracking() {
                             {phaseRunning}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="font-bold text-gray-900">
-                            {progress}%
-                          </span>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2 justify-center">
+                            <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-2 rounded-full transition-all ${
+                                  progress === 100
+                                    ? "bg-green-500"
+                                    : "bg-blue-500"
+                                }`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className="font-bold text-gray-900 text-xs w-10 text-right">
+                              {progress}%
+                            </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <Button

@@ -1,5 +1,12 @@
 import type { BusyRange } from "@/redux/api/meetingApi";
 
+/** Minutes past midnight for an "HH:MM" string, or null if it isn't one. */
+export function parseTimeToMinutes(value?: string | null): number | null {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(value ?? "").trim());
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
 /**
  * Booking granularity. Every calendar in the app — client request modal, studio
  * meeting forms, master schedule — renders and validates on this grid, so a
@@ -28,7 +35,7 @@ export interface DaySlot {
    * not reserve the slot, so it stays selectable.
    */
   tentative: boolean;
-  busyReason: "MEETING" | "BLOCK" | null;
+  busyReason: "MEETING" | "BLOCK" | "CLOSED" | null;
   busyLabel: string | null;
   /** Already gone — can't book into the past. */
   past: boolean;
@@ -98,10 +105,22 @@ function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
 export function buildDaySlots(
   day: Date,
   busy: BusyRange[],
-  options: { now?: Date } = {}
+  options: {
+    now?: Date;
+    /**
+     * Firm-wide booking window as local "HH:MM" times. Slots outside it are
+     * marked busy so the grid matches what the server will accept — a client
+     * picking 7am against 8am office hours would otherwise only find out on
+     * submit.
+     */
+    officeHours?: { start: string; end: string } | null;
+  } = {}
 ): DaySlot[] {
   const now = options.now ?? new Date();
   const dayStart = startOfDay(day);
+
+  const officeOpen = parseTimeToMinutes(options.officeHours?.start);
+  const officeClose = parseTimeToMinutes(options.officeHours?.end);
 
   const ranges = busy.map((b) => ({
     start: new Date(b.start),
@@ -126,15 +145,21 @@ export function buildDaySlots(
     const tentativeHit = hits.find((r) => !r.blocking);
     const hit = blockingHit ?? tentativeHit;
 
+    const outsideOfficeHours =
+      officeOpen !== null &&
+      officeClose !== null &&
+      (minutes < officeOpen || minutes + SLOT_MINUTES > officeClose);
+
     return {
       minutes,
       start,
       end,
       label: formatSlotLabel(minutes),
-      busy: Boolean(blockingHit),
+      busy: Boolean(blockingHit) || outsideOfficeHours,
       tentative: !blockingHit && Boolean(tentativeHit),
-      busyReason: hit?.type ?? null,
-      busyLabel: hit?.label ?? null,
+      busyReason: outsideOfficeHours && !blockingHit ? "CLOSED" : hit?.type ?? null,
+      busyLabel:
+        outsideOfficeHours && !blockingHit ? "Outside office hours" : hit?.label ?? null,
       past: end <= now,
     };
   });

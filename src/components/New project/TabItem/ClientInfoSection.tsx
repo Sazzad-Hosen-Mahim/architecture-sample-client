@@ -15,6 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import FieldError from "../FieldError";
+import {
+  validateClientInfo,
+  hasErrors,
+  type ValidationErrors,
+} from "@/utils/newProjectValidation";
+import { toast } from "sonner";
 
 interface ClientInfoSectionProps {
   formData: any;
@@ -69,7 +76,7 @@ export default function ClientInfoSection({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ country: selectedCountry }),
-          }
+          },
         );
         const data = await res.json();
         if (data?.data?.states) {
@@ -100,7 +107,7 @@ export default function ClientInfoSection({
               country: selectedCountry,
               state: localFormData.state,
             }),
-          }
+          },
         );
         const data = await res.json();
         if (data?.data?.length) {
@@ -116,31 +123,59 @@ export default function ClientInfoSection({
     fetchCities();
   }, [localFormData.state, selectedCountry]);
 
+  const [errors, setErrors] = useState<ValidationErrors>({});
+
+  // Clear a field's error as soon as it's edited, so the form stops nagging
+  // about something the client is in the middle of fixing.
+  const clearError = (name: string) =>
+    setErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setLocalFormData((prev) => ({ ...prev, [name]: value }));
+    clearError(name);
   };
 
   const handleSelectChange = (name: string, value: string) => {
     setLocalFormData((prev) => ({ ...prev, [name]: value }));
+    clearError(name);
+  };
+
+  const handleNext = () => {
+    const validationErrors = validateClientInfo(localFormData);
+    setErrors(validationErrors);
+
+    if (hasErrors(validationErrors)) {
+      toast.error("Please fill in all required fields before continuing.");
+      return;
+    }
+
+    updateFormData(localFormData);
+    goToNextSection();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateFormData(localFormData);
-    goToNextSection();
+    handleNext();
   };
 
   return (
     <div>
       <form onSubmit={handleSubmit} className="space-y-4 p-4">
-        <h2 className="text-2xl font-bold mb-6">Client Information</h2>
+        <Label className="font-semibold mb-6">Client Information</Label>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
+            <Label htmlFor="firstName">
+              First Name <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Input
               id="firstName"
               name="firstName"
@@ -148,6 +183,7 @@ export default function ClientInfoSection({
               onChange={handleInputChange}
               required
             />
+            <FieldError message={errors.firstName} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="middleName">Middle Name</Label>
@@ -159,7 +195,9 @@ export default function ClientInfoSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
+            <Label htmlFor="lastName">
+              Last Name <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Input
               id="lastName"
               name="lastName"
@@ -167,6 +205,7 @@ export default function ClientInfoSection({
               onChange={handleInputChange}
               required
             />
+            <FieldError message={errors.lastName} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="companyName">Company Name (optional)</Label>
@@ -181,7 +220,9 @@ export default function ClientInfoSection({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">
+              Email <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Input
               id="email"
               name="email"
@@ -190,9 +231,12 @@ export default function ClientInfoSection({
               onChange={handleInputChange}
               required
             />
+            <FieldError message={errors.email} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">
+              Phone <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Input
               id="phone"
               name="phone"
@@ -201,6 +245,7 @@ export default function ClientInfoSection({
               onChange={handleInputChange}
               required
             />
+            <FieldError message={errors.phone} />
           </div>
         </div>
 
@@ -209,7 +254,10 @@ export default function ClientInfoSection({
             Client Contact Address
           </Label>
           <div className="space-y-2">
-            <Label htmlFor="address">Street Address</Label>
+            <Label htmlFor="address">
+              Street Address{" "}
+              <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Input
               id="address"
               name="address"
@@ -217,10 +265,13 @@ export default function ClientInfoSection({
               onChange={handleInputChange}
               required
             />
+            <FieldError message={errors.address} />
           </div>
           {/* Country */}
           <div className="space-y-2">
-            <Label htmlFor="country">Country</Label>
+            <Label htmlFor="country">
+              Country <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Select
               value={localFormData.country}
               onValueChange={(value) => handleSelectChange("country", value)}
@@ -232,13 +283,18 @@ export default function ClientInfoSection({
                 <SelectGroup>
                   <SelectLabel>Countries</SelectLabel>
                   {countries.map((country) => (
-                    <SelectItem key={country.code} value={country.name} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                    <SelectItem
+                      key={country.code}
+                      value={country.name}
+                      className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                    >
                       {country.name}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <FieldError message={errors.country} />
           </div>
         </div>
 
@@ -246,7 +302,10 @@ export default function ClientInfoSection({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="state">State / Province</Label>
+            <Label htmlFor="state">
+              State / Province{" "}
+              <span className="text-red-500 font-semibold">*</span>
+            </Label>
             {loadingStates ? (
               <p className="text-sm text-gray-500">Loading states...</p>
             ) : states.length > 0 ? (
@@ -259,7 +318,11 @@ export default function ClientInfoSection({
                 </SelectTrigger>
                 <SelectContent className="bg-white max-h-[300px] border-gray-300">
                   {states.map((state) => (
-                    <SelectItem key={state} value={state} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                    <SelectItem
+                      key={state}
+                      value={state}
+                      className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                    >
                       {state}
                     </SelectItem>
                   ))}
@@ -274,9 +337,13 @@ export default function ClientInfoSection({
                 placeholder="Enter state or province"
               />
             )}
+            <FieldError message={errors.state} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="zipCode">Zip Code / Postal code</Label>
+            <Label htmlFor="zipCode">
+              Zip Code / Postal code{" "}
+              <span className="text-red-500 font-semibold">*</span>
+            </Label>
             <Input
               id="zipCode"
               name="zipCode"
@@ -284,10 +351,9 @@ export default function ClientInfoSection({
               onChange={handleInputChange}
               required
             />
+            <FieldError message={errors.zipCode} />
           </div>
-
         </div>
-
 
         {/* 🆕 Dynamic City Dropdown */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -306,7 +372,11 @@ export default function ClientInfoSection({
                   </SelectTrigger>
                   <SelectContent className="bg-white max-h-[300px] border-gray-300">
                     {cities.map((city) => (
-                      <SelectItem key={city} value={city} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                      <SelectItem
+                        key={city}
+                        value={city}
+                        className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                      >
                         {city}
                       </SelectItem>
                     ))}
@@ -325,7 +395,9 @@ export default function ClientInfoSection({
           </div>
           <div>
             <div className="space-y-2">
-              <Label htmlFor="aptSuiteUnit">Apt / Suite / Unit</Label>
+              <Label htmlFor="aptSuiteUnit">
+                Apt / Suite / Unit (Optional)
+              </Label>
               <Input
                 id="aptSuiteUnit"
                 name="aptSuiteUnit"
@@ -344,7 +416,7 @@ export default function ClientInfoSection({
           onChange={handleInputChange}
           rows={4}
         />
-        <div>
+        <div className="flex justify-between items-center">
           <Button
             type="button"
             variant="outline"
@@ -355,6 +427,7 @@ export default function ClientInfoSection({
           >
             Previous
           </Button>
+          <h1 className="text-sm text-red-500">* - indicates required field</h1>
         </div>
 
         <div className="w-full mt-10 flex justify-center items-center">
@@ -362,10 +435,7 @@ export default function ClientInfoSection({
             <ThumbprintButton
               // @ts-ignore
               type="button"
-              onClick={() => {
-                updateFormData(localFormData);
-                goToNextSection();
-              }}
+              onClick={handleNext}
               text="Next Step"
             />
           </div>

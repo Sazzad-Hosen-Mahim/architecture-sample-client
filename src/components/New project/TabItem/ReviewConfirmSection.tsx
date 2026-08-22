@@ -9,6 +9,10 @@ import {
 } from "@/components/ui/select";
 import { useCreateProjectRequestMutation } from "@/redux/api/newProjectAPi";
 import { buildProjectPayload } from "@/utils/projectPayload";
+import {
+  validateProjectRequest,
+  hasErrors,
+} from "@/utils/newProjectValidation";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -20,9 +24,22 @@ import { useGetConsultationFeeQuery } from "@/redux/api/adminDashboard/siteSetti
 import ThumbprintButton from "../ThumbprintButton";
 
 // const stripePromise = loadStripe("pk_test_51TVdfBBWI93tV1QCki5PX3VSlmoRzRwyO5qWwvO9zFL13niyNZTqv5ZBPi8vVCHnGNWeCDY2RVFl2oJgbdPMRc0Q00jlx3EsiG");  //client's publishable key
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// Select values from ProjectDetailsSection -> readable labels for the review page
+const serviceTypeLabels: Record<string, string> = {
+  "new-construction": "New Construction",
+  renovation: "Renovation / Remodel",
+  "tenant-improvement": "Tenant Improvement",
+  addition: "Addition",
+  consultation: "Other",
+};
+
+// Select values from ScheduleAppointmentSection -> readable labels
+const appointmentTypeLabels: Record<string, string> = {
+  "in-person": "In-person Meeting",
+  "video-call": "Video Call",
+};
 
 export default function ReviewConfirmSection({
   formData,
@@ -30,7 +47,8 @@ export default function ReviewConfirmSection({
   onPaymentSuccess,
 }: any) {
   const [createProject] = useCreateProjectRequestMutation();
-  const [createIntent, { isLoading: isCreatingIntent }] = useCreateConsultationIntentMutation();
+  const [createIntent, { isLoading: isCreatingIntent }] =
+    useCreateConsultationIntentMutation();
   const { data: consultationFeeData } = useGetConsultationFeeQuery();
   const [, setError] = useState<string | null>(null);
   console.log("formData in ReviewConfirmSection:", formData);
@@ -44,7 +62,10 @@ export default function ReviewConfirmSection({
 
   useEffect(() => {
     if (consultationFeeData?.data?.feeUsd !== undefined) {
-      setPaymentDetails((prev: any) => ({ ...prev, amount: consultationFeeData.data.feeUsd }));
+      setPaymentDetails((prev: any) => ({
+        ...prev,
+        amount: consultationFeeData.data.feeUsd,
+      }));
     }
   }, [consultationFeeData]);
 
@@ -76,7 +97,21 @@ export default function ReviewConfirmSection({
     return foundError ? foundError.message : "";
   };
 
+  // The step tabs can be clicked straight through, so nothing guarantees the
+  // earlier steps ever ran their own validation. Re-check everything here.
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+
   const handleSubmit = async () => {
+    const validationErrors = validateProjectRequest(formData);
+    if (hasErrors(validationErrors)) {
+      setMissingFields(Object.values(validationErrors));
+      toast.error(
+        "Some required details are missing. Please review the steps above.",
+      );
+      return;
+    }
+    setMissingFields([]);
+
     if (!paymentIntentId) {
       toast.error("Please pay the consultation fee before submitting.");
       return;
@@ -142,12 +177,7 @@ export default function ReviewConfirmSection({
             {/* <p className="text-base">
             <span className="font-medium">Referral Source:</span> {formData.referralSource || "N/A"}
           </p> */}
-            <p className="text-base">
-              <span className="font-medium">
-                Previous Projects with Architect:
-              </span>{" "}
-              {formData.previousProjects === "yes" ? "Yes" : "No"}
-            </p>
+
             <p className="text-base">
               <span className="font-medium">Additional Comments:</span>{" "}
               {formData.additionalComments || "N/A"}
@@ -164,7 +194,7 @@ export default function ReviewConfirmSection({
             </p>
             <p className="text-base">
               <span className="font-medium">Service Type:</span>{" "}
-              {formData.serviceType || "Service type"}
+              {serviceTypeLabels[formData.serviceType] || "Service type"}
             </p>
             <p className="text-base">
               <span className="font-medium">Project Type:</span>{" "}
@@ -180,30 +210,31 @@ export default function ReviewConfirmSection({
               {formData.projectAptSuiteUnit
                 ? `, ${formData.projectAptSuiteUnit}`
                 : ""}
-              ,{" "}
-              {formData.projectCity || "Project city"},{" "}
+              , {formData.projectCity || "Project city"},{" "}
               {formData.projectState || "Project state"}{" "}
               {formData.projectZipCode || "Project zip code"},{" "}
               {formData.projectCountry || "Project country"}
             </p>
-            <p className="text-base">
+            {/* <p className="text-base">
               <span className="font-medium">Project Timeline:</span>{" "}
               {formData.projectTimeline || "Project timeline"}
-            </p>
+            </p> */}
             <p className="text-base">
               <span className="font-medium">Budget Range:</span>{" "}
               {formData.budgetRange || "Budget range"}
             </p>
             <p className="text-base">
-              <span className="font-medium">Site Constraints:</span>{" "}
+              <span className="font-medium">Site Constraints & Notes:</span>{" "}
               {formData.siteConstraints || "N/A"}
             </p>
-            <p className="text-base">
+            {/* <p className="text-base">
               <span className="font-medium">Sustainability Goals:</span>{" "}
               {formData.sustainabilityGoals || "N/A"}
-            </p>
+            </p> */}
             <p className="text-base">
-              <span className="font-medium">Special Requirements:</span>{" "}
+              <span className="font-medium">
+                Additional Notes / Contextual Requirements:
+              </span>{" "}
               {formData.specialRequirements || "N/A"}
             </p>
             {/* <p className="text-base">
@@ -228,12 +259,16 @@ export default function ReviewConfirmSection({
             </p>
             <p className="text-base">
               <span className="font-medium">Appointment Type:</span>{" "}
-              {formData.appointmentType}
+              {appointmentTypeLabels[formData.appointmentType] ||
+                formData.appointmentType ||
+                "Not set"}
             </p>
-            <p className="text-base">
-              <span className="font-medium">Location:</span>{" "}
-              {formData.meetingLocation || "N/A"}
-            </p>
+            {formData.appointmentType === "in-person" && (
+              <p className="text-base">
+                <span className="font-medium">Location:</span>{" "}
+                {formData.meetingLocation || "N/A"}
+              </p>
+            )}
             <p className="text-base">
               <span className="font-medium">Additional Notes:</span>{" "}
               {formData.appointmentNotes || "N/A"}
@@ -252,10 +287,6 @@ export default function ReviewConfirmSection({
                 {/* ${paymentDetails.amount.toFixed(2)} */}
               </span>
             </div>
-            <p className="text-base text-gray-600">
-              This fee will be applied to your project if you decide to move
-              forward with our service.
-            </p>
           </div>
 
           <div className="space-y-6">
@@ -269,15 +300,19 @@ export default function ReviewConfirmSection({
               >
                 <SelectTrigger
                   id="paymentMethod"
-                  className={`mt-2 w-full border rounded-md ${getErrorMessage("paymentMethod")
-                    ? "border-red-500"
-                    : "border-gray-200"
-                    }`}
+                  className={`mt-2 w-full border rounded-md ${
+                    getErrorMessage("paymentMethod")
+                      ? "border-red-500"
+                      : "border-gray-200"
+                  }`}
                 >
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="stripe" className="hover:bg-gray-700 hover:text-white cursor-pointer">
+                  <SelectItem
+                    value="stripe"
+                    className="hover:bg-gray-700 hover:text-white cursor-pointer"
+                  >
                     Stripe (Credit/Debit Card)
                   </SelectItem>
                   {/* <SelectItem value="paypal" className="hover:bg-gray-100">
@@ -303,9 +338,12 @@ export default function ReviewConfirmSection({
                 {paymentIntentId ? (
                   <div className="p-6 bg-green-50 border border-green-200 rounded-xl flex flex-col items-center text-center">
                     <CheckCircle2 className="w-12 h-12 text-green-500 mb-2" />
-                    <h4 className="text-lg font-semibold text-green-800">Payment Successful</h4>
+                    <h4 className="text-lg font-semibold text-green-800">
+                      Payment Successful
+                    </h4>
                     <p className="text-base text-green-600 mt-1">
-                      Consultation fee of ${paymentDetails.amount} has been paid. You can now submit your project request.
+                      Consultation fee of ${paymentDetails.amount} has been
+                      paid. You can now submit your project request.
                     </p>
                     <div className="mt-4 text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-mono">
                       Ref: {paymentIntentId}
@@ -321,7 +359,9 @@ export default function ReviewConfirmSection({
                 ) : isCreatingIntent ? (
                   <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-slate-50">
                     <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
-                    <p className="text-base text-slate-600">Initializing secure payment...</p>
+                    <p className="text-base text-slate-600">
+                      Initializing secure payment...
+                    </p>
                   </div>
                 ) : (
                   <div className="p-4 bg-blue-50 text-blue-700 rounded-lg text-base border border-blue-100">
@@ -330,56 +370,27 @@ export default function ReviewConfirmSection({
                 )}
               </div>
             )}
-
           </div>
         </div>
 
-        <div className="flex justify-center items-center mt-12">
-          <ThumbprintButton
-            onClick={handleSubmit}
-            text="Submit Project"
-          />
-        </div>
+        {missingFields.length > 0 && (
+          <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-medium text-red-700">
+              Please go back and complete the following before submitting:
+            </p>
+            <ul className="mt-2 list-disc list-inside space-y-1">
+              {missingFields.map((message) => (
+                <li key={message} className="text-sm text-red-600">
+                  {message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-        {/* <div className="flex justify-center items-center mt-12">
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="w-20 h-20 sm:w-24 sm:h-24 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden"
-          >
-            <div className="relative z-10">
-              <svg
-                viewBox="0 0 100 140"
-                className="w-20 h-20 sm:w-24 sm:h-32 fill-none"
-                strokeWidth="1.5"
-              >
-                <text
-                  x="50"
-                  y="60"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="fill-white text-[11px] sm:text-[11px] font-light tracking-[0.2em]"
-                >
-                  SUBMIT
-                </text>
-                <text
-                  x="50"
-                  y="80"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="fill-white text-[11px] sm:text-[11px] font-light tracking-[0.2em]"
-                >
-                  PROJECT
-                </text>
-              </svg>
-            </div>
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
-                <Loader2 className="w-8 h-8 text-white animate-spin" />
-              </div>
-            )}
-          </button>
-        </div> */}
+        <div className="flex justify-center items-center mt-12">
+          <ThumbprintButton onClick={handleSubmit} text="Submit Project" />
+        </div>
       </div>
     </div>
   );

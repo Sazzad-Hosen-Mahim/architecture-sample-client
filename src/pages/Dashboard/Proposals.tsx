@@ -15,10 +15,12 @@ import {
     Amendment,
 } from "@/redux/api/amendmentApi";
 import ContractReviewModal from '@/components/Deshboard/ContractReviewModal';
-import { FileTextIcon, Search, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { FileTextIcon, Search, X, ChevronRight, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import SignatureCanvas from 'react-signature-canvas';
+
+type SortOption = "newest" | "oldest" | "manager" | "status";
 import { Loader } from "@/components/ui/loader";
 
 const Proposals = () => {
@@ -27,6 +29,7 @@ const Proposals = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [search, setSearch] = useState("");
+    const [sortBy, setSortBy] = useState<SortOption>("newest");
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     // Memoised so the grouping below isn't recomputed on every render.
@@ -43,6 +46,13 @@ const Proposals = () => {
      * Amendments hang off their original contract rather than sitting at the
      * top level, so each project reads as one contract with its revisions.
      */
+    /** The PM assigned to the proposal's project, however the API shapes it. */
+    const managerNameOf = (p: any): string =>
+        p?.assignedManager?.name ||
+        p?.projectRequest?.assignedManager?.name ||
+        p?.assignedTo?.name ||
+        "";
+
     const groupedProposals = React.useMemo(() => {
         const all: any[] = proposals as any[];
         const amendmentsByParent = new Map<string, any[]>();
@@ -80,8 +90,27 @@ const Proposals = () => {
                 ),
             }))
             // Keep a contract when it matches, or when any of its amendments do.
-            .filter((p: any) => matches(p) || p.amendments.some(matches));
-    }, [proposals, search]);
+            .filter((p: any) => matches(p) || p.amendments.some(matches))
+            .sort((a: any, b: any) => {
+                switch (sortBy) {
+                    case "manager":
+                        return managerNameOf(a).localeCompare(managerNameOf(b));
+                    case "status":
+                        return (a.status || "").localeCompare(b.status || "");
+                    case "oldest":
+                        return (
+                            new Date(a.createdAt).getTime() -
+                            new Date(b.createdAt).getTime()
+                        );
+                    case "newest":
+                    default:
+                        return (
+                            new Date(b.createdAt).getTime() -
+                            new Date(a.createdAt).getTime()
+                        );
+                }
+            });
+    }, [proposals, search, sortBy]);
 
     const toggleExpanded = (id: string) => {
         setExpandedIds((prev) => {
@@ -146,7 +175,7 @@ const Proposals = () => {
                     <span className="text-sm text-gray-500">{proposals.length} total proposals</span>
                 </div>
                 <Link
-                    to="/dashboard/financials"
+                    to="/dashboard/financials?tab=payroll"
                     title="Back to Accountant's Controls"
                     className="p-2 rounded-lg text-gray-400 hover:text-black hover:bg-gray-100 transition-colors flex-shrink-0"
                 >
@@ -154,7 +183,8 @@ const Proposals = () => {
                 </Link>
             </div>
 
-            <div className="relative mb-6 max-w-xl">
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[240px] max-w-xl">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                     type="text"
@@ -163,6 +193,21 @@ const Proposals = () => {
                     placeholder="Search by proposal #, client, project or location..."
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-xl">
+                <ArrowUpDown size={14} className="text-gray-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="text-sm bg-transparent outline-none font-bold text-gray-700 cursor-pointer"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="manager">Project Manager</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
             </div>
 
             {proposals.length === 0 ? (
@@ -188,6 +233,9 @@ const Proposals = () => {
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Location
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Project Manager
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Status
@@ -245,6 +293,11 @@ const Proposals = () => {
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                                 {locationOf(proposal)}
                                             </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                {managerNameOf(proposal) || (
+                                                    <span className="text-gray-400 italic">Unassigned</span>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(proposal.status)}`}>
                                                     {proposal.status}
@@ -286,6 +339,11 @@ const Proposals = () => {
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                                         {locationOf(amendment)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                                        {managerNameOf(amendment) || managerNameOf(proposal) || (
+                                                            <span className="text-gray-400 italic">Unassigned</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
                                                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(amendment.status)}`}>

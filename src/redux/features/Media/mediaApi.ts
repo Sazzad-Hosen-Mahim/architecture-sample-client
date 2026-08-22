@@ -17,6 +17,18 @@ export const mediaApi = baseApi.injectEndpoints({
         url: `/media/${idOrSlug}`,
         method: "GET",
       }),
+      // Without a tag here nothing could invalidate this cache entry, so the
+      // edit modal kept showing an image after it had been deleted until the
+      // page was reloaded. Tagged by the argument and by the resolved id, since
+      // this endpoint accepts either a slug or an id.
+      providesTags: (result, _error, idOrSlug) => {
+        const tags = [{ type: "Media" as const, id: idOrSlug }];
+        const resolvedId = result?.data?.id;
+        if (resolvedId && resolvedId !== idOrSlug) {
+          tags.push({ type: "Media" as const, id: resolvedId });
+        }
+        return tags;
+      },
     }),
 
     //   CREATE media metadata (JSON)

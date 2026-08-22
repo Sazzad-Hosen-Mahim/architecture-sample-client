@@ -14,7 +14,7 @@ export default function BeginNewProjectSection({
 }: any) {
   return (
     <div>
-      <div className="space-y-4 pb-6">
+      <div className="pb-2 space-y-1">
         <p className="text-sm md:text-[16px] text-gray-600">
           Welcome to Architecture Simple. We are committed to supporting you
           throughout every phase of your project. To begin, please review the
@@ -37,7 +37,7 @@ export default function BeginNewProjectSection({
                     <li>Zoning & Preliminary Building Code Analysis</li>
                     <li>Project Scope Verification</li>
                   </ul>
-                  <h4 className="font-medium">
+                  <h4 className="font-medium mt-6">
                     2. Schematic Design (SD) - (20% of Total Fee)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
@@ -46,32 +46,38 @@ export default function BeginNewProjectSection({
                     <li>Roof Plans (If necessary)</li>
                     <li>Elevations (If necessary)</li>
                     <li>Sections (If necessary)</li>
-                    <li>Preliminary Building Systems & Material Selection (If necessary)</li>
+                    <li>
+                      Preliminary Building Systems & Material Selection (If
+                      necessary)
+                    </li>
                     <li>Preliminary Cost Estimate (Cost/Square Foot) </li>
                   </ul>
-                  <h4 className="font-medium">
+                  <h4 className="font-medium mt-6">
                     3. Design Development (DD) - (10% of Total Fee)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>
-                      Refine Architectural Plans
-                    </li>
+                    <li>Refine Architectural Plans</li>
                     <li>
                       Coordination with Engineering Consultants (Consultants May
                       Vary Depending on Project)
                     </li>
                     <li>In-depth Building System Selection (If necessary)</li>
-                    <li>In-depth Material and Finish Selections (If necessary)</li>
+                    <li>
+                      In-depth Material and Finish Selections (If necessary)
+                    </li>
                     <li>Schedules (If necessary)</li>
                     <li> Specifications (If necessary)</li>
                     <li>Updated Cost Estimate (Systems and Materials)</li>
                   </ul>
-                  <h4 className="font-medium">
+                  <h4 className="font-medium mt-6">
                     4. Construction Documents (CD) - (25% of Total Fee)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
                     <li>Final Architectural Plans</li>
-                    <li>Final Engineering Plans (Consultants May Vary Depending on Project)</li>
+                    <li>
+                      Final Engineering Plans (Consultants May Vary Depending on
+                      Project)
+                    </li>
                     <li>Final Specifications (If necessary)</li>
                     <li>Permit Assistance </li>
                   </ul>
@@ -81,49 +87,85 @@ export default function BeginNewProjectSection({
                     5. Permit Attainment (PA) - (5% of Total Fee)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>File Initial Application and Necessary Documents to All Authorities Having Jurisdiction (AHJ)</li>
-                    <li>Respond to Plan Check Comments Provided by the AHJ (In Collaboration with the Client)</li>
-                    <li>Attain Final Permit for Construction and Transmit To Client</li>
+                    <li>
+                      File Initial Application and Necessary Documents to All
+                      Authorities Having Jurisdiction (AHJ)
+                    </li>
+                    <li>
+                      Respond to Plan Check Comments Provided by the AHJ (In
+                      Collaboration with the Client)
+                    </li>
+                    <li>
+                      Attain Final Permit for Construction and Transmit To
+                      Client
+                    </li>
                   </ul>
-                  <h4 className="font-medium">
+                  <h4 className="font-medium mt-6">
                     6. Bidding Support (BS) - (5% of Total Fee) (If Necessary)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>Assist the Client in Submitted the Permitted Project for Competitive Bidding to General Contractors</li>
-                    <li>Attend a Bid Walk with Approved List of General Contractors and Client (1 Max)</li>
-                    <li>Review and Answer Bidding Contractor's Questions during the Bidding Period</li>
-                    <li>Review Bid Submissions with the Client to Assist in General Contractor Selection</li>
+                    <li>
+                      Assist the Client in Submitted the Permitted Project for
+                      Competitive Bidding to General Contractors
+                    </li>
+                    <li>
+                      Attend a Bid Walk with Approved List of General
+                      Contractors and Client (1 Max)
+                    </li>
+                    <li>
+                      Review and Answer Bidding Contractor's Questions during
+                      the Bidding Period
+                    </li>
+                    <li>
+                      Review Bid Submissions with the Client to Assist in
+                      General Contractor Selection
+                    </li>
                   </ul>
-                  <h4 className="font-medium">
+                  <h4 className="font-medium mt-6">
                     7. Construction Administration (CA) - (25% of Total Fee)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>Attend Construction Site Walks (3 Max) (Additional Visits can be Added at a Flat Fee per the Client's Request)</li>
+                    <li>
+                      Attend Construction Site Walks (3 Max) (Additional Visits
+                      can be Added at a Flat Fee per the Client's Request)
+                    </li>
                     <li>Provide Responses to General Contractor's RFIs</li>
-                    <li>Provide Responses to General Contractor's Initiated Submittals</li>
-                    <li>Coordinate with the Client and General Contractor on Change Order Request</li>
-                    <li>Coordinate with the Client and General Contractor on Construction Change Directives</li>
+                    <li>
+                      Provide Responses to General Contractor's Initiated
+                      Submittals
+                    </li>
+                    <li>
+                      Coordinate with the Client and General Contractor on
+                      Change Order Request
+                    </li>
+                    <li>
+                      Coordinate with the Client and General Contractor on
+                      Construction Change Directives
+                    </li>
                     <li>Review General Contractor Initiated Payment Request</li>
                     <li>Attend Substantial Completion Site Walk (1 Max)</li>
                     <li>Attend Final Completion Site Walk (1 Max)</li>
                   </ul>
-                  <h4 className="font-medium">
+                  <h4 className="font-medium mt-6">
                     8. Record Drawings (RD) (5% of Total Fee)
                   </h4>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>Attend Construction Site Walks (3 Max) (Additional Visits can be Added at a Flat Fee per the Client's Request)</li>
                     <li>Provide Final Record Drawings to the Client</li>
-                    <li>Close Out the Project</li>
+                    <li>Close Out Project</li>
                   </ul>
                 </div>
               </div>
               {/* footer  */}
               <div className="mt-10">
-                <h1 className="text-[15px] font-semibold">Note: Basic Services described above are based on the average project scope from beginning to completion. Each individual project is evaluated independent of the Basic Services and only applicable services necessary to complete the project will be applied.
+                <h1 className="text-[15px] text-gray-700">
+                  <span className="font-semibold">Note:</span> Basic Services
+                  described above are based on the average project scope from
+                  beginning to completion. Each individual project is evaluated
+                  independent of the Basic Services and only applicable services
+                  necessary to complete the project will be applied.
                 </h1>
               </div>
             </AccordionContent>
-
           </AccordionItem>
 
           <AccordionItem value="additional-services">
@@ -149,12 +191,12 @@ export default function BeginNewProjectSection({
             </AccordionTrigger>
             <AccordionContent>
               <p className="text-[15px]">
-                Our ultimate goal is to
-                assist the client from concept to finished construction in hopes
-                we build a long lasting relationships.  We value your feedback and encourage you to share your thoughts
-                on the project intake form. Please use our "Contact Us" page
-                link below to offer your thoughts in helping us improve our
-                client relations process.
+                Our ultimate goal is to assist the client from concept to
+                finished construction in hopes we build a long lasting
+                relationships. We value your feedback and encourage you to share
+                your thoughts on the project intake form. Please use our
+                "Contact Us" page link below to offer your thoughts in helping
+                us improve our client relations process.
               </p>
               <br />
               <div className="mt-8 mb-4">

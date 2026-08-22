@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 // import { useNavigate } from "react-router-dom";
 import {
   // ArrowLeft,
@@ -6,6 +6,8 @@ import {
   Key,
   Shield,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   ClipboardPenLine,
   FilePenLine,
   User,
@@ -51,6 +53,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  CountrySelect,
+  StateSelect,
+} from "@/components/Common/LocationSelects";
+import { getUserPhoto } from "@/utils/userPhoto";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -70,7 +77,6 @@ type ProfileData = {
   lastName: string;
   email: string;
   phoneNumber: string;
-  companyName: string;
   streetAddress: string;
   city: string;
   stateRegion: string;
@@ -85,7 +91,6 @@ const EMPTY_PROFILE: ProfileData = {
   lastName: "",
   email: "",
   phoneNumber: "",
-  companyName: "",
   streetAddress: "",
   city: "",
   stateRegion: "",
@@ -103,7 +108,7 @@ export function ProfileSettings() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState("profile");
-  const [profilePhoto, setProfilePhoto] = useState<string>(user?.imagUrl || "");
+  const [profilePhoto, setProfilePhoto] = useState<string>(getUserPhoto(user));
 
   const [profileData, setProfileData] = useState<ProfileData>(EMPTY_PROFILE);
 
@@ -119,15 +124,14 @@ export function ProfileSettings() {
         lastName: u.lastName || nameParts.slice(1).join(" ") || "",
         email: u.email || "",
         phoneNumber: u.phoneNumber || "",
-        companyName: u.companyName || "",
         streetAddress: u.streetAddress || "",
         city: u.city || "",
         stateRegion: u.stateRegion || "",
         zipCode: u.zipCode || "",
         country: u.country || "",
-        profileImg: u.avatar || u.imagUrl || "",
+        profileImg: getUserPhoto(u),
       });
-      setProfilePhoto(u.avatar || u.imagUrl || "");
+      setProfilePhoto(getUserPhoto(u));
     }
   }, [user]);
 
@@ -179,7 +183,6 @@ export function ProfileSettings() {
         "middleInitial",
         "lastName",
         "phoneNumber",
-        "companyName",
         "streetAddress",
         "city",
         "stateRegion",
@@ -215,6 +218,15 @@ export function ProfileSettings() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollTabs = (direction: "left" | "right") => {
+    tabsContainerRef.current?.scrollBy({
+      left: direction === "left" ? -180 : 180,
+      behavior: "smooth",
+    });
   };
 
   // Custom Tabs Components
@@ -314,7 +326,22 @@ export function ProfileSettings() {
         {/* Main content */}
         <div className="col-span-12 md:col-span-8 lg:col-span-9">
           <div className="mb-6">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg overflow-x-auto scrollbar-hide">
+            {/* The tab strip runs past the panel on smaller screens, so it gets
+                its own arrows rather than relying on a scrollbar that is hidden
+                by design. Padding keeps the first and last tab clear of them. */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => scrollTabs("left")}
+                aria-label="Scroll tabs left"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div
+                ref={tabsContainerRef}
+                className="flex space-x-1 bg-gray-100 p-1 px-10 rounded-lg overflow-x-auto scrollbar-hide scroll-smooth"
+              >
               <TabButton
                 value="profile"
                 icon={User}
@@ -380,6 +407,15 @@ export function ProfileSettings() {
                   Archives
                 </TabButton>
               )}
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollTabs("right")}
+                aria-label="Scroll tabs right"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -455,17 +491,6 @@ export function ProfileSettings() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName">Company</Label>
-                      <Input
-                        id="companyName"
-                        name="companyName"
-                        value={profileData.companyName}
-                        onChange={handleProfileChange}
-                        placeholder="Your company"
-                      />
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="streetAddress">Address</Label>
@@ -492,12 +517,20 @@ export function ProfileSettings() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="stateRegion">State/Region</Label>
-                        <Input
+                        {/* Whatever was saved before stays selected — the value
+                            is the state's name either way, and the control falls
+                            back to a text box for countries the API has no list
+                            for, so an existing entry is never lost. */}
+                        <StateSelect
                           id="stateRegion"
-                          name="stateRegion"
+                          country={profileData.country}
                           value={profileData.stateRegion}
-                          onChange={handleProfileChange}
-                          placeholder="State or region"
+                          onChange={(value) =>
+                            setProfileData((prev) => ({
+                              ...prev,
+                              stateRegion: value,
+                            }))
+                          }
                         />
                       </div>
                       <div className="space-y-2">
@@ -512,12 +545,18 @@ export function ProfileSettings() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="country">Country</Label>
-                        <Input
+                        <CountrySelect
                           id="country"
-                          name="country"
                           value={profileData.country}
-                          onChange={handleProfileChange}
-                          placeholder="Country"
+                          // Changing country invalidates the saved state.
+                          onChange={(value) =>
+                            setProfileData((prev) => ({
+                              ...prev,
+                              country: value,
+                              stateRegion:
+                                value === prev.country ? prev.stateRegion : "",
+                            }))
+                          }
                         />
                       </div>
                     </div>

@@ -140,16 +140,17 @@ function NewProject() {
       <div className="min-h-screen bg-white text-foreground">
         {/* Fixed header section */}
         <div className="fixed top-[50px] left-0 right-0 bg-white z-20 border-b border-gray-50 ">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-4xl mx-auto px-4">
             <div className="overflow-x-auto">
               <div className="flex space-x-2 md:space-x-4 py-4">
                 {sections.map((section, index) => (
                   <button
                     key={index}
-                    className={`py-1 px-2 text-xs md:text-[16px] cursor-pointer font-medium whitespace-nowrap transition-colors duration-300 ease-in-out ${index === activeSection
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-gray-400 hover:text-gray-600"
-                      }`}
+                    className={`py-1 px-2 text-xs md:text-[16px] cursor-pointer font-medium whitespace-nowrap transition-colors duration-300 ease-in-out ${
+                      index === activeSection
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-gray-400 hover:text-gray-600"
+                    }`}
                     onClick={() => setActiveSection(index)}
                   >
                     {section}

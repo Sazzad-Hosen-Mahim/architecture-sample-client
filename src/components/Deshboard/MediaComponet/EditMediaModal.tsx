@@ -24,6 +24,7 @@ import {
 } from "@/redux/features/Media/mediaApi";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Cloud } from "lucide-react";
+import { useGetMediaQuickTagsQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
 
 interface EditMediaModalProps {
   mediaId: string | null;
@@ -31,16 +32,39 @@ interface EditMediaModalProps {
   onClose: () => void;
 }
 
-type TagType = "ECO_FRIENDLY" | "SOLAR_POWERED" | "LUXURY";
-const AVAILABLE_TAGS: TagType[] = ["ECO_FRIENDLY", "SOLAR_POWERED", "LUXURY"];
+/** Any tag the media form can produce, not just the three built-in presets. */
+type TagType = string;
+const FALLBACK_TAGS: TagType[] = ["ECO_FRIENDLY", "SOLAR_POWERED", "LUXURY"];
 
+const CONTINENTS = [
+  { label: "Asia", value: "ASIA" },
+  { label: "Europe", value: "EUROPE" },
+  { label: "North America", value: "NORTH_AMERICA" },
+  { label: "South America", value: "SOUTH_AMERICA" },
+  { label: "Africa", value: "AFRICA" },
+  { label: "Australia", value: "AUSTRALIA" },
+];
+
+const CLIMATES = [
+  { label: "Alpine", value: "ALPINE" },
+  { label: "Continental", value: "CONTINENTAL" },
+  { label: "Tropical", value: "TROPICAL" },
+  { label: "Desert", value: "DESERT" },
+  { label: "Polar", value: "POLAR" },
+  { label: "Marine", value: "MARINE" },
+  { label: "Temperate", value: "TEMPERATE" },
+];
+
+/** Must stay in step with CATEGORY in CreateNewMedia — same ProjectCategory enum. */
 const PORTFOLIO_CATEGORIES = [
-  { label: "Residential", value: "RESIDENTIAL" },
   { label: "Commercial", value: "COMMERCIAL" },
-  { label: "Institutional", value: "INSTITUTIONAL" },
-  { label: "Landscape", value: "LANDSCAPE" },
+  { label: "Residential", value: "RESIDENTIAL" },
   { label: "Interior", value: "INTERIOR" },
-  { label: "Urban Planning", value: "URBAN_PLANNING" },
+  { label: "Mixed Use", value: "MIXED_USE" },
+  { label: "Tenant Improvement", value: "TENANT_IMPROVEMENT" },
+  { label: "Remodel", value: "REMODEL" },
+  { label: "Addition", value: "ADDITION" },
+  { label: "Other", value: "OTHER" },
 ];
 
 export default function EditMediaModal({
@@ -69,9 +93,30 @@ export default function EditMediaModal({
   const [photographer, setPhotographer] = useState("");
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const [category, setCategory] = useState<string>("");
+  // Present on the create form but previously missing here, so editing a world
+  // project or portfolio piece silently dropped them from the form.
+  const [categoryOther, setCategoryOther] = useState("");
+  const [continent, setContinent] = useState<string>("");
+  const [climate, setClimate] = useState<string>("");
   const [year, setYear] = useState("");
   const [newFilesToUpload, setNewFilesToUpload] = useState<File[]>([]);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+  const [newTagInput, setNewTagInput] = useState("");
+
+  // Same curated suggestions the create form offers.
+  const { data: quickTagsData } = useGetMediaQuickTagsQuery();
+  const quickTags: string[] = quickTagsData?.data ?? FALLBACK_TAGS;
+
+  const handleAddCustomTag = () => {
+    const tag = newTagInput.trim().toUpperCase().replace(/\s+/g, "_");
+    if (!tag) return;
+    if (selectedTags.includes(tag)) {
+      toast.error("Tag already added.");
+      return;
+    }
+    setSelectedTags((prev) => [...prev, tag]);
+    setNewTagInput("");
+  };
 
   useEffect(() => {
     if (media) {
@@ -92,6 +137,9 @@ export default function EditMediaModal({
       setPhotographer(media.photographer || "");
       setSelectedTags(media.projectTags || []);
       setCategory(media.category || "");
+      setCategoryOther(media.categoryOther || "");
+      setContinent(media.continent || "");
+      setClimate(media.climate || "");
       setYear(media.projectYear?.toString() || "");
       setNewFilesToUpload([]);
     }
@@ -161,6 +209,11 @@ export default function EditMediaModal({
     if (architect) updateData.architect = architect;
     if (photographer) updateData.photographer = photographer;
     if (category) updateData.category = category;
+    if (continent) updateData.continent = continent;
+    if (climate) updateData.climate = climate;
+    // Only carries meaning behind the "Other" option.
+    updateData.categoryOther =
+      category === "OTHER" ? categoryOther.trim() || undefined : undefined;
 
     if (publishedDate) {
       updateData.publishDate = new Date(publishedDate).toISOString();
@@ -328,47 +381,282 @@ export default function EditMediaModal({
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                     <Input value={location} onChange={(e) => setLocation(e.target.value)} />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Continent</label>
+                      <Select value={continent} onValueChange={setContinent}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select continent" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {CONTINENTS.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Climate</label>
+                      <Select value={climate} onValueChange={setClimate}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select climate" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {CLIMATES.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                      <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {PORTFOLIO_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {category === "OTHER" && (
+                        <Input
+                          value={categoryOther}
+                          onChange={(e) => setCategoryOther(e.target.value)}
+                          placeholder="Describe the category..."
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+
+                    {/* Selected tags, including custom ones already on this
+                        media — previously invisible and impossible to remove. */}
+                    {selectedTags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {selectedTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-700 text-white"
+                          >
+                            {tag.replace(/_/g, " ")}
+                            <button
+                              type="button"
+                              onClick={() => toggleTag(tag)}
+                              className="rounded-full hover:bg-gray-800 p-0.5 cursor-pointer"
+                              aria-label={`Remove ${tag.replace(/_/g, " ")}`}
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mb-2">
+                      <Input
+                        placeholder="Type a custom tag..."
+                        value={newTagInput}
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCustomTag();
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomTag}
+                        className="bg-gray-800 hover:bg-black text-white px-3 cursor-pointer"
+                      >
+                        Add
+                      </Button>
+                    </div>
+
                     <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_TAGS.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1 cursor-pointer rounded-md text-xs font-medium transition-colors ${selectedTags.includes(tag)
-                            ? "bg-gray-600 text-white"
-                            : "bg-gray-200 text-gray-700"
-                            }`}
-                        >
-                          {tag.replace("_", " ")}
-                        </button>
-                      ))}
+                      <span className="text-xs text-gray-500 self-center mr-1">
+                        Quick add:
+                      </span>
+                      {quickTags
+                        .filter((tag) => !selectedTags.includes(tag))
+                        .map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleTag(tag)}
+                            className="px-3 py-1 cursor-pointer rounded-md text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                          >
+                            + {tag.replace(/_/g, " ")}
+                          </button>
+                        ))}
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Portfolio collects the same fields as a world project on the
+                  create form, so the edit form has to offer all of them too. */}
               {media?.contentType === "PORTFOLIO" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {PORTFOLIO_CATEGORIES.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Architect</label>
+                      <Input value={architect} onChange={(e) => setArchitect(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Photographer</label>
+                      <Input value={photographer} onChange={(e) => setPhotographer(e.target.value)} />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                    <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Continent</label>
+                      <Select value={continent} onValueChange={setContinent}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select continent" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {CONTINENTS.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Climate</label>
+                      <Select value={climate} onValueChange={setClimate}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select climate" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {CLIMATES.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                      <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {PORTFOLIO_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {category === "OTHER" && (
+                        <Input
+                          value={categoryOther}
+                          onChange={(e) => setCategoryOther(e.target.value)}
+                          placeholder="Describe the category..."
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+
+                    {/* Selected tags, including custom ones already on this
+                        media — previously invisible and impossible to remove. */}
+                    {selectedTags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {selectedTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-700 text-white"
+                          >
+                            {tag.replace(/_/g, " ")}
+                            <button
+                              type="button"
+                              onClick={() => toggleTag(tag)}
+                              className="rounded-full hover:bg-gray-800 p-0.5 cursor-pointer"
+                              aria-label={`Remove ${tag.replace(/_/g, " ")}`}
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mb-2">
+                      <Input
+                        placeholder="Type a custom tag..."
+                        value={newTagInput}
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCustomTag();
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomTag}
+                        className="bg-gray-800 hover:bg-black text-white px-3 cursor-pointer"
+                      >
+                        Add
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs text-gray-500 self-center mr-1">
+                        Quick add:
+                      </span>
+                      {quickTags
+                        .filter((tag) => !selectedTags.includes(tag))
+                        .map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleTag(tag)}
+                            className="px-3 py-1 cursor-pointer rounded-md text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                          >
+                            + {tag.replace(/_/g, " ")}
+                          </button>
+                        ))}
+                    </div>
                   </div>
                 </div>
               )}

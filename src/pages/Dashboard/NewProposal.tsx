@@ -52,6 +52,7 @@ export default function NewProposalPage({
     email: "",
     phone: "",
     address: "",
+    aptSuiteUnit: "",
     city: "",
     state: "",
     zip: "",

@@ -113,25 +113,27 @@ const UserDashboard = () => {
 
       {/* stat cards */}
       <div className="mt-8 mb-5 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm text-blue-600 font-medium">Total Projects</div>
-            <div className="text-2xl font-semibold mt-1">
+        {/* Three across even on a phone — stacking them pushed the project
+            list below the fold on every visit. */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+            <div className="text-[11px] sm:text-sm text-blue-600 font-medium leading-tight">Total Projects</div>
+            <div className="text-xl sm:text-2xl font-semibold mt-1">
               {isLoadingStats ? "—" : stats.totalProjects}
             </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm text-green-600 font-medium">Active Proposals</div>
-            <div className="text-2xl font-semibold mt-1">
+          <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
+            <div className="text-[11px] sm:text-sm text-green-600 font-medium leading-tight">Active Proposals</div>
+            <div className="text-xl sm:text-2xl font-semibold mt-1">
               {isLoadingStats ? "—" : stats.activeProposals}
             </div>
           </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="text-sm text-purple-600 font-medium">Completion Rate</div>
-            <div className="text-2xl font-semibold mt-1">
+          <div className="bg-purple-50 p-3 sm:p-4 rounded-lg">
+            <div className="text-[11px] sm:text-sm text-purple-600 font-medium leading-tight">Completion Rate</div>
+            <div className="text-xl sm:text-2xl font-semibold mt-1">
               {isLoadingStats ? "—" : `${stats.completionRate}%`}
             </div>
-            <div className="text-xs text-purple-500 mt-0.5">
+            <div className="hidden sm:block text-xs text-purple-500 mt-0.5">
               {isLoadingStats
                 ? " "
                 : stats.activeProjectCount > 0

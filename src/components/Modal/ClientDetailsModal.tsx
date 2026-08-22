@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   User,
   Mail,
@@ -5,8 +6,11 @@ import {
   MapPin,
   Briefcase,
   CreditCard,
+  Trash2,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useDeleteUserMutation } from "@/redux/api/userApi";
 
 interface ClientDetailsModalProps {
   client: any;
@@ -43,6 +47,27 @@ export default function ClientDetailsModal({ client, onClose }: ClientDetailsMod
   const projects = client.projectRequests || [];
   const payments = client.payments || [];
 
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
+
+  const handleDeleteClient = async () => {
+    if (!deletePassword.trim() || isDeleting) return;
+    try {
+      const result: any = await deleteUser({
+        id: client.id,
+        password: deletePassword,
+      }).unwrap();
+      toast.success(result?.message || "Client account deleted.");
+      setIsDeleteOpen(false);
+      onClose();
+    } catch (error: any) {
+      // A wrong password comes back as 401 — keep the field open to retry.
+      toast.error(error?.data?.message || "Failed to delete this client.");
+      setDeletePassword("");
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] shadow-2xl flex flex-col overflow-hidden">
@@ -64,14 +89,70 @@ export default function ClientDetailsModal({ client, onClose }: ClientDetailsMod
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-black p-1 transition-colors"
-            title="Close"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Deleting a client is destructive, so it is gated the same way
+                deleting a project or a team member is: password confirmation. */}
+            <button
+              onClick={() => {
+                setDeletePassword("");
+                setIsDeleteOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+            >
+              <Trash2 size={14} />
+              Delete Client
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-black p-1 transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
+
+        {isDeleteOpen && (
+          <div className="px-6 py-4 border-b border-red-100 bg-red-50/50">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleDeleteClient();
+              }}
+              className="space-y-3"
+            >
+              <p className="text-xs font-bold text-red-700">
+                Delete {client.name || "this client"}'s account? This cannot be undone.
+                Enter your password to confirm.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  autoFocus
+                  className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!deletePassword.trim() || isDeleting}
+                  className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 cursor-pointer"
+                >
+                  {isDeleting ? "Deleting..." : "Confirm Delete"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-black cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-5 space-y-6">
           {/* Money at a glance */}

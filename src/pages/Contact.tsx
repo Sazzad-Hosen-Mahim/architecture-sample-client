@@ -11,7 +11,7 @@ const Contact = () => {
   const [sendContactMessage, { isLoading }] = useSendContactMessageMutation();
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -42,24 +42,19 @@ const Contact = () => {
       const detail = error?.data?.message;
       toast.error(
         Array.isArray(detail)
-          ? detail[0]?.constraints?.[0] || "Please check the form and try again."
-          : detail || "Could not send your message. Please try again."
+          ? detail[0]?.constraints?.[0] ||
+              "Please check the form and try again."
+          : detail || "Could not send your message. Please try again.",
       );
     }
   };
 
   return (
-    <div>
-      {/* <div className="max-w-7xl mx-auto px-4 mt-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-full hover:bg-gray-100 cursor-pointer"
-        >
-          <ArrowLeft className="w-5 h-5 text-black" />
-        </button>
-      </div> */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold text-center mb-4 md:mb-8">Contact Us</h1>
+    <div className="min-h-screen flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 flex-1">
+        <h1 className="text-3xl font-semibold text-center mb-4 md:mb-8">
+          Contact Us
+        </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -77,7 +72,7 @@ const Contact = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md  focus:outline-none focus:ring-1 focus-border-black "
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:border-black"
                 />
               </div>
               <div>
@@ -94,7 +89,7 @@ const Contact = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md  focus:outline-none focus:ring-1 focus-border-black"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:border-black"
                 />
               </div>
               <div>
@@ -111,7 +106,7 @@ const Contact = () => {
                   value={formData.message}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md  focus:outline-none focus:ring-1 focus-border-black resize-vertical"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:border-black resize-vertical"
                 />
               </div>
               {/* Honeypot — hidden from real users, catches naive bots. */}
@@ -125,55 +120,61 @@ const Contact = () => {
                 aria-hidden="true"
                 className="hidden"
               />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-1/2 bg-black hover:bg-gray-800 cursor-pointer text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  "Send Message"
-                )}
-              </button>
             </form>
           </div>
-          <div className="space-y-8">
+          <div className="space-y-4">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
               <div className="p-6">
                 <h2 className="text-lg font-semibold mb-4">
                   Contact Information
                 </h2>
                 <div className="space-y-4">
-                  {/* <div className="flex items-center">
-                    <MapPin className="w-5 h-5 mr-3 text-gray-400" />
-                    <span className="text-gray-500">
-                      1222 Market St. Suite 400, Oakland, CA 92101
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <Phone className="w-5 h-5 mr-3 text-gray-400" />
-                    <span className="text-gray-500">(925) 922-4374</span>
-                  </div> */}
                   <div className="flex items-center">
                     <Mail className="w-5 h-5 mr-3 text-gray-400" />
-                    <span className="text-gray-500">
+                    <span className="text-gray-800 font-semibold">
                       contactus@architecturesimple.com
                     </span>
                   </div>
                   <div>
-                    <p className="text-gray-600">Please email the contact above. Additional contact information can be given through their response if necessary.</p>
+                    <p className="text-gray-600">
+                      Please email the contact above. Additional contact
+                      information can be given through our response if
+                      necessary.
+                    </p>
+                    <p className="text-gray-800 mt-4">
+                      <span className="font-bold">
+                        Special Note from the CEO:
+                      </span>{" "}
+                      I will appreciate notes, tips, or pointers on how to
+                      improve this website application. Please also use this
+                      form to let me know how we can improve your experience
+                      using this site. Thank you.
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              onClick={handleSubmit}
+              className="w-full bg-black hover:bg-gray-800 cursor-pointer text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send Message"
+              )}
+            </button>
           </div>
         </div>
       </div>
-      <div className="mb-42 mt-12">
+
+      {/* HeroSocialMedia with proper spacing */}
+      <div className="mt-16 mb-32">
         <HeroSocialMedia />
       </div>
     </div>

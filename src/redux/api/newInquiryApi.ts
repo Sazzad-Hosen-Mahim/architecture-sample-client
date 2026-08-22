@@ -7,8 +7,10 @@ export interface NewInquiryClientInfo {
     email: string;
     phone?: string;
     address?: string;
+    aptSuiteUnit?: string;
     city?: string;
     state?: string;
+    zip?: string;
     country?: string;
     additionalNotes?: string;
 }
@@ -24,10 +26,13 @@ export interface NewInquiryProjectInfo {
     country?: string;
     sameAsMailingAddress?: boolean;
     serviceType?: string;
+    /** Free text captured when serviceType is the "Other" option */
+    serviceTypeOther?: string;
     projectType?: string;
+    /** Free text captured when projectType is "other" */
+    projectTypeOther?: string;
     squareFootage?: string;
     budgetRange?: string;
-    timeline?: string;
 }
 
 export interface CreateNewInquiryRequest {

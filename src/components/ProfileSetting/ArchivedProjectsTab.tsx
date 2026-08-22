@@ -15,8 +15,10 @@ import {
     Trash2,
     Search,
     AlertCircle,
-    Archive
+    Archive,
+    Eye
 } from "lucide-react";
+import ProjectDetailsModal from "@/components/Deshboard/ProjectDetailesModal";
 import {
     useGetArchivedProjectsQuery,
     useUnarchiveProjectMutation,
@@ -44,6 +46,7 @@ export function ArchivedProjectsTab() {
     const [deleteProject] = useDeleteProjectMutation();
 
     const [searchTerm, setSearchTerm] = useState("");
+    const [detailsProject, setDetailsProject] = useState<any>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
     const [confirmText, setConfirmText] = useState("");
@@ -165,6 +168,19 @@ export function ArchivedProjectsTab() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
+                                            {/* Archiving hides a project from the
+                                                studio list, but admins and finance
+                                                still need to read what was on it. */}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                                                onClick={() => setDetailsProject(project)}
+                                                title="View Project Details"
+                                            >
+                                                <Eye className="w-4 h-4 mr-1" />
+                                                View Details
+                                            </Button>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -251,6 +267,14 @@ export function ArchivedProjectsTab() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Read-only view of an archived project — the same modal the studio
+                list uses, so nothing has to be restored just to look at it. */}
+            <ProjectDetailsModal
+                isOpen={!!detailsProject}
+                onClose={() => setDetailsProject(null)}
+                project={detailsProject}
+            />
         </div>
     );
 }

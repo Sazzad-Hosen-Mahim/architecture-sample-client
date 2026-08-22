@@ -18,6 +18,7 @@ import {
   Filter,
   Archive,
   ChevronDown,
+  ArrowDownAZ,
 } from "lucide-react";
 import TimecardReviewDialog from "@/components/Deshboard/TimeCardDialog/TimecardReviewDialog";
 import { generatePayrollPDF } from "@/utils/payrollPDFGenerator";
@@ -37,6 +38,7 @@ const TimecardsListTab = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(-1); // -1 means "All Periods"
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [search, setSearch] = useState("");
+  const [sortByEmployee, setSortByEmployee] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedTaxId, setExpandedTaxId] = useState<string | null>(null);
   const [selectedTimecardId, setSelectedTimecardId] = useState<string | null>(null);
@@ -94,8 +96,14 @@ const TimecardsListTab = () => {
           location: profile?.state || null,
           breakdown,
         };
+      })
+      // Grouping every record for one person together makes a payroll run far
+      // easier to read than the default date order.
+      .sort((a, b) => {
+        if (!sortByEmployee) return 0;
+        return (a.employee?.name || "").localeCompare(b.employee?.name || "");
       });
-  }, [timecards, search, statusFilter]);
+  }, [timecards, search, statusFilter, sortByEmployee]);
 
   /** Grand totals across every visible row. */
   const grandTotals = useMemo(
@@ -195,6 +203,21 @@ const TimecardsListTab = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            {/* Groups every record for one person together for a payroll run. */}
+            <button
+              type="button"
+              onClick={() => setSortByEmployee((prev) => !prev)}
+              aria-pressed={sortByEmployee}
+              className={`flex items-center gap-2 border px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
+                sortByEmployee
+                  ? "bg-gray-900 border-gray-900 text-white"
+                  : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <ArrowDownAZ size={14} />
+              Sort By Employee
+            </button>
+
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl">
               <Calendar size={14} className="text-gray-400" />
               <select

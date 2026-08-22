@@ -12,6 +12,7 @@ import {
     toDateInputValue,
     type DaySlot,
 } from "@/utils/scheduleSlots";
+import { useGetOfficeHoursQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
 
 export interface SlotSelection {
     /** Local `yyyy-mm-dd`. Empty until a day is chosen. */
@@ -109,9 +110,17 @@ export default function MeetingSlotPicker({
 
     const busy = data?.data?.busy || [];
 
+    // The studio's booking window. The server rejects anything outside it, so
+    // the grid greys those slots out rather than letting a client pick one.
+    const { data: officeHoursData } = useGetOfficeHoursQuery();
+    const officeHours = officeHoursData?.data ?? null;
+
     const slots: DaySlot[] = useMemo(
-        () => (selectedDay ? buildDaySlots(selectedDay, busy) : []),
-        [selectedDay, busy]
+        () =>
+            selectedDay
+                ? buildDaySlots(selectedDay, busy, { officeHours })
+                : [],
+        [selectedDay, busy, officeHours]
     );
 
     // A slot that becomes unavailable while it is selected (someone else booked

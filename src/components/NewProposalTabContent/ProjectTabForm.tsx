@@ -16,6 +16,11 @@ import {
 } from "@/redux/api/adminDashboard/proposalApi";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
+import {
+  CountrySelect,
+  StateSelect,
+  CitySelect,
+} from "@/components/Common/LocationSelects";
 
 interface ProjectFormProps {
   projectInfo: {
@@ -48,8 +53,8 @@ export default function ProjectTabForm({
   handleBack,
   id,
 }: ProjectFormProps) {
-
-  const [submitNewProposal, { isLoading: isCreating }] = useSubmitNewProposalMutation();
+  const [submitNewProposal, { isLoading: isCreating }] =
+    useSubmitNewProposalMutation();
   const [updateProposalDetails, { isLoading: isUpdating }] =
     useUpdateProposalDetailsMutation();
   const isLoading = isCreating || isUpdating;
@@ -64,7 +69,10 @@ export default function ProjectTabForm({
       const draft = parsed?.data;
       if (!draft?.id) return null;
       // A cookie left over from another project must not be edited.
-      if (draft.projectRequestId && String(draft.projectRequestId) !== String(id)) {
+      if (
+        draft.projectRequestId &&
+        String(draft.projectRequestId) !== String(id)
+      ) {
         return null;
       }
       return draft as { id: string; projectRequestId?: string };
@@ -76,17 +84,24 @@ export default function ProjectTabForm({
   // Helper function to convert display values to API enum values
   const convertToApiFormat = (serviceType: string, projectType: string) => {
     const serviceTypeMapping: Record<string, string> = {
-      'New Construction': 'NEW_CONSTRUCTION',
-      'Renovation': 'RENOVATION',
-      'Addition': 'ADDITION',
-      'Interior Design': 'INTERIOR_DESIGN',
+      "New Construction": "NEW_CONSTRUCTION",
+      Renovation: "RENOVATION",
+      "Tenant Improvement": "TENANT_IMPROVEMENT",
+      Addition: "ADDITION",
+      "Interior Design": "INTERIOR_DESIGN",
+      "Landscape Design": "LANDSCAPE_DESIGN",
+      Other: "OTHER",
     };
 
     const projectCategoryMapping: Record<string, string> = {
-      'Residential': 'RESIDENTIAL',
-      'Commercial': 'COMMERCIAL',
-      'Mixed-Use': 'MIXED_USE',
-      'Institutional': 'INSTITUTIONAL',
+      Residential: "RESIDENTIAL",
+      Commercial: "COMMERCIAL",
+      Interior: "INTERIOR",
+      "Mixed-Use": "MIXED_USE",
+      "Tenant Improvement": "TENANT_IMPROVEMENT",
+      Remodel: "REMODEL",
+      Addition: "ADDITION",
+      Other: "OTHER",
     };
 
     return {
@@ -103,7 +118,7 @@ export default function ProjectTabForm({
 
     const { serviceType, projectCategory } = convertToApiFormat(
       projectInfo.serviceType,
-      projectInfo.projectType
+      projectInfo.projectType,
     );
 
     const cleanPayload = {
@@ -116,10 +131,12 @@ export default function ProjectTabForm({
       state: String(projectInfo.state || ""),
       country: String(projectInfo.country || ""),
       zip: String(projectInfo.zip || ""),
-      serviceType: String(serviceType).toUpperCase().replace(/\s+/g, '_'),
-      projectCategory: String(projectCategory).toUpperCase().replace(/\s+/g, '_'),
+      serviceType: String(serviceType).toUpperCase().replace(/\s+/g, "_"),
+      projectCategory: String(projectCategory)
+        .toUpperCase()
+        .replace(/\s+/g, "_"),
       squareFootage: projectInfo.squareFootage
-        ? `${projectInfo.squareFootage} ${projectInfo.projectSizeUnit === 'sqm' ? 'sq m' : 'sq ft'}`
+        ? `${projectInfo.squareFootage} ${projectInfo.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}`
         : "",
       budgetRange: String(projectInfo.budgetRange || ""),
       // expectedTimeline: String(projectInfo.timeline || ""),
@@ -138,7 +155,7 @@ export default function ProjectTabForm({
             projectRequestId: proposal?.projectRequestId || id,
           },
         }),
-        { expires: 7 }
+        { expires: 7 },
       );
     };
 
@@ -154,7 +171,10 @@ export default function ProjectTabForm({
       } catch (error: any) {
         // The draft is gone or no longer editable (already sent) — fall through
         // and start a fresh proposal rather than dead-ending the PM here.
-        console.error("Failed to update the open draft, creating a new one:", error);
+        console.error(
+          "Failed to update the open draft, creating a new one:",
+          error,
+        );
         Cookies.remove("proposal_data");
       }
     }
@@ -166,7 +186,8 @@ export default function ProjectTabForm({
     } catch (error: any) {
       console.error("Failed to create proposal:", error);
       toast.error(
-        error?.data?.message || "Could not save the project details. Please try again."
+        error?.data?.message ||
+          "Could not save the project details. Please try again.",
       );
     }
   };
@@ -240,7 +261,7 @@ export default function ProjectTabForm({
               onCheckedChange={(checked) =>
                 handleProjectInfoChange(
                   "sameAsMailingAddress",
-                  checked === true
+                  checked === true,
                 )
               }
             />
@@ -266,43 +287,52 @@ export default function ProjectTabForm({
           />
         </div>
 
-        {/* Country / City / State / ZIP */}
+        {/* Country / State / City / ZIP */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="projectCountry">Country</Label>
-            <Input
+            <CountrySelect
               id="projectCountry"
               value={projectInfo.country}
-              onChange={(e) => handleProjectInfoChange("country", e.target.value)}
-              placeholder="Enter country"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="projectCity">City</Label>
-            <Input
-              id="projectCity"
-              value={projectInfo.city}
-              onChange={(e) => handleProjectInfoChange("city", e.target.value)}
+              onChange={(value) => {
+                handleProjectInfoChange("country", value);
+                handleProjectInfoChange("state", "");
+                handleProjectInfoChange("city", "");
+              }}
             />
           </div>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="projectState">State</Label>
-            <Input
+            <StateSelect
               id="projectState"
+              country={projectInfo.country}
               value={projectInfo.state}
-              onChange={(e) => handleProjectInfoChange("state", e.target.value)}
-              placeholder="Enter state"
+              onChange={(value) => {
+                handleProjectInfoChange("state", value);
+                handleProjectInfoChange("city", "");
+              }}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="projectZip">ZIP</Label>
+            <Label htmlFor="projectCity">City</Label>
+            <CitySelect
+              id="projectCity"
+              country={projectInfo.country}
+              state={projectInfo.state}
+              value={projectInfo.city}
+              onChange={(value) => handleProjectInfoChange("city", value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="projectZip">Zip Code</Label>
             <Input
               id="projectZip"
               value={projectInfo.zip}
               onChange={(e) => handleProjectInfoChange("zip", e.target.value)}
+              placeholder="Enter zip / postal code"
             />
           </div>
         </div>
@@ -326,8 +356,12 @@ export default function ProjectTabForm({
             <SelectContent className="bg-white">
               <SelectItem value="New Construction">New Construction</SelectItem>
               <SelectItem value="Renovation">Renovation</SelectItem>
+              <SelectItem value="Tenant Improvement">
+                Tenant Improvement
+              </SelectItem>
               <SelectItem value="Addition">Addition</SelectItem>
               <SelectItem value="Interior Design">Interior Design</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -346,8 +380,14 @@ export default function ProjectTabForm({
             <SelectContent className="bg-white">
               <SelectItem value="Residential">Residential</SelectItem>
               <SelectItem value="Commercial">Commercial</SelectItem>
+              <SelectItem value="Interior">Interior</SelectItem>
               <SelectItem value="Mixed-Use">Mixed-Use</SelectItem>
-              <SelectItem value="Institutional">Institutional</SelectItem>
+              <SelectItem value="Tenant Improvement">
+                Tenant Improvement
+              </SelectItem>
+              <SelectItem value="Remodel">Remodel</SelectItem>
+              <SelectItem value="Addition">Addition</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -369,14 +409,26 @@ export default function ProjectTabForm({
             <div>
               <Select
                 value={projectInfo.projectSizeUnit || "sqf"}
-                onValueChange={(v) => handleProjectInfoChange("projectSizeUnit", v)}
+                onValueChange={(v) =>
+                  handleProjectInfoChange("projectSizeUnit", v)
+                }
               >
                 <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
-                  <SelectValue placeholder="Sq Ft / Sq M" />
+                  <SelectValue placeholder="sq² / m²" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="sqf" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq Ft</SelectItem>
-                  <SelectItem value="sqm" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq M</SelectItem>
+                  <SelectItem
+                    value="sqf"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    sq²
+                  </SelectItem>
+                  <SelectItem
+                    value="sqm"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    m²
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -418,7 +470,11 @@ export default function ProjectTabForm({
       </div>
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={handleBack} className="cursor-pointer hover:bg-gray-200 hover:border-gray-200">
+        <Button
+          variant="outline"
+          onClick={handleBack}
+          className="cursor-pointer hover:bg-gray-200 hover:border-gray-200"
+        >
           Back
         </Button>
         <Button

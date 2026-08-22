@@ -6,16 +6,6 @@ import GridpatternBg from "@/components/GridpatternBg/GridpatternBg";
 
 const Layout: React.FC = () => {
   return (
-    // <div>
-    //   <Navbar />
-    //   <main>
-    //     <Outlet />
-    //   </main>
-    //   {/* Floating menu available on every page */}
-    //   <FloatingMenu />
-    //   {/* <Footer /> */}
-    // </div>
-
     <div className="relative min-h-screen">
       {/*  Background grid pattern */}
       <GridpatternBg />

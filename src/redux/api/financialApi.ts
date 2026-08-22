@@ -21,6 +21,8 @@ export interface FinancialHistorySummary {
   isCompleted: boolean;
   totalDays: number;
   totalMonths: number;
+  /** Divisor used for the averages — the elapsed months, floored at 1. */
+  monthsForAverage?: number;
   monthCount: number;
   totalContract: number;
   laborCost: number;

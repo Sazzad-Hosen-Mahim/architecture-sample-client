@@ -7,7 +7,11 @@ import {
   useGetProposalFullQuery,
 } from "@/redux/api/adminDashboard/proposalApi";
 import { useGetMasterContractArticlesQuery } from "@/redux/api/adminDashboard/masterContractApi";
-import { getServiceScopeDescription } from "@/lib/serviceDescriptions";
+import {
+  getServiceScopeDescription,
+  getServiceSectionHeading,
+  normalizeBullet,
+} from "@/lib/serviceDescriptions";
 import {
   getArticleNumber,
   isCoreArticle,
@@ -15,10 +19,18 @@ import {
   isScopeArticle,
 } from "@/utils/contractArticles";
 import { useGetAmendmentContractArticlesQuery } from "@/redux/api/adminDashboard/amendmentContractApi";
-import { pdf } from '@react-pdf/renderer';
+import { pdf } from "@react-pdf/renderer";
 import { ContractPDF } from "@/components/Deshboard/ContractReviewModal";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, CheckCircle, LayoutDashboard, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
+  LayoutDashboard,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useResponsiveSignatureCanvas } from "@/hooks/useResponsiveSignatureCanvas";
 import { useNavigate } from "react-router-dom";
 
@@ -70,27 +82,35 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   const navigate = useNavigate();
   // inside SignProposalTab
 
-
   const proposalDataString = Cookies.get("proposal_data") || "";
-  const parsedProposalData = proposalDataString ? JSON.parse(proposalDataString) : null;
+  const parsedProposalData = proposalDataString
+    ? JSON.parse(proposalDataString)
+    : null;
   const id = parsedProposalData?.data?.id;
   // Server-generated and unique per proposal (e.g. "PROP-2026-0016").
   const proposalNumber = parsedProposalData?.data?.proposalNumber || "";
   const proposalCreatedAt = parsedProposalData?.data?.createdAt;
 
-  const [sendProposalToClient, { isLoading: isSending }] = useSendProposalToClientMutation();
-  const architectSigWrapperRef = useResponsiveSignatureCanvas(architectSignatureRef, 150);
+  const [sendProposalToClient, { isLoading: isSending }] =
+    useSendProposalToClientMutation();
+  const architectSigWrapperRef = useResponsiveSignatureCanvas(
+    architectSignatureRef,
+    150,
+  );
   // An amendment is governed by the Amendment Contract articles, a first
   // proposal by the Master Contract ones. The send flow already snapshots the
   // right set onto the proposal — this review has to read from the same source
   // or the PM signs off on wording the client never sees.
-  const { data: proposalFull } = useGetProposalFullQuery(id || "", { skip: !id });
+  const { data: proposalFull } = useGetProposalFullQuery(id || "", {
+    skip: !id,
+  });
   const isAmendment = proposalFull?.data?.proposalType === "AMENDMENT";
 
   // Both sets are fetched and cached; picking between them here avoids the
   // articles flickering from one template to the other as the type resolves.
   const { data: masterContractArticles } = useGetMasterContractArticlesQuery();
-  const { data: amendmentContractArticles } = useGetAmendmentContractArticlesQuery();
+  const { data: amendmentContractArticles } =
+    useGetAmendmentContractArticlesQuery();
   const articles: any[] =
     (isAmendment
       ? amendmentContractArticles?.data
@@ -112,14 +132,23 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   // [construction drawings]", which was wrong for any other selection — an
   // amendment adding a single "CCU Extension" phase still claimed all three.
   const selectedPhaseLabels: string[] = selectedObjectives
-    .map((objectiveId: string) => objectives.find((o) => o.id === objectiveId)?.label)
+    .map(
+      (objectiveId: string) =>
+        objectives.find((o) => o.id === objectiveId)?.label,
+    )
     .filter((label): label is string => Boolean(label));
 
-  const phasesText = selectedPhaseLabels.map((label) => `[${label}]`).join(", ");
+  const phasesText = selectedPhaseLabels
+    .map((label) => `[${label}]`)
+    .join(", ");
 
   // Per-service scope notes state - each service gets its own notes
-  const [perServiceNotes, setPerServiceNotes] = useState<Record<string, string[]>>({});
-  const [perServiceNewNote, setPerServiceNewNote] = useState<Record<string, string>>({});
+  const [perServiceNotes, setPerServiceNotes] = useState<
+    Record<string, string[]>
+  >({});
+  const [perServiceNewNote, setPerServiceNewNote] = useState<
+    Record<string, string>
+  >({});
 
   const handleAddServiceNote = (serviceId: string) => {
     const trimmed = (perServiceNewNote[serviceId] || "").trim();
@@ -141,7 +170,9 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   // Serialize all per-service notes into JSON for backend storage
   // Format: { "Service Label": ["note1", "note2"], ... }
   const serializeScopeNotes = (): string | undefined => {
-    const entries = Object.entries(perServiceNotes).filter(([, notes]) => notes.length > 0);
+    const entries = Object.entries(perServiceNotes).filter(
+      ([, notes]) => notes.length > 0,
+    );
     if (entries.length === 0) return undefined;
     const notesByLabel: Record<string, string[]> = {};
     for (const [serviceId, notes] of entries) {
@@ -155,7 +186,9 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   // Set once the proposal reaches the client, which swaps this step for the
   // confirmation screen. `emailSent` is reported separately because the
   // proposal is sent even when the notification email bounces.
-  const [sentResult, setSentResult] = useState<{ emailSent: boolean } | null>(null);
+  const [sentResult, setSentResult] = useState<{ emailSent: boolean } | null>(
+    null,
+  );
 
   const handleSendProposalToClient = async () => {
     if (!id) {
@@ -163,22 +196,40 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
       return;
     }
 
-    let architectSignature = "";
-    if (architectSignatureRef.current && !architectSignatureRef.current.isEmpty()) {
-      architectSignature = architectSignatureRef.current.toDataURL("image/png");
+    // The backend only stores the contract signature when one is actually sent,
+    // so letting an empty pad through here silently ships the client an unsigned
+    // contract that reads "Pending signature" on their side.
+    if (
+      !architectSignatureRef.current ||
+      architectSignatureRef.current.isEmpty()
+    ) {
+      toast.error("Please sign the contract before sending it to the client.");
+      return;
     }
+
+    const architectSignature =
+      architectSignatureRef.current.toDataURL("image/png");
 
     try {
       // Include per-service scope notes in the payload
       const scopeNotesText = serializeScopeNotes();
-      const result: any = await sendProposalToClient({ id, architectSignature, scopeNotes: scopeNotesText }).unwrap();
+      const result: any = await sendProposalToClient({
+        id,
+        architectSignature,
+        scopeNotes: scopeNotesText,
+      }).unwrap();
       // The proposal is sent even if the notification email bounces, so report
       // what actually happened rather than a blanket success.
       const emailSent = result?.data?.emailSent !== false;
       if (emailSent) {
-        toast.success(result?.message || "Proposal sent to client successfully!");
+        toast.success(
+          result?.message || "Proposal sent to client successfully!",
+        );
       } else {
-        toast.warning(result?.message || "Proposal sent, but the email could not be delivered.");
+        toast.warning(
+          result?.message ||
+            "Proposal sent, but the email could not be delivered.",
+        );
       }
 
       // The wizard is finished with this proposal — drop the draft cookie so a
@@ -199,8 +250,13 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
       const mockContract = {
         proposalNumber,
         createdAt: proposalCreatedAt,
-        clientName: `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() || "Client Name",
-        projectLocation: projectInfo?.streetAddress || projectInfo?.location || "Project Location",
+        clientName:
+          `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() ||
+          "Client Name",
+        projectLocation:
+          projectInfo?.streetAddress ||
+          projectInfo?.location ||
+          "Project Location",
         serviceType: projectInfo?.serviceType || "Design Services",
         projectName: projectInfo?.projectName || "New Project",
         notes: scopeNotesText, // Pass the per-service scope notes
@@ -212,16 +268,18 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
           amount: objectiveCosts[id] || 0,
           order: objectiveOrders?.[id] ?? idx + 1,
         })),
-        architectContractSignature: architectSignatureRef.current?.isEmpty() ? null : architectSignatureRef.current?.toDataURL(),
-        architectSignedAt: new Date().toISOString()
+        architectContractSignature: architectSignatureRef.current?.isEmpty()
+          ? null
+          : architectSignatureRef.current?.toDataURL(),
+        architectSignedAt: new Date().toISOString(),
       };
 
       const doc = <ContractPDF contract={mockContract} sections={articles} />;
       const blob = await pdf(doc).toBlob();
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `Proposal_${mockContract.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.download = `Proposal_${mockContract.clientName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -233,7 +291,8 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
   };
 
   const clientFullName =
-    `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() || "the client";
+    `${clientInfo?.firstName || ""} ${clientInfo?.lastName || ""}`.trim() ||
+    "the client";
 
   if (sentResult) {
     return (
@@ -243,10 +302,14 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Congratulations!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            Congratulations!
+          </h2>
           <p className="text-base text-gray-700 mb-6">
             Your proposal was sent to{" "}
-            <span className="font-semibold text-gray-900">{clientFullName}</span>{" "}
+            <span className="font-semibold text-gray-900">
+              {clientFullName}
+            </span>{" "}
             successfully.
           </p>
 
@@ -285,8 +348,8 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
 
           {sentResult.emailSent ? (
             <p className="text-sm text-gray-500 mb-8">
-              The client has been emailed a link to review and sign the contract.
-              You'll be notified as soon as they respond.
+              The client has been emailed a link to review and sign the
+              contract. You'll be notified as soon as they respond.
             </p>
           ) : (
             // Sending succeeded but the notification did not — say so plainly
@@ -307,7 +370,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                 navigate(
                   projectRequestId
                     ? `/dashboard?project=${projectRequestId}&tab=contracts`
-                    : "/dashboard"
+                    : "/dashboard",
                 )
               }
               className="bg-slate-800 hover:bg-slate-900 text-white cursor-pointer"
@@ -379,19 +442,17 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
           </p>
         </div>
 
-
-
-
-
         <div className="text-sm">
           {/* Dynamic Contract Articles from Settings */}
 
-
           {/* Project Understanding */}
           <div className="mb-4">
-            <h3 className="font-semibold mb-4 text-base">Project Understanding</h3>
+            <h3 className="font-semibold mb-4 text-base">
+              Project Understanding
+            </h3>
             <p className="mb-4 text-sm">
-              The Owner would like to build a {projectInfo?.serviceType} on a {projectInfo.city}, {projectInfo.state}.
+              The Owner would like to build a {projectInfo?.serviceType} on a{" "}
+              {projectInfo.city}, {projectInfo.state}.
             </p>
             {projectInfo.projectDescription && (
               <p className="mb-4 text-sm">{projectInfo.projectDescription}</p>
@@ -401,8 +462,8 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             )}
 
             <p>
-              Owner has requested this design services proposal from Architecture
-              Simple to provide pre-design
+              Owner has requested this design services proposal from
+              Architecture Simple to provide pre-design
               {phasesText ? <>, {phasesText}</> : ""} for the proposed building;
               coordinate with the owner’s consultant; and provide plan check
               bidding, construction support, and record drawings.
@@ -424,25 +485,92 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
               </div>
             )
           ) : (
-          <div className="mb-8  pt-8">
-            <h3 className="text-base font-semibold mb-4">
-              Article 1 - Definition
-            </h3>
-            <p>To establish a clear understanding, the following terms are defined for use throughout this Agreement:</p>
-            <ul>
-              <li> <strong> "Architect" </strong>refers to Architecture Simple Inc., represented by Eric Rivera, AIA, who will provide professional architectural services as detailed in this Agreement.</li>
-              <li>	<strong>"Owner"</strong> refers to {clientInfo?.firstName} {clientInfo?.lastName}, the individual or entity who is entering into this Agreement with the Architect to develop the Project.</li>
-              <li>	<strong>"Project"</strong> refers to the construction of a {projectInfo?.serviceType} at {projectInfo.projectDescription} in {projectInfo.city}, {projectInfo.state}, as more specifically described in the Proposal attached hereto.</li>
-              <li>	<strong>"Work"</strong> refers to all architectural, engineering, and related professional services required for the design, development, and documentation of the Project, as set forth in the Scope of Services.</li>
-              <li>	<strong>“Written Notice”</strong> shall include electronic mail (email), certified mail, or any other documented form of communication acknowledged by both parties.</li>
-              <li>  <strong>“Instruments of Service"</strong> refer to all drawings, specifications, calculations, and related materials prepared by the Architect as part of professional services.</li>
-              <li>	<strong>"Design Documents"</strong> refers to the completed Schematic Design and Design Development documents, including all drawings, specifications, and other materials prepared by the Architect as part of the development of the Project.</li>
-              <li> 	<strong>"Construction Documents" (CDs) </strong> refers to the completed set of final documents that provide the necessary details for construction and permitting, including plans, specifications, and other materials, prepared by the Architect.</li>
-              <li>	<strong>"Bidding Documents"</strong> refers to the final, completed Construction Documents and any related documents issued to contractors or bidders.</li>
-              <li>	<strong>"Substantial Completion"</strong> means the point in time when the Project is sufficiently complete in accordance with the Contract Documents, allowing the Owner to occupy or utilize the building for its intended use.</li>
-              <li> 	<strong>"Completion"</strong> refers to the final completion of all construction work, including punch list items and final inspections, after which the Project is fully delivered to the Owner.</li>
-            </ul>
-          </div>
+            <div className="mb-8  pt-8">
+              <h3 className="text-base font-semibold mb-4">
+                Article 1 - Definition
+              </h3>
+              <p>
+                To establish a clear understanding, the following terms are
+                defined for use throughout this Agreement:
+              </p>
+              <ul>
+                <li>
+                  {" "}
+                  <strong> "Architect" </strong>refers to Architecture Simple
+                  Inc., represented by Eric Rivera, AIA, who will provide
+                  professional architectural services as detailed in this
+                  Agreement.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Owner"</strong> refers to {clientInfo?.firstName}{" "}
+                  {clientInfo?.lastName}, the individual or entity who is
+                  entering into this Agreement with the Architect to develop the
+                  Project.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Project"</strong> refers to the construction of a{" "}
+                  {projectInfo?.serviceType} at {projectInfo.projectDescription}{" "}
+                  in {projectInfo.city}, {projectInfo.state}, as more
+                  specifically described in the Proposal attached hereto.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Work"</strong> refers to all architectural,
+                  engineering, and related professional services required for
+                  the design, development, and documentation of the Project, as
+                  set forth in the Scope of Services.
+                </li>
+                <li>
+                  {" "}
+                  <strong>“Written Notice”</strong> shall include electronic
+                  mail (email), certified mail, or any other documented form of
+                  communication acknowledged by both parties.
+                </li>
+                <li>
+                  {" "}
+                  <strong>“Instruments of Service"</strong> refer to all
+                  drawings, specifications, calculations, and related materials
+                  prepared by the Architect as part of professional services.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Design Documents"</strong> refers to the completed
+                  Schematic Design and Design Development documents, including
+                  all drawings, specifications, and other materials prepared by
+                  the Architect as part of the development of the Project.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Construction Documents" (CDs) </strong> refers to the
+                  completed set of final documents that provide the necessary
+                  details for construction and permitting, including plans,
+                  specifications, and other materials, prepared by the
+                  Architect.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Bidding Documents"</strong> refers to the final,
+                  completed Construction Documents and any related documents
+                  issued to contractors or bidders.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Substantial Completion"</strong> means the point in
+                  time when the Project is sufficiently complete in accordance
+                  with the Contract Documents, allowing the Owner to occupy or
+                  utilize the building for its intended use.
+                </li>
+                <li>
+                  {" "}
+                  <strong>"Completion"</strong> refers to the final completion
+                  of all construction work, including punch list items and final
+                  inspections, after which the Project is fully delivered to the
+                  Owner.
+                </li>
+              </ul>
+            </div>
           )}
 
           {/* Article 2 - Scope of Services (Specialized section) */}
@@ -463,7 +591,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
             )}
             {selectedObjectives.length > 0 ? (
               <div className="space-y-6 mb-4">
-                {selectedObjectives.map((id) => {
+                {selectedObjectives.map((id, index) => {
                   const objective = objectives.find((o) => o.id === id);
                   if (!objective) return null;
                   const scopeDesc = getServiceScopeDescription(objective.label);
@@ -471,25 +599,60 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                   const serviceNewNote = perServiceNewNote[id] || "";
 
                   return (
-                    <div key={id} className="space-y-2 border border-gray-100 rounded-lg p-4">
+                    <div
+                      key={id}
+                      className="space-y-2 border border-gray-100 rounded-lg p-4"
+                    >
                       <p className="text-sm font-bold text-gray-900">
-                        {scopeDesc ? `${scopeDesc.sectionNumber} ${scopeDesc.title}` : objective.label}
+                        {getServiceSectionHeading(index, objective.label)}
                       </p>
+                      {scopeDesc?.intro && (
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          {scopeDesc.intro}
+                        </p>
+                      )}
                       {scopeDesc && (
                         <ul className="list-disc pl-6 space-y-1 text-xs text-gray-700">
-                          {scopeDesc.bullets.map((bullet, idx) => (
-                            <li key={idx} className="leading-relaxed">{bullet}</li>
-                          ))}
+                          {scopeDesc.bullets.map((bullet, idx) => {
+                            const { text, subBullets } =
+                              normalizeBullet(bullet);
+                            return (
+                              <li key={idx} className="leading-relaxed">
+                                <span className="whitespace-pre-line">
+                                  {text}
+                                </span>
+                                {subBullets && subBullets.length > 0 && (
+                                  <ul className="list-[circle] pl-5 mt-1 space-y-0.5">
+                                    {subBullets.map((sub, subIdx) => (
+                                      <li
+                                        key={subIdx}
+                                        className="leading-relaxed whitespace-pre-line"
+                                      >
+                                        {sub}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
 
                       {/* Per-service notes */}
                       {serviceNotes.length > 0 && (
                         <div className="mt-3 space-y-1.5">
-                          <p className="text-xs font-semibold text-gray-600">Additional Notes:</p>
+                          <p className="text-xs font-semibold text-gray-600">
+                            Additional Notes:
+                          </p>
                           {serviceNotes.map((note, idx) => (
-                            <div key={idx} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
-                              <span className="text-xs text-gray-700 flex-1">{idx + 1}. {note}</span>
+                            <div
+                              key={idx}
+                              className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5"
+                            >
+                              <span className="text-xs text-gray-700 flex-1">
+                                {idx + 1}. {note}
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveServiceNote(id, idx)}
@@ -508,7 +671,10 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
                           type="text"
                           value={serviceNewNote}
                           onChange={(e) =>
-                            setPerServiceNewNote((prev) => ({ ...prev, [id]: e.target.value }))
+                            setPerServiceNewNote((prev) => ({
+                              ...prev,
+                              [id]: e.target.value,
+                            }))
                           }
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -547,7 +713,7 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
               {paymentArticle?.title || "Article 3 - Payment Terms"}
             </h3>
             {/* ... table and details ... */}
-            <h4 className="font-semibold mb-2">3.1 Payment Structure</h4>
+            <h4 className="font-semibold mb-2">3.01 Payment Structure</h4>
             <p className="mb-4">
               The total fee shall be (
               {paymentMethod === "lumpSum"
@@ -603,29 +769,25 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
               .filter((article: any) => !isCoreArticle(article))
               .map((article: any) => (
                 <div key={article.id} className="mb-8">
-                  <h3 className="text-base font-semibold mb-4">{article.title}</h3>
+                  <h3 className="text-base font-semibold mb-4">
+                    {article.title}
+                  </h3>
                   <div className="whitespace-pre-wrap leading-relaxed text-sm">
                     {article.content}
                   </div>
                 </div>
-              ))
-          }
+              ))}
         </div>
 
         {/* Signatures */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Owner (Client) placeholder */}
-          <div>
-            <h4 className="font-semibold mb-4">OWNER</h4>
-            <div className="border border-dashed p-4 mb-4 h-32 flex items-center justify-center bg-gray-50 italic text-gray-400">
-              Contract Signature will be captured on client view
-            </div>
-          </div>
-
           {/* Architect */}
           <div>
             <h4 className="font-semibold mb-4">ARCHITECT</h4>
-            <div ref={architectSigWrapperRef} className="w-full max-w-[430px] border rounded-md overflow-hidden touch-none">
+            <div
+              ref={architectSigWrapperRef}
+              className="w-full max-w-[430px] border rounded-md overflow-hidden touch-none"
+            >
               <SignatureCanvas
                 ref={architectSignatureRef}
                 canvasProps={{
@@ -645,6 +807,13 @@ const SignProposalTab: React.FC<ProposalSignProps> = ({
               </Button>
             </div>
             <p className="mt-4">Name: Eric Rivera, AIA</p>
+          </div>
+          {/* Owner (Client) placeholder */}
+          <div>
+            <h4 className="font-semibold mb-4">OWNER</h4>
+            <div className="border border-dashed p-4 mb-4 h-32 flex items-center justify-center bg-gray-50 italic text-gray-400">
+              Contract Signature will be captured on client view
+            </div>
           </div>
         </div>
 

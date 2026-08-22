@@ -2,6 +2,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  CountrySelect,
+  StateSelect,
+  CitySelect,
+} from "@/components/Common/LocationSelects";
 
 interface ClientFormProps {
   clientInfo: {
@@ -11,6 +16,7 @@ interface ClientFormProps {
     email: string;
     phone: string;
     address: string;
+    aptSuiteUnit?: string;
     city: string;
     country: string;
     state: string;
@@ -19,14 +25,16 @@ interface ClientFormProps {
   };
   handleClientInfoChange: (field: string, value: string) => void;
   handleNext: () => void;
+  /** Set while the client details are being saved to the project request. */
+  isSaving?: boolean;
 }
 
 export default function ClientTabFrom({
   clientInfo,
   handleClientInfoChange,
   handleNext,
+  isSaving,
 }: ClientFormProps) {
-
   return (
     <div className="bg-white  ">
       <h2 className="text-sm font-semibold mb-6 border-l-4 border-gray-800 pl-3">
@@ -99,56 +107,78 @@ export default function ClientTabFrom({
       </div>
 
       {/* Address */}
-      <div className="mb-6">
-        <Label htmlFor="address" className="mb-3">
-          Street Address
-        </Label>
-        <Input
-          id="address"
-          value={clientInfo.address}
-          onChange={(e) => handleClientInfoChange("address", e.target.value)}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+          <Label htmlFor="address" className="mb-3">
+            Street Address
+          </Label>
+          <Input
+            id="address"
+            value={clientInfo.address}
+            onChange={(e) => handleClientInfoChange("address", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label className="mb-3">Apt/Suite/Unit (optional)</Label>
+          <Input
+            id="aptSuiteUnit"
+            value={clientInfo.aptSuiteUnit}
+            onChange={(e) =>
+              handleClientInfoChange("aptSuiteUnit", e.target.value)
+            }
+          />
+        </div>
       </div>
 
       {/* Location */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="city">City</Label>
-          <Input
-            id="city"
-            value={clientInfo.city}
-            onChange={(e) => handleClientInfoChange("city", e.target.value)}
-          />
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="country">Country</Label>
-          <Input
+          <CountrySelect
             id="country"
             value={clientInfo.country}
-            onChange={(e) => handleClientInfoChange("country", e.target.value)}
-            placeholder="Enter country"
+            // A new country invalidates whatever state/city was picked before.
+            onChange={(value) => {
+              handleClientInfoChange("country", value);
+              handleClientInfoChange("state", "");
+              handleClientInfoChange("city", "");
+            }}
           />
         </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="state">State</Label>
-          <Input
+          <StateSelect
             id="state"
+            country={clientInfo.country}
             value={clientInfo.state}
-            onChange={(e) => handleClientInfoChange("state", e.target.value)}
-            placeholder="Enter state"
+            onChange={(value) => {
+              handleClientInfoChange("state", value);
+              handleClientInfoChange("city", "");
+            }}
           />
         </div>
 
-        {/* <div className="flex flex-col gap-2">
-          <Label htmlFor="zip">ZIP</Label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="city">City</Label>
+          <CitySelect
+            id="city"
+            country={clientInfo.country}
+            state={clientInfo.state}
+            value={clientInfo.city}
+            onChange={(value) => handleClientInfoChange("city", value)}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="zip">Zip Code</Label>
           <Input
             id="zip"
             value={clientInfo.zip}
             onChange={(e) => handleClientInfoChange("zip", e.target.value)}
+            placeholder="Enter zip / postal code"
           />
-        </div> */}
+        </div>
       </div>
 
       {/* Additional Notes */}
@@ -171,9 +201,10 @@ export default function ClientTabFrom({
       <div className="flex justify-end">
         <Button
           onClick={handleNext}
+          disabled={isSaving}
           className="bg-gray-800 text-white hover:bg-black cursor-pointer"
         >
-          Continue to Project
+          {isSaving ? "Saving..." : "Continue to Project"}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { DollarSign, Loader2, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, DollarSign, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
@@ -101,7 +102,13 @@ const AdjustRates = () => {
 
     return (
         <div className="max-w-5xl mx-auto my-3 px-4 space-y-6">
-            <div className="space-y-1">
+            <div className="space-y-3">
+                <Link
+                    to="/dashboard/financials?tab=payroll"
+                    className="inline-flex items-center gap-2 text-gray-500 hover:text-black text-xs font-bold transition-colors"
+                >
+                    <ArrowLeft size={14} /> Back to Accountant Controls
+                </Link>
                 <h1 className="text-2xl font-bold text-gray-900">Adjust Rates</h1>
                 <p className="text-sm text-gray-500">
                     Set the firm-wide billing rate and the consultation fee clients pay before submitting a new project request.

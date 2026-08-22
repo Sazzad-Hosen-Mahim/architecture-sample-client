@@ -13,6 +13,7 @@ import TimeCardDialog from "@/components/Deshboard/TimeCardDialog/TimeCardDialog
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { signOut } from "@/redux/features/auth/authActions";
+import { getUserPhoto } from "@/utils/userPhoto";
 
 export default function NavbarDashboard() {
   const navigate = useNavigate();
@@ -63,7 +64,8 @@ export default function NavbarDashboard() {
               to="/dashboard"
               end
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                  isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -73,19 +75,24 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/media"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                  isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
               Media
             </NavLink>
 
-            {(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
+            {(user?.role === "SUPER_ADMIN" ||
+              user?.role === "ADMIN" ||
+              user?.role === "PROJECT_MANAGER" ||
+              user?.role === "FINANCE") && (
               <>
                 <NavLink
                   to="/dashboard/financials"
                   className={({ isActive }) =>
-                    `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                    `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                      isActive ? "border-b-2 border-black" : ""
                     }`
                   }
                 >
@@ -108,7 +115,8 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/teams"
               className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
+                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                  isActive ? "border-b-2 border-black" : ""
                 }`
               }
             >
@@ -144,7 +152,7 @@ export default function NavbarDashboard() {
           </div>
 
           {/* Logo */}
-          <div className="flex  flex-shrink-1 w-1/3">
+          <div className="flex  flex-shrink-1 w-1/3 justify-center">
             <Link to="/" className="flex items-center gap-2">
               <img src={logo} alt="Logo" className="w-8 h-8" />
               <span className="text-xl font-extralight tracking-wide">
@@ -163,10 +171,10 @@ export default function NavbarDashboard() {
               <PopoverTrigger className="cursor-pointer">
                 {/* <UserAvatar userName="Shaikot mr9" /> */}
                 <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
-                  {user?.imagUrl ? (
+                  {getUserPhoto(user) ? (
                     <img
-                      src={user.imagUrl}
-                      alt={user.name}
+                      src={getUserPhoto(user)}
+                      alt={user?.name}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -240,10 +248,10 @@ export default function NavbarDashboard() {
             <Popover>
               <PopoverTrigger className="cursor-pointer">
                 <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
-                  {user?.imagUrl ? (
+                  {getUserPhoto(user) ? (
                     <img
-                      src={user.imagUrl}
-                      alt={user.name}
+                      src={getUserPhoto(user)}
+                      alt={user?.name}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -299,7 +307,8 @@ export default function NavbarDashboard() {
               to="/dashboard"
               end
               className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                  isActive ? "border-b-4 border-black bg-gray-100" : ""
                 }`
               }
             >
@@ -308,29 +317,37 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/media"
               className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                  isActive ? "border-b-4 border-black bg-gray-100" : ""
                 }`
               }
             >
               Media
             </NavLink>
-            {(user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
+            {(user?.role === "SUPER_ADMIN" ||
+              user?.role === "ADMIN" ||
+              user?.role === "PROJECT_MANAGER" ||
+              user?.role === "FINANCE") && (
               <>
                 <NavLink
                   to="/dashboard/financials"
                   className={({ isActive }) =>
-                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                      isActive ? "border-b-4 border-black bg-gray-100" : ""
                     }`
                   }
                 >
                   Financials
                 </NavLink>
 
-                {(user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
+                {(user?.role === "SUPER_ADMIN" ||
+                  user?.role === "PROJECT_MANAGER" ||
+                  user?.role === "FINANCE") && (
                   <NavLink
                     to="/dashboard/adjust-rates"
                     className={({ isActive }) =>
-                      `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                      `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                        isActive ? "border-b-4 border-black bg-gray-100" : ""
                       }`
                     }
                   >
@@ -341,7 +358,8 @@ export default function NavbarDashboard() {
                 <NavLink
                   to="/dashboard/teams"
                   className={({ isActive }) =>
-                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                      isActive ? "border-b-4 border-black bg-gray-100" : ""
                     }`
                   }
                 >
@@ -352,7 +370,8 @@ export default function NavbarDashboard() {
             <NavLink
               to="/dashboard/new-inquiries-list"
               className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-4 border-black bg-gray-100" : ""
+                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                  isActive ? "border-b-4 border-black bg-gray-100" : ""
                 }`
               }
             >

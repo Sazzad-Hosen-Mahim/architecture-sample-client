@@ -11,7 +11,7 @@ import ClientTabFrom from "@/components/NewProposalTabContent/ClientTabFrom";
 import ProjectTabForm from "@/components/NewProposalTabContent/ProjectTabForm";
 import ServicesTabForm from "@/components/NewProposalTabContent/ServicesTabForm";
 import SignProposalTab from "@/components/NewProposalTabContent/SignProposalTab";
-import { useGetProposalInfoQuery, useGetProposalFullQuery } from "@/redux/api/adminDashboard/proposalApi";
+import { useGetProposalInfoQuery, useGetProposalFullQuery, useUpdateProjectClientDetailsMutation } from "@/redux/api/adminDashboard/proposalApi";
 import { isLumpSum } from "@/utils/paymentPlan";
 import { toast } from "sonner";
 
@@ -52,6 +52,8 @@ export default function NewDynamicProposalPage({
     const clientSignatureRef = useRef<SignatureCanvas | null>(null);
     const architectSignatureRef = useRef<SignatureCanvas | null>(null);
     const { id } = useParams();
+    const [updateClientDetails, { isLoading: isSavingClient }] =
+        useUpdateProjectClientDetailsMutation();
     const [searchParams] = useSearchParams();
     const draftProposalId = searchParams.get("proposalId");
     const [draftHydrated, setDraftHydrated] = useState(false);
@@ -202,8 +204,11 @@ export default function NewDynamicProposalPage({
                 const mapping: Record<string, string> = {
                     'NEW_CONSTRUCTION': 'New Construction',
                     'RENOVATION': 'Renovation',
+                    'TENANT_IMPROVEMENT': 'Tenant Improvement',
                     'ADDITION': 'Addition',
                     'INTERIOR_DESIGN': 'Interior Design',
+                    'LANDSCAPE_DESIGN': 'Landscape Design',
+                    'OTHER': 'Other',
                 };
                 return mapping[type] || type;
             };
@@ -212,8 +217,12 @@ export default function NewDynamicProposalPage({
                 const mapping: Record<string, string> = {
                     'RESIDENTIAL': 'Residential',
                     'COMMERCIAL': 'Commercial',
+                    'INTERIOR': 'Interior',
                     'MIXED_USE': 'Mixed-Use',
-                    'INSTITUTIONAL': 'Institutional',
+                    'TENANT_IMPROVEMENT': 'Tenant Improvement',
+                    'REMODEL': 'Remodel',
+                    'ADDITION': 'Addition',
+                    'OTHER': 'Other',
                 };
                 return mapping[category] || category;
             };
@@ -457,8 +466,36 @@ export default function NewDynamicProposalPage({
         });
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (activeStep === "client") {
+            // Client edits made here belong to the project request, not the
+            // proposal, so persist them before moving on. Without this the
+            // address is only ever printed on the PDF and then lost.
+            if (id) {
+                try {
+                    await updateClientDetails({
+                        id,
+                        clientFirstName: clientInfo.firstName,
+                        clientLastName: clientInfo.lastName,
+                        companyName: clientInfo.companyName,
+                        phone: clientInfo.phone,
+                        streetAddress: clientInfo.address,
+                        aptSuiteUnit: clientInfo.aptSuiteUnit,
+                        city: clientInfo.city,
+                        state: clientInfo.state,
+                        zipCode: clientInfo.zip,
+                        country: clientInfo.country,
+                        additionalComments: clientInfo.additionalNotes,
+                    }).unwrap();
+                } catch (error: any) {
+                    console.error("Failed to save client details:", error);
+                    toast.error(
+                        error?.data?.message ||
+                        "Could not save the client details. Please try again."
+                    );
+                    return;
+                }
+            }
             setActiveStep("project");
             setProgress(33);
         } else if (activeStep === "project") {
@@ -469,6 +506,11 @@ export default function NewDynamicProposalPage({
             setProgress(100);
         }
     };
+
+    // The "Proposal Details" tab covers two wizard steps — Client and Project —
+    // so it stays highlighted across both rather than dropping out on Project.
+    const isProposalDetailsStep =
+        activeStep === "client" || activeStep === "project";
 
     const handleBack = () => {
         if (activeStep === "project") {
@@ -731,8 +773,8 @@ export default function NewDynamicProposalPage({
                     <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-4 overflow-x-auto md:overflow-x-visible">
                             <Button
-                                variant={activeStep === "client" ? "default" : "outline"}
-                                className={`${activeStep === "client" ? "rounded-full bg-black text-white" : "rounded-full text-black"}`}
+                                variant={isProposalDetailsStep ? "default" : "outline"}
+                                className={`${isProposalDetailsStep ? "rounded-full bg-black text-white" : "rounded-full text-black"}`}
                                 onClick={() => setActiveStep("client")}
                             >
                                 <FileText className="h-4 w-4 mr-2" />
@@ -835,6 +877,7 @@ export default function NewDynamicProposalPage({
                         clientInfo={clientInfo}
                         handleClientInfoChange={handleClientInfoChange}
                         handleNext={handleNext}
+                        isSaving={isSavingClient}
                     />
                 )}
 

@@ -4,11 +4,13 @@ import { ProjectRequestPayload } from "@/redux/api/newProjectAPi";
 type ServiceTypeKey =
   | "new-construction"
   | "renovation"
+  | "tenant-improvement"
   | "addition"
   | "consultation";
 type ServiceTypeValue =
   | "NEW_CONSTRUCTION"
   | "RENOVATION"
+  | "TENANT_IMPROVEMENT"
   | "ADDITION"
   | "INTERIOR_DESIGN"
   | "LANDSCAPE_DESIGN"
@@ -18,10 +20,12 @@ type ProjectCategoryKey = "residential" | "commercial" | "other";
 type ProjectCategoryValue =
   | "RESIDENTIAL"
   | "COMMERCIAL"
-  | "INSTITUTIONAL"
-  | "LANDSCAPE"
   | "INTERIOR"
-  | "URBAN_PLANNING";
+  | "MIXED_USE"
+  | "TENANT_IMPROVEMENT"
+  | "REMODEL"
+  | "ADDITION"
+  | "OTHER";
 
 // Use type-safe maps
 const appointmentTypeMap: Record<string, string> = {
@@ -34,15 +38,15 @@ const appointmentTypeMap: Record<string, string> = {
 const serviceTypeMap: Record<ServiceTypeKey, ServiceTypeValue> = {
   "new-construction": "NEW_CONSTRUCTION",
   renovation: "RENOVATION",
+  "tenant-improvement": "TENANT_IMPROVEMENT",
   addition: "ADDITION",
-  consultation: "OTHER", // or whatever you want for "Other"
+  consultation: "OTHER", // the "Other" option; free text lands in serviceTypeOther
 };
 
 const projectCategoryMap: Record<ProjectCategoryKey, ProjectCategoryValue> = {
   residential: "RESIDENTIAL",
   commercial: "COMMERCIAL",
-  other: "RESIDENTIAL", // Changed from "OTHER" to "RESIDENTIAL" since "OTHER" isn't a valid option
-  // If you need "OTHER" as an option, update your ProjectRequestPayload interface
+  other: "OTHER", // free text lands in projectCategoryOther
 };
 
 export function buildProjectPayload(formData: any): ProjectRequestPayload {
@@ -87,7 +91,15 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
     projectZipCode: formData.projectZipCode || "",
 
     serviceType: serviceType, // Now this is type-safe
+    serviceTypeOther:
+      serviceType === "OTHER"
+        ? formData.serviceTypeOther || undefined
+        : undefined,
     projectCategory: projectCategory, // Now this is type-safe
+    projectCategoryOther:
+      projectCategory === "OTHER"
+        ? formData.projectTypeOther || undefined
+        : undefined,
 
     projectSize: formData.squareFootage
       ? `${formData.squareFootage} ${formData.projectSizeUnit === 'sqm' ? 'sq m' : 'sq ft'}`
@@ -105,6 +117,11 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
       appointmentTypeMap[formData.appointmentType] ||
       formData.appointmentType ||
       "",
+    // Only in-person appointments have a location to send
+    meetingLocation:
+      formData.appointmentType === "in-person"
+        ? formData.meetingLocation || undefined
+        : undefined,
     additionalNotes: formData.appointmentNotes || undefined,
 
     files: [

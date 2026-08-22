@@ -30,17 +30,22 @@ export interface ProjectRequestPayload {
   serviceType:
     | "NEW_CONSTRUCTION"
     | "RENOVATION"
+    | "TENANT_IMPROVEMENT"
     | "ADDITION"
     | "INTERIOR_DESIGN"
     | "LANDSCAPE_DESIGN"
     | "OTHER";
+  serviceTypeOther?: string;
   projectCategory:
     | "RESIDENTIAL"
     | "COMMERCIAL"
-    | "INSTITUTIONAL"
-    | "LANDSCAPE"
     | "INTERIOR"
-    | "URBAN_PLANNING";
+    | "MIXED_USE"
+    | "TENANT_IMPROVEMENT"
+    | "REMODEL"
+    | "ADDITION"
+    | "OTHER";
+  projectCategoryOther?: string;
   projectSize: string;
   budgetRange: string;
   preferredArchitecturalStyle?: string;
@@ -50,6 +55,7 @@ export interface ProjectRequestPayload {
   appointmentDate: string;
   appointmentTime: string;
   appointmentType: string;
+  meetingLocation?: string;
   additionalNotes?: string;
   files?: File[];
   paymentIntentId?: string;
@@ -89,6 +95,7 @@ export interface ProjectResponse {
   appointmentDate: string;
   appointmentTime: string;
   appointmentType: string;
+  meetingLocation: string | null;
   additionalNotes: string | null;
   status: string;
   userId: string | null;
@@ -141,7 +148,11 @@ export const projectApi = baseApi.injectEndpoints({
         formData.append("projectZipCode", data.projectZipCode);
 
         formData.append("serviceType", data.serviceType);
+        if (data.serviceTypeOther)
+          formData.append("serviceTypeOther", data.serviceTypeOther);
         formData.append("projectCategory", data.projectCategory);
+        if (data.projectCategoryOther)
+          formData.append("projectCategoryOther", data.projectCategoryOther);
         formData.append("projectSize", data.projectSize);
         formData.append("budgetRange", data.budgetRange);
 
@@ -160,6 +171,8 @@ export const projectApi = baseApi.injectEndpoints({
         formData.append("appointmentDate", data.appointmentDate);
         formData.append("appointmentTime", data.appointmentTime);
         formData.append("appointmentType", data.appointmentType);
+        if (data.meetingLocation)
+          formData.append("meetingLocation", data.meetingLocation);
         if (data.additionalNotes)
           formData.append("additionalNotes", data.additionalNotes);
 

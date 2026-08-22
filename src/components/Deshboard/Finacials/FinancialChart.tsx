@@ -23,16 +23,9 @@ ChartJS.register(
   Legend
 );
 
-/**
- * The Revenue line is plotted (and read back in the tooltip) $10,000 above the
- * actual figure so it stays clear of the Cost/Profit lines. The stat cards
- * below the chart always show the true, un-offset numbers.
- */
 /** Axis colours — each axis is tinted to match the series that reads off it. */
 const AMOUNT_AXIS_COLOR = "#4b5563";
 const UTILIZATION_COLOR = "rgb(249, 115, 22)";
-
-const PROJECT_REVENUE_OFFSET = 10000;
 
 /**
  * How far the firm-wide amount axis sits above the average monthly net
@@ -71,9 +64,6 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
   const { data, isLoading } = useGetFinancialHistoryQuery(
     projectId ? { projectId } : { scope, year }
   );
-  // Only the project chart lifts its revenue line; the firm-wide chart gets
-  // headroom on the axis instead (see suggestedMax below).
-  const revenueOffset = projectId ? PROJECT_REVENUE_OFFSET : 0;
   const history = data?.history;
   const summary = data?.summary ?? null;
 
@@ -132,7 +122,10 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
     datasets: [
       {
         label: "Total Revenue",
-        data: totalRevenue.map((r) => r + revenueOffset),
+        // Plotted at its true value. This line used to be lifted $10,000 so it
+        // stayed clear of Cost/Profit, which meant a $6 contract drew a
+        // $12,000 axis and a tooltip that disagreed with the stat cards.
+        data: totalRevenue,
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.5)",
         yAxisID: "y",
@@ -234,6 +227,9 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
           color: '#f3f4f6',
         },
         // Firm-wide: sit $100,000 above the average monthly net revenue.
+        // A project scales to its own contract instead, so a $6 project reads
+        // in dollars rather than against a fixed five-figure axis.
+        beginAtZero: true,
         suggestedMax: projectId ? undefined : avgRevenue + FIRM_AXIS_HEADROOM,
         ticks: {
           color: AMOUNT_AXIS_COLOR,
@@ -277,8 +273,13 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
   //   Avg Monthly Profit  = Avg Monthly Revenue - Avg Monthly Cost
   //   Avg Utilization     = Billable Hours / (Billable + Non-Billable Hours)
   // The firm-wide chart keeps averaging its 12 monthly buckets.
+  // The averages divide by at least one month, so the caption has to name the
+  // divisor actually used rather than the elapsed time.
+  const divisorMonths = summary
+    ? (summary.monthsForAverage ?? Math.max(1, summary.totalMonths))
+    : 12;
   const monthsLabel = summary
-    ? `${summary.totalMonths.toFixed(2)} month${summary.totalMonths === 1 ? "" : "s"}`
+    ? `${divisorMonths.toFixed(2)} month${divisorMonths === 1 ? "" : "s"}`
     : "12";
 
   return (

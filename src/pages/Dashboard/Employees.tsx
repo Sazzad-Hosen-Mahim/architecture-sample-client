@@ -105,7 +105,7 @@ const Employees = () => {
   return (
     <div className="bg-white p-4 sm:p-6 rounded-md shadow font-semibold">
       <Link
-        to="/dashboard/financials"
+        to="/dashboard/financials?tab=payroll"
         className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black transition-colors mb-4"
       >
         <ArrowLeft className="w-4 h-4" />

@@ -17,6 +17,8 @@ import {
   AlertCircle,
   FileCheck,
   Trash2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import ContractReviewModal from "../ContractReviewModal";
 import {
@@ -24,7 +26,11 @@ import {
   useGetAmendmentsByProjectQuery,
   useReviewAmendmentMutation,
   useCreateProposalFromAmendmentMutation,
+  useCreateAmendmentMutation,
 } from "@/redux/api/amendmentApi";
+import CreateAmendmentRequestModal, {
+  AmendmentRequestForm,
+} from "../UserDashboard/CreateAmendmentRequestModal";
 import CreateProposalFromAmendmentModal, {
   AmendmentProposalForm,
 } from "../CreateProposalFromAmendmentModal";
@@ -51,7 +57,8 @@ export default function ContractsTab({ project }: ContractsTabProps) {
   // Delete proposal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Proposal | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [deleteProposal, { isLoading: isDeleting }] =
     useDeleteProposalMutation();
 
@@ -96,6 +103,38 @@ export default function ContractsTab({ project }: ContractsTabProps) {
     }
   };
 
+  // Raising an amendment on the client's behalf, for clients who can't manage
+  // it from their own panel. Same form and same endpoint the client uses — the
+  // API already accepts a manager as the requester.
+  const [isNewAmendmentOpen, setIsNewAmendmentOpen] = useState(false);
+  const [createAmendment, { isLoading: isCreatingAmendment }] =
+    useCreateAmendmentMutation();
+
+  const handleCreateAmendmentForClient = async (form: AmendmentRequestForm) => {
+    if (!acceptedBaseProposal?.id) {
+      toast.error(
+        "This project needs an accepted proposal before an amendment can be raised.",
+      );
+      return;
+    }
+    try {
+      await createAmendment({
+        proposalId: acceptedBaseProposal.id,
+        projectName: form.projectName,
+        description: form.description,
+        squareFootage: form.squareFootage || undefined,
+        projectSizeUnit: form.projectSizeUnit,
+        budgetRange: form.budgetRange || undefined,
+      }).unwrap();
+      toast.success("Amendment request created on behalf of the client.");
+      setIsNewAmendmentOpen(false);
+    } catch (error: any) {
+      toast.error(
+        error?.data?.message || "Failed to create the amendment request",
+      );
+    }
+  };
+
   const handleCreateProposalFromAmendment = async (
     form: AmendmentProposalForm,
   ) => {
@@ -124,6 +163,20 @@ export default function ContractsTab({ project }: ContractsTabProps) {
 
   const allProposals: Proposal[] = proposalsData?.data || [];
 
+  // The Amendment Requests section is a work queue, not a history log. Once a
+  // request has run its course — the amendment proposal has been signed and
+  // accepted, or the request was rejected — it already appears as a contract
+  // card above, so leaving it here duplicates it and makes a settled request
+  // look outstanding.
+  const openAmendments = (amendmentsData?.data || []).filter(
+    (amendment: Amendment) => {
+      if (amendment.status === "COMPLETED" || amendment.status === "REJECTED") {
+        return false;
+      }
+      return amendment.amendmentProposal?.status !== "ACCEPTED";
+    },
+  );
+
   // Apply filter
   const filteredProposals = allProposals.filter((p) => {
     if (filter === "proposals")
@@ -147,6 +200,13 @@ export default function ContractsTab({ project }: ContractsTabProps) {
     (p) =>
       (p.proposalType === "NORMAL" || !p.proposalType) &&
       ["SENT", "VIEWED", "ACCEPTED"].includes(p.status),
+  );
+
+  // An amendment extends a signed contract, so it needs the accepted base one.
+  const acceptedBaseProposal = allProposals.find(
+    (p) =>
+      (p.proposalType === "NORMAL" || !p.proposalType) &&
+      p.status === "ACCEPTED",
   );
 
   const getStatusBadge = (status: string) => {
@@ -228,7 +288,8 @@ export default function ContractsTab({ project }: ContractsTabProps) {
 
   const handleOpenDeleteConfirm = (proposal: Proposal) => {
     setDeleteTarget(proposal);
-    setDeleteConfirmText("");
+    setDeletePassword("");
+    setShowDeletePassword(false);
     setDeleteConfirmOpen(true);
   };
 
@@ -280,19 +341,30 @@ export default function ContractsTab({ project }: ContractsTabProps) {
     }
   };
 
+  const closeDeleteDialog = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
+    setDeletePassword("");
+    setShowDeletePassword(false);
+  };
+
   const handleConfirmDelete = async () => {
-    if (!deleteTarget || deleteConfirmText !== "Delete") return;
+    if (!deleteTarget || !deletePassword.trim() || isDeleting) return;
 
     try {
-      await deleteProposal(deleteTarget.id).unwrap();
+      await deleteProposal({
+        id: deleteTarget.id,
+        password: deletePassword,
+      }).unwrap();
       toast.success(
         `Proposal "${deleteTarget.proposalNumber}" deleted successfully!`,
       );
-      setDeleteConfirmOpen(false);
-      setDeleteTarget(null);
-      setDeleteConfirmText("");
+      closeDeleteDialog();
     } catch (error: any) {
+      // A wrong password comes back as 401 — keep the dialog open so it can be
+      // retyped rather than making the PM start over.
       toast.error(error?.data?.message || "Failed to delete proposal.");
+      setDeletePassword("");
     }
   };
 
@@ -337,7 +409,22 @@ export default function ContractsTab({ project }: ContractsTabProps) {
         </div>
 
         <div className="flex flex-col items-start sm:items-end gap-1">
-          <button
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Raised for a client who can't do it from their own panel. */}
+            <button
+              onClick={() => setIsNewAmendmentOpen(true)}
+              disabled={!acceptedBaseProposal}
+              title={
+                acceptedBaseProposal
+                  ? "Raise an amendment request on behalf of the client"
+                  : "An accepted proposal is required before raising an amendment"
+              }
+              className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors cursor-pointer disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+            >
+              <FileCheck className="w-4 h-4" />
+              Make New Amendment
+            </button>
+            <button
             onClick={() => navigate(`/dashboard/new-proposal/${project.id}`)}
             disabled={hasLiveProposal}
             title={
@@ -349,7 +436,8 @@ export default function ContractsTab({ project }: ContractsTabProps) {
           >
             <PlusIcon className="w-4 h-4" />
             Make New Proposal
-          </button>
+            </button>
+          </div>
           {hasLiveProposal && (
             <p className="text-[11px] text-gray-500 max-w-[260px] sm:text-right">
               One proposal per project. Raise an amendment to extend the scope.
@@ -436,7 +524,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                   {proposal.status === "ACCEPTED" && (
                     <button
                       onClick={() => handleViewContract(proposal.id)}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                      className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
                     >
                       <FileTextIcon className="w-3.5 h-3.5" />
                       View Contract
@@ -456,7 +544,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                           `/dashboard/new-proposal/${project.id}?proposalId=${proposal.id}`,
                         )
                       }
-                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                       <FileTextIcon className="w-3.5 h-3.5" />
                       Continue Draft
@@ -465,7 +553,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                   {/* Delete button */}
                   <button
                     onClick={() => handleOpenDeleteConfirm(proposal)}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                    className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Delete
@@ -478,7 +566,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
       )}
 
       {/* Amendment Requests Section */}
-      {!isLoading && (amendmentsData?.data?.length || 0) > 0 && (
+      {!isLoading && openAmendments.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -488,7 +576,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {amendmentsData?.data?.map((amendment: Amendment) => (
+            {openAmendments.map((amendment: Amendment) => (
               <div
                 key={amendment.id}
                 className="border border-amber-100 rounded-xl p-5 bg-amber-50/30 hover:bg-amber-50/50 transition-all"
@@ -573,7 +661,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                             disabled={
                               isReviewing && reviewingId === amendment.id
                             }
-                            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                            className="inline-flex cursor-pointer items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-all active:scale-95 shadow-sm disabled:opacity-50"
                           >
                             {isReviewing && reviewingId === amendment.id
                               ? "Working..."
@@ -586,7 +674,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                             disabled={
                               isReviewing && reviewingId === amendment.id
                             }
-                            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all active:scale-95 disabled:opacity-50"
+                            className="inline-flex cursor-pointer items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all active:scale-95 disabled:opacity-50"
                           >
                             Reject
                           </button>
@@ -596,7 +684,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
                       !amendment.amendmentProposalId && (
                         <button
                           onClick={() => setProposalAmendment(amendment)}
-                          className="inline-flex items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 shadow-sm"
+                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-900 transition-all active:scale-95 shadow-sm"
                         >
                           Create Proposal
                         </button>
@@ -637,6 +725,14 @@ export default function ContractsTab({ project }: ContractsTabProps) {
         proposalId={contractProposalId}
       />
 
+      {/* Raise an amendment request for the client */}
+      <CreateAmendmentRequestModal
+        isOpen={isNewAmendmentOpen}
+        isLoading={isCreatingAmendment}
+        onClose={() => setIsNewAmendmentOpen(false)}
+        onSubmit={handleCreateAmendmentForClient}
+      />
+
       {/* Create a proposal straight from an approved amendment request */}
       <CreateProposalFromAmendmentModal
         isOpen={!!proposalAmendment}
@@ -650,11 +746,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
       <Dialog
         open={deleteConfirmOpen && !!deleteTarget}
         onOpenChange={(open) => {
-          if (!open) {
-            setDeleteConfirmOpen(false);
-            setDeleteTarget(null);
-            setDeleteConfirmText("");
-          }
+          if (!open) closeDeleteDialog();
         }}
       >
         <DialogContent className="max-w-md space-y-5 bg-white">
@@ -672,47 +764,75 @@ export default function ContractsTab({ project }: ContractsTabProps) {
             </p>
           </DialogHeader>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type <span className="font-bold text-red-600">"Delete"</span> to
-              confirm
-            </label>
-            <input
-              type="text"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="Delete"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              autoFocus
-            />
-          </div>
+          {/* A form so Enter submits, matching the delete-project dialog. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleConfirmDelete();
+            }}
+            className="space-y-5"
+          >
+            <div>
+              <label
+                htmlFor="deleteProposalPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Enter your{" "}
+                <span className="font-bold text-red-600">super admin password</span>{" "}
+                to confirm
+              </label>
+              <div className="relative">
+                <input
+                  id="deleteProposalPassword"
+                  type={showDeletePassword ? "text" : "password"}
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeletePassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label={
+                    showDeletePassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showDeletePassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setDeleteConfirmOpen(false);
-                setDeleteTarget(null);
-                setDeleteConfirmText("");
-              }}
-              className="flex-1 cursor-pointer px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmDelete}
-              disabled={deleteConfirmText !== "Delete" || isDeleting}
-              className="flex-1 cursor-pointer px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Proposal"
-              )}
-            </button>
-          </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteDialog}
+                className="flex-1 cursor-pointer px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!deletePassword.trim() || isDeleting}
+                className="flex-1 cursor-pointer px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Proposal"
+                )}
+              </button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

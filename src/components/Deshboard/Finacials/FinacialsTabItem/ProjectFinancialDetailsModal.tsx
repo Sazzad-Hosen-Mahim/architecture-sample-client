@@ -264,7 +264,9 @@ export default function ProjectFinancialDetailsModal({
                                                 <td className="px-4 py-4 font-black text-blue-300">{formatCurrency(details.grandTotals.price)}</td>
                                                 <td className="px-4 py-4 font-black text-amber-300">{formatCurrency(details.grandTotals.burned)}</td>
                                                 <td className="px-4 py-4 font-black text-gray-300">{formatCurrency(details.grandTotals.laborCost)}</td>
-                                                <td className="px-4 py-4 font-black text-orange-300">{formatCurrency(details.grandTotals.overhead)}</td>
+                                                {/* Overhead is hidden in the header and the phase rows, so the
+                                                    totals row must drop it too — the extra cell was pushing this
+                                                    row out of step and leaving an empty column. */}
                                                 <td className="px-4 py-4 text-right">
                                                     <div className={`font-black text-sm ${details.grandTotals.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
                                                         {formatCurrency(details.grandTotals.profit)}

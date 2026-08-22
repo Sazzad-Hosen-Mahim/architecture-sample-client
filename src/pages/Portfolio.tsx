@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
@@ -6,7 +7,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
@@ -17,28 +18,54 @@ export default function Portfolio() {
   const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<"title" | "year">("title");
   const [filterBy, setFilterBy] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [expanded] = useState<number | null>(null);
-
-  const { data: apiData, isLoading } = useGetAllMediaQuery({ type: "PORTFOLIO" });
+  const { data: apiData, isLoading } = useGetAllMediaQuery({
+    type: "PORTFOLIO",
+  });
 
   const projects = useMemo(() => {
-    return apiData?.data?.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      category: item.category || "Uncategorized",
-      description: item.excerpt || item.content?.substring(0, 100) + "...",
-      image: item.assets?.map((a: any) => a.cdnUrl) || [],
-      year: item.projectYear || 2024,
-    })) || [];
+    return (
+      apiData?.data?.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        category: item.category || "Uncategorized",
+        description: item.excerpt || item.content?.substring(0, 100) + "...",
+        image: item.assets?.map((a: any) => a.cdnUrl) || [],
+        year: item.projectYear || 2024,
+        PublishedDate: item.publishDate
+          ? new Date(item.publishDate).toLocaleDateString()
+          : new Date(item.createdAt).toLocaleDateString(),
+        Architect: item.architect || "TBA",
+        Photographer: item.photographer || "TBA",
+      })) || []
+    );
   }, [apiData]);
 
   const categories = useMemo(() => {
     return Array.from(new Set(projects.map((project: any) => project.category)));
   }, [projects]);
 
+  // Only offer years that actually have projects — newest first.
+  const availableYears = useMemo(() => {
+    return (
+      Array.from(
+        new Set(
+          projects
+            .map((project: any) => project.year)
+            .filter((year: any) => Boolean(year)),
+        ),
+      ) as number[]
+    ).sort((a, b) => b - a);
+  }, [projects]);
 
+  const hasActiveFilters = searchTerm || filterBy || yearFilter;
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setFilterBy("");
+    setYearFilter("");
+  };
 
   const filteredAndSortedProjects = useMemo(() => {
     return projects
@@ -50,13 +77,20 @@ export default function Portfolio() {
           return false;
         }
 
+        if (yearFilter && String(project.year) !== yearFilter) {
+          return false;
+        }
+
         if (searchTerm) {
           const lowerSearch = searchTerm.toLowerCase();
           const inTitle = project.title.toLowerCase().includes(lowerSearch);
           const inDescription = project.description
             ? project.description.toLowerCase().includes(lowerSearch)
             : false;
-          if (!inTitle && !inDescription) return false;
+          const inCategory = project.category
+            .toLowerCase()
+            .includes(lowerSearch);
+          if (!inTitle && !inDescription && !inCategory) return false;
         }
         return true;
       })
@@ -67,142 +101,186 @@ export default function Portfolio() {
           return b.year - a.year;
         }
       });
-  }, [filterBy, searchTerm, sortBy, projects]);
+  }, [filterBy, yearFilter, searchTerm, sortBy, projects]);
 
-  if (isLoading) return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
+
   return (
     <div>
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Our Portfolio</h1>
-
-        {/* search filter, sort option  */}
-        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div className="flex px-4 py-1.5 rounded-md border-1 border-black overflow-hidden md:w-1/2 w-full ">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 192.904 192.904"
-              width="16px"
-              className="fill-gray-700 mr-3 rotate-90"
-            >
-              <path d="m190.707 180.101-47.078-47.077c11.702-14.072 18.752-32.142 18.752-51.831C162.381 36.423 125.959 0 81.191 0 36.422 0 0 36.423 0 81.193c0 44.767 36.422 81.187 81.191 81.187 19.688 0 37.759-7.049 51.831-18.751l47.079 47.078a7.474 7.474 0 0 0 5.303 2.197 7.498 7.498 0 0 0 5.303-12.803zM15 81.193C15 44.694 44.693 15 81.191 15c36.497 0 66.189 29.694 66.189 66.193 0 36.496-29.692 66.187-66.189 66.187C44.693 147.38 15 117.689 15 81.193z"></path>
-            </svg>
-            <input
-              type="text" // change from email to text
-              placeholder="Search Something....."
-              className="w-full outline-none bg-transparent text-gray-600 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4 pb-34">
+        {/* Header & Filters */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="relative flex flex-col md:w-1/3 w-full">
+            <div className="flex items-center gap-2 px-4 w-full border border-gray-400 rounded-lg bg-white shadow-sm relative z-20">
+              <Search className="text-gray-600" size={14} />
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 outline-none py-2 bg-transparent text-gray-700 text-sm"
+              />
+            </div>
+            {searchTerm.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                {filteredAndSortedProjects.length > 0 ? (
+                  filteredAndSortedProjects.map((project: any) => (
+                    <div
+                      key={project.id}
+                      className="p-3 border-b hover:bg-gray-50 cursor-pointer flex gap-3"
+                      onClick={() => navigate(`/world-project/${project.id}`)}
+                    >
+                      <img
+                        src={project.image[0] || "/placeholder.svg"}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <div className="flex-1 text-sm">
+                        <div className="font-bold flex justify-between">
+                          <span>{project.title}</span>
+                          <span className="text-gray-500 font-normal">
+                            {project.category}
+                          </span>
+                        </div>
+                        <div className="text-gray-600 flex justify-between text-xs mt-1">
+                          <span>Architect: {project.Architect}</span>
+                          <span>Year: {project.year}</span>
+                        </div>
+                        <div className="text-gray-600 text-xs mt-1">
+                          Photographer: {project.Photographer}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-gray-500">
+                    No projects found
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          {/* sort by  year */}
-          <div className="flex px-4 py-1.5 rounded-md gap-6  overflow-hidden ">
+
+          <h1 className="text-xl w-1/3 flex justify-center text-center">
+            Portfolio
+          </h1>
+
+          <div className="flex flex-wrap w-1/3 md:flex-nowrap justify-center md:justify-end gap-2 md:w-1/3">
             <select
-              value={sortBy}
+              className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-white"
               onChange={(e) => setSortBy(e.target.value as "title" | "year")}
-              className="w-full outline-none bg-transparent border cursor-pointer py-1.5 px-6 rounded text-gray-600 text-sm"
+              value={sortBy}
             >
               <option value="title">Sort by Title</option>
-              <option value="year">Sort by Year </option>
+              <option value="year">Sort by Year</option>
             </select>
-            {/* ---------------  */}
 
-            <div className="flex gap-4 w-full ">
-              {/* Filter Dropdown */}
-              <div className="relative md:w-1/4 w-full">
-                <select
-                  value={filterBy}
-                  onChange={(e) => setFilterBy(e.target.value)}
-                  className="w-full  bg-transparent border-black  appearance-none outline-none text-black border cursor-pointer py-1.5 px-6 pr-10 rounded text-sm"
-                >
-                  <option value="">Filter by Category</option>
-                  {categories.map((cat: any) => (
-                    <option key={cat} value={cat.toLowerCase()}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <Filter className="absolute right-1 top-1/2 -translate-y-1/2 text-black w-4 h-4 pointer-events-none" />
-              </div>
-              {/* -------------------  */}
-            </div>
+            <select
+              className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-white"
+              onChange={(e) => setFilterBy(e.target.value)}
+              value={filterBy}
+            >
+              <option value="">All Categories</option>
+              {categories.map((category: any) => (
+                <option key={category} value={category.toLowerCase()}>
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-white"
+              onChange={(e) => setYearFilter(e.target.value)}
+              value={yearFilter}
+            >
+              <option value="">All Years</option>
+              {availableYears.map((year: number) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              >
+                Clear All
+              </button>
+            )}
           </div>
-          {/* filter by category */}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-scroll ">
-          {filteredAndSortedProjects.map((project: any) => (
-            <Card
-              key={project.id}
-              className="overflow-hidden py-0  border-gray-200"
-            >
-              {/* <Image
-                src={project.image || "/placeholder.svg"}
-                alt={project.title}
-                width={400}
-                height={300}
-                className="w-full h-48 object-cover"
-              /> */}
-              <Carousel className="mb-4 relative">
-                <CarouselContent>
-                  {project.image.map((img: string, index: number) => (
-                    <CarouselItem key={index}>
-                      <img
-                        src={img || "/placeholder.svg"}
-                        alt={`image-${index}`}
-                        width={400}
-                        height={300}
-                        className="w-full h-[230px] rounded-lg object-cover"
-                      />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
+        <div className="mt-5 text-gray-400">
+          <hr />
+        </div>
 
-                <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10 cursor-pointer" />
-                <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10 cursor-pointer" />
-              </Carousel>
-              <CardContent className="p-4 ">
-                <h2 className="text-sm font-semibold mb-2">{project.title}</h2>
-                <p
-                  className={`text-gray-600 mb-1 ${expanded ? "" : "line-clamp-2"
-                    }`}
-                >
-                  <strong></strong> {project.description}
-                  <button
-                    // onClick={() => setExpanded(!expanded)}
-                    className="text-blue-500 text-sm ml-2 hover:underline"
-                  >
-                    {expanded ? "Read less" : "Read more"}...
-                  </button>
-                </p>
+        {/* Projects grid — same card as World Projects, minus the map above it */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10">
+          {filteredAndSortedProjects.length === 0 ? (
+            <div className="col-span-full flex justify-center items-center min-h-[50vh]">
+              <h2>No projects found.</h2>
+            </div>
+          ) : (
+            filteredAndSortedProjects.map((project: any) => (
+              <Card
+                key={project.id}
+                className="cursor-pointer bg-white p-0 border-gray-300 overflow-hidden hover:shadow-lg transition-shadow"
+                onClick={() => navigate(`/world-project/${project.id}`)}
+              >
+                <Carousel className="w-full bg-black">
+                  <CarouselContent>
+                    {project.image.map((img: string, index: number) => (
+                      <CarouselItem key={index}>
+                        <div className="h-56 w-full overflow-hidden">
+                          <img
+                            src={img || "/placeholder.svg"}
+                            alt={`image-${index}`}
+                            className="w-full h-full rounded-lg object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10 cursor-pointer" />
+                  <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10 cursor-pointer" />
+                </Carousel>
 
-                <p className="text-sm text-gray-500 mb-2">{project.category}</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Year: {project.year}
-                </p>
-                <div className=" ">
-                  <div className="flex flex-col md:flex-row gap-4 justify-center w-full">
-                    <button
-                      onClick={() => navigate(`/world-project/${project.id}`)}
-                      className="flex-1 px-6 py-1.5 text-xs border rounded shadow-sm hover:shadow-md transition cursor-pointer"
-                    >
-                      View Project
-                    </button>
-
-                    <button
-                      onClick={() => navigate(`/world-project/${project.id}`)}
-                      className="flex-1 px-6 py-1.5 text-xs border rounded shadow-sm hover:shadow-md transition cursor-pointer"
-                    >
-                      View Comments
-                    </button>
+                <CardContent className="py-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-sm font-bold">{project.title}</h2>
+                    <p className="text-xs text-gray-500">
+                      Published: {project.PublishedDate}
+                    </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Architect:</span>{" "}
+                    {project.Architect}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Photographer:</span>{" "}
+                    {project.Photographer}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Year:</span> {project.year}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Category:</span>{" "}
+                    {project.category}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold">Description:</span>{" "}
+                    {project.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
       <div className="mb-38 mt-12">

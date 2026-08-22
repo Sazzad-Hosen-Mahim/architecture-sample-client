@@ -18,7 +18,7 @@ const About = () => {
         </button>
       </div>
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 mb-24">
+        <div className="flex justify-center mx-auto w-2/3">
           {/* Left Column */}
           <div className="space-y-6">
             <div className="space-y-6 text-gray-600">
@@ -56,44 +56,6 @@ const About = () => {
               </p>
               <p className="italic">-CEO Eric Rivera</p>
             </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-12 flex flex-col justify-between">
-            <div>
-              <h2 className="text-base font-light mb-8">
-                LICENSED TO PRACTICE IN THE FOLLOWING STATES
-              </h2>
-              <div className="space-y-8">
-                <div>
-                  <h3 className="font-medium text-sm mb-2">CALIFORNIA</h3>
-                  <p className="text-gray-600 text-sm">#12938444</p>
-                  {/* <p className="text-gray-600">Miami, Florida 35521, US</p>
-                  <Link to="tel:(925) 822-4374" className="text-blue-600 hover:text-blue-800">
-                    (925) 822-4374
-                  </Link> */}
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2 text-sm">FLORIDA</h3>
-                  <p className="text-gray-600 text-sm">#12938444</p>
-                  {/* <p className="text-gray-600">Miami, Florida 35521, US</p>
-                  <Link to="tel:(925) 822-4374" className="text-blue-600 hover:text-blue-800">
-                    (925) 822-4374
-                  </Link> */}
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2 text-sm">TEXAS</h3>
-                  <p className="text-gray-600 text-sm">#12938444</p>
-                  {/* <p className="text-gray-600">Miami, Florida 35521, US</p>
-                  <Link to="tel:(925) 822-4374" className="text-blue-600 hover:text-blue-800">
-                    (925) 822-4374
-                  </Link> */}
-                </div>
-              </div>
-            </div>
-
             <div className="mt-auto">
               <Link to="/contact" className="block">
                 <button className="w-full py-4 px-8 text-black text-lg cursor-pointer font-light tracking-wider uppercase transition-all duration-300 ease-in-out hover:bg-black hover:text-white rounded-md border-2 border-black relative focus:outline-none focus:ring-2 focus:ring-black focus:ring-opacity-50">

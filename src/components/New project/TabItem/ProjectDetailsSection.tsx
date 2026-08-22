@@ -14,6 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { countries } from "@/data/countries-states";
 import ThumbprintButton from "../ThumbprintButton";
+import FieldError from "../FieldError";
+import {
+  validateProjectDetails,
+  hasErrors,
+  type ValidationErrors,
+} from "@/utils/newProjectValidation";
+import { toast } from "sonner";
 
 interface ProjectDetailsSectionProps {
   formData: any;
@@ -65,7 +72,7 @@ export default function ProjectDetailsSection({
   /* 2. “Same as mailing address” logic                                   */
   /* ------------------------------------------------------------------ */
   const [sameAsMailingAddress, setSameAsMailingAddress] = useState(
-    formData?.projectLocationSameAsClient ?? false
+    formData?.projectLocationSameAsClient ?? false,
   );
 
   const copyMailingToProject = () => {
@@ -111,7 +118,7 @@ export default function ProjectDetailsSection({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ country: selectedCountry }),
-          }
+          },
         );
         const data = await res.json();
         if (data?.data?.states) {
@@ -144,7 +151,7 @@ export default function ProjectDetailsSection({
               country: selectedCountry,
               state: localFormData.projectState,
             }),
-          }
+          },
         );
         const data = await res.json();
         if (Array.isArray(data?.data)) {
@@ -163,15 +170,29 @@ export default function ProjectDetailsSection({
   /* ------------------------------------------------------------------ */
   /* 4. Generic change handlers                                          */
   /* ------------------------------------------------------------------ */
+  const [errors, setErrors] = useState<ValidationErrors>({});
+
+  // Clear a field's error as soon as it's edited, so the form stops nagging
+  // about something the client is in the middle of fixing.
+  const clearError = (name: string) =>
+    setErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setLocalFormData((prev) => ({ ...prev, [name]: value }));
+    clearError(name);
   };
 
   const handleSelectChange = (name: string, value: string) => {
     setLocalFormData((prev) => ({ ...prev, [name]: value }));
+    clearError(name);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,16 +228,32 @@ export default function ProjectDetailsSection({
     goToPreviousSection();
   };
 
+  const handleNext = () => {
+    const validationErrors = validateProjectDetails(localFormData);
+    setErrors(validationErrors);
+
+    if (hasErrors(validationErrors)) {
+      toast.error("Please fill in all required fields before continuing.");
+      return;
+    }
+
+    updateFormData({
+      ...localFormData,
+      projectLocationSameAsClient: sameAsMailingAddress,
+    });
+    goToNextSection();
+  };
+
   /* ------------------------------------------------------------------ */
   /* 6. Render                                                           */
   /* ------------------------------------------------------------------ */
   return (
     <div className="space-y-6 pb-6">
       {/* --------------------------------------------------- Project Name */}
-      <div >
+      <div>
         <h2 className="text-base font-medium mb-4">Project Name</h2>
-        <Label htmlFor="projectName" className="mb-2" >
-          Name
+        <Label htmlFor="projectName" className="mb-2">
+          Name <span className="text-red-500 font-semibold">*</span>
         </Label>
         <Input
           id="projectName"
@@ -226,6 +263,7 @@ export default function ProjectDetailsSection({
           className="mt-1"
           required
         />
+        <FieldError message={errors.projectName} />
       </div>
 
       {/* --------------------------------------------------- Project Location */}
@@ -248,8 +286,8 @@ export default function ProjectDetailsSection({
 
         {/* ----- Street Address ----- */}
         <div className="mt-4">
-          <Label className="mb-2" htmlFor="projectStreetAddress" >
-            Street Address
+          <Label className="mb-2" htmlFor="projectStreetAddress">
+            Street Address <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Input
             id="projectStreetAddress"
@@ -260,12 +298,13 @@ export default function ProjectDetailsSection({
             required
             disabled={sameAsMailingAddress}
           />
+          <FieldError message={errors.projectStreetAddress} />
         </div>
 
         {/* ----- Country ----- */}
         <div className="space-y-2">
-          <Label className="mb-2" htmlFor="projectCountry" >
-            Country
+          <Label className="mb-2" htmlFor="projectCountry">
+            Country <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Select
             value={localFormData.projectCountry}
@@ -277,18 +316,24 @@ export default function ProjectDetailsSection({
             </SelectTrigger>
             <SelectContent className="max-h-[300px] bg-white border-gray-300">
               {countries.map((c) => (
-                <SelectItem key={c.code} value={c.name} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                <SelectItem
+                  key={c.code}
+                  value={c.name}
+                  className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                >
                   {c.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <FieldError message={errors.projectCountry} />
         </div>
         {/* ----- State ----- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="mt-4">
             <Label className="mb-2" htmlFor="projectState">
-              State / Province
+              State / Province{" "}
+              <span className="text-red-500 font-semibold">*</span>
             </Label>
             {loadingStates ? (
               <p className="text-sm text-gray-500">Loading states…</p>
@@ -303,7 +348,11 @@ export default function ProjectDetailsSection({
                 </SelectTrigger>
                 <SelectContent className="bg-white max-h-[300px] border-gray-300">
                   {states.map((s) => (
-                    <SelectItem key={s} value={s} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                    <SelectItem
+                      key={s}
+                      value={s}
+                      className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                    >
                       {s}
                     </SelectItem>
                   ))}
@@ -320,10 +369,11 @@ export default function ProjectDetailsSection({
                 disabled={sameAsMailingAddress}
               />
             )}
+            <FieldError message={errors.projectState} />
           </div>
           <div className="mt-4">
-            <Label className="mb-2" htmlFor="projectZipCode" >
-              Zip Code
+            <Label className="mb-2" htmlFor="projectZipCode">
+              Zip Code <span className="text-red-500 font-semibold">*</span>
             </Label>
             <Input
               id="projectZipCode"
@@ -334,15 +384,15 @@ export default function ProjectDetailsSection({
               required
               disabled={sameAsMailingAddress}
             />
+            <FieldError message={errors.projectZipCode} />
           </div>
         </div>
-
 
         {/* ----- City ----- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
           <div className="">
-            <Label className="mb-2" htmlFor="projectCity" >
-              City
+            <Label className="mb-2" htmlFor="projectCity">
+              City <span className="text-red-500 font-semibold">*</span>
             </Label>
             {loadingCities ? (
               <p className="text-sm text-gray-500">Loading cities…</p>
@@ -357,7 +407,11 @@ export default function ProjectDetailsSection({
                 </SelectTrigger>
                 <SelectContent className="bg-white max-h-[300px] border-gray-300">
                   {cities.map((c) => (
-                    <SelectItem key={c} value={c} className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                    <SelectItem
+                      key={c}
+                      value={c}
+                      className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                    >
                       {c}
                     </SelectItem>
                   ))}
@@ -374,10 +428,13 @@ export default function ProjectDetailsSection({
                 disabled={sameAsMailingAddress}
               />
             )}
+            <FieldError message={errors.projectCity} />
           </div>
           <div className="">
             <div>
-              <Label className="mb-2" htmlFor="projectAptSuiteUnit">Apt / Suite / Unit</Label>
+              <Label className="mb-2" htmlFor="projectAptSuiteUnit">
+                Apt / Suite / Unit (Optional)
+              </Label>
               <Input
                 id="projectAptSuiteUnit"
                 name="projectAptSuiteUnit"
@@ -389,9 +446,7 @@ export default function ProjectDetailsSection({
           </div>
         </div>
 
-
         {/* ----- Zip Code ----- */}
-
       </div>
 
       {/* --------------------------------------------------- Project Specifications */}
@@ -401,8 +456,9 @@ export default function ProjectDetailsSection({
           {/* ---- Service Type + optional “Other” input ---- */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="mb-2" htmlFor="serviceType" >
-                Service Type
+              <Label className="mb-2" htmlFor="serviceType">
+                Service Type{" "}
+                <span className="text-red-500 font-semibold">*</span>
               </Label>
 
               <Select
@@ -413,33 +469,61 @@ export default function ProjectDetailsSection({
                   <SelectValue placeholder="Select service type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="new-construction" className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                  <SelectItem
+                    value="new-construction"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
                     New Construction
                   </SelectItem>
-                  <SelectItem value="renovation" className="hover:bg-gray-800 hover:text-white cursor-pointer">
+                  <SelectItem
+                    value="renovation"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
                     Renovation / Remodel
                   </SelectItem>
-                  <SelectItem value="addition" className="hover:bg-gray-800 hover:text-white cursor-pointer">Tenant Improvement</SelectItem>
-                  <SelectItem value="consultation" className="hover:bg-gray-800 hover:text-white cursor-pointer">Other</SelectItem>
+                  <SelectItem
+                    value="tenant-improvement"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    Tenant Improvement
+                  </SelectItem>
+                  <SelectItem
+                    value="addition"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    Addition
+                  </SelectItem>
+                  <SelectItem
+                    value="consultation"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    Other
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
+              <FieldError message={errors.serviceType} />
+
               {/* Show input only when “Other” is selected */}
               {localFormData.serviceType === "consultation" && (
-                <Input
-                  name="serviceTypeOther"
-                  placeholder="Please specify…"
-                  value={localFormData.serviceTypeOther ?? ""}
-                  onChange={handleInputChange}
-                  className="mt-2"
-                />
+                <>
+                  <Input
+                    name="serviceTypeOther"
+                    placeholder="Please specify…"
+                    value={localFormData.serviceTypeOther ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-2"
+                  />
+                  <FieldError message={errors.serviceTypeOther} />
+                </>
               )}
             </div>
 
             {/* ---- Project Type + optional “Other” input ---- */}
             <div className="space-y-2">
-              <Label className="mb-2" htmlFor="projectType" >
-                Project Type
+              <Label className="mb-2" htmlFor="projectType">
+                Project Type{" "}
+                <span className="text-red-500 font-semibold">*</span>
               </Label>
 
               <Select
@@ -450,21 +534,41 @@ export default function ProjectDetailsSection({
                   <SelectValue placeholder="Project Type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="residential" className="hover:bg-gray-800 hover:text-white cursor-pointer">Residential</SelectItem>
-                  <SelectItem value="commercial" className="hover:bg-gray-800 hover:text-white cursor-pointer">Commercial</SelectItem>
-                  <SelectItem value="other" className="hover:bg-gray-800 hover:text-white cursor-pointer">Other</SelectItem>
+                  <SelectItem
+                    value="residential"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    Residential
+                  </SelectItem>
+                  <SelectItem
+                    value="commercial"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    Commercial
+                  </SelectItem>
+                  <SelectItem
+                    value="other"
+                    className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    Other
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
+              <FieldError message={errors.projectType} />
+
               {/* Show input only when “Other” is selected */}
               {localFormData.projectType === "other" && (
-                <Input
-                  name="projectTypeOther"
-                  placeholder="Please specify…"
-                  value={localFormData.projectTypeOther ?? ""}
-                  onChange={handleInputChange}
-                  className="mt-2"
-                />
+                <>
+                  <Input
+                    name="projectTypeOther"
+                    placeholder="Please specify…"
+                    value={localFormData.projectTypeOther ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-2"
+                  />
+                  <FieldError message={errors.projectTypeOther} />
+                </>
               )}
             </div>
           </div>
@@ -472,11 +576,11 @@ export default function ProjectDetailsSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* ---- Square Footage ---- */}
             <div>
-              <Label className="mb-2" htmlFor="squareFootage" >
-                Project Size ( Estimate )
+              <Label className="mb-2" htmlFor="squareFootage">
+                Project Size ( Estimate ){" "}
+                <span className="text-red-500 font-semibold">*</span>
               </Label>
               <div className="flex justify-center items-center w-full">
-
                 <Input
                   id="squareFootage"
                   name="squareFootage"
@@ -489,23 +593,37 @@ export default function ProjectDetailsSection({
                 <div>
                   <Select
                     value={localFormData.projectSizeUnit}
-                    onValueChange={(v) => handleSelectChange("projectSizeUnit", v)}
+                    onValueChange={(v) =>
+                      handleSelectChange("projectSizeUnit", v)
+                    }
                   >
                     <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
-                      <SelectValue placeholder="Sq Ft / Sq M" />
+                      <SelectValue placeholder="sq² / m²" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-300">
-                      <SelectItem value="sqf" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq Ft</SelectItem>
-                      <SelectItem value="sqm" className="hover:bg-gray-800 hover:text-white cursor-pointer">Sq M</SelectItem>
+                      <SelectItem
+                        value="sqf"
+                        className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                      >
+                        sq²
+                      </SelectItem>
+                      <SelectItem
+                        value="sqm"
+                        className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                      >
+                        m²
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              <FieldError message={errors.squareFootage} />
             </div>
             {/* budget range  */}
             <div>
-              <Label className="mb-2" htmlFor="budgetRange" >
-                Budget Range
+              <Label className="mb-2" htmlFor="budgetRange">
+                Budget Range{" "}
+                <span className="text-red-500 font-semibold">*</span>
               </Label>
               <Input
                 id="budgetRange"
@@ -515,22 +633,26 @@ export default function ProjectDetailsSection({
                 placeholder="e.g. $250,000"
                 className="mt-1 w-full"
               />
+              <FieldError message={errors.budgetRange} />
             </div>
           </div>
-
-
-
-
         </div>
       </div>
 
       {/* --------------------------------------------------- Architectural Preferences */}
       <div>
-        <h2 className="text-base font-medium mb-4">
-          Architectural Preferences
-        </h2>
-        <div className="space-y-4">
-          {/* <div>
+        <div>
+          <div className="flex justify-between items-center">
+            <h2 className="text-base font-medium mb-4">
+              Architectural Preferences
+            </h2>
+
+            <p className="text-red-500 text-sm font-semibold">
+              * - indicates required field
+            </p>
+          </div>
+          <div className="space-y-4">
+            {/* <div>
             <Label htmlFor="architecturalStyle" >
               Preferred Architectural Style
             </Label>
@@ -543,18 +665,19 @@ export default function ProjectDetailsSection({
               placeholder="e.g., Modern, Traditional, Mediterranean, etc."
             />
           </div> */}
-          <div>
-            <Label htmlFor="siteConstraints" >
-              Site Constraints and Notes
-            </Label>
-            <Textarea
-              id="siteConstraints"
-              name="siteConstraints"
-              value={localFormData.siteConstraints}
-              onChange={handleInputChange}
-              className="mt-1"
-              placeholder="e.g., Sloped terrain, flood zone, etc."
-            />
+            <div>
+              <Label htmlFor="siteConstraints">
+                Site Constraints and Notes{" "}
+              </Label>
+              <Textarea
+                id="siteConstraints"
+                name="siteConstraints"
+                value={localFormData.siteConstraints}
+                onChange={handleInputChange}
+                className="mt-1"
+                placeholder="e.g., Sloped terrain, flood zone, etc."
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -563,10 +686,7 @@ export default function ProjectDetailsSection({
       <div>
         <div className="space-y-2">
           <div>
-            <Label
-              htmlFor="specialRequirements"
-
-            >
+            <Label htmlFor="specialRequirements">
               Additional Notes / Contextual Requirements
             </Label>
             <Textarea
@@ -586,10 +706,7 @@ export default function ProjectDetailsSection({
         <h2 className="font-bold mb-4">Additional Documents</h2>
         <div className="space-y-4">
           <div>
-            <Label
-              htmlFor="propertyBoundarySurveyMap"
-              className="mb-2"
-            >
+            <Label htmlFor="propertyBoundarySurveyMap" className="mb-2">
               Property Boundary / Survey Map
             </Label>
             <Input
@@ -602,10 +719,7 @@ export default function ProjectDetailsSection({
             />
           </div>
           <div>
-            <Label
-              htmlFor="geotechnicalReport"
-              className="mb-2"
-            >
+            <Label htmlFor="geotechnicalReport" className="mb-2">
               Geotechnical Report / Survey
             </Label>
             <Input
@@ -618,10 +732,7 @@ export default function ProjectDetailsSection({
             />
           </div>
           <div>
-            <Label
-              htmlFor="additionalProjectPhotos"
-              className="mb-2"
-            >
+            <Label htmlFor="additionalProjectPhotos" className="mb-2">
               Project Photos
             </Label>
             <Input
@@ -661,13 +772,7 @@ export default function ProjectDetailsSection({
           <ThumbprintButton
             // @ts-ignore
             type="button"
-            onClick={() => {
-              updateFormData({
-                ...localFormData,
-                projectLocationSameAsClient: sameAsMailingAddress,
-              });
-              goToNextSection();
-            }}
+            onClick={handleNext}
             text="Next Step"
           />
         </div>

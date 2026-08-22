@@ -13,7 +13,9 @@ import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { signOut } from "@/redux/features/auth/authActions";
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
 import Backbutton from "@/components/Common/Backbutton";
+import { getUserPhoto } from "@/utils/userPhoto";
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
+import { LayoutDashboard, Settings, LogOut, ChevronRight } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -38,14 +40,14 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-[#ffffff]  sticky top-0 z-50 border-b border-gray-200">
       <div className=" mx-auto px-4 sm:px-6 lg:px-16">
-        <div className="flex items-center justify-between h-12">
+        <div className="flex items-center justify-between h-14 ">
           {/* Logo */}
           <div className="">{!isHomePage && <Backbutton />}</div>
           <div className="flex shrink w-full justify-center">
             <Link to="/" className="text-black text-2xl ">
               <div className="flex content-center gap-2">
-                <img src={logo} alt="" className="w-8 h-8" />
-                <span className="text-base mt-1 font-extralight tracking-wide ">
+                <img src={logo} alt="" className="w-10 h-10" />
+                <span className="lg:text-xl text-lg mt-1 font-light tracking-wide ">
                   Architecture Simple <span className="text-yellow-400">.</span>
                 </span>
               </div>
@@ -60,9 +62,9 @@ const Navbar: React.FC = () => {
               <Popover>
                 <PopoverTrigger className="cursor-pointer">
                   <div className="h-8 w-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
-                    {user?.imagUrl ? (
+                    {getUserPhoto(user) ? (
                       <img
-                        src={user.imagUrl}
+                        src={getUserPhoto(user)}
                         alt={user.name}
                         className="h-full w-full object-cover"
                       />
@@ -72,8 +74,24 @@ const Navbar: React.FC = () => {
                   </div>
                 </PopoverTrigger>
 
-                <PopoverContent className="mr-3 bg-website-color-darkGray border-none text-white space-y-2">
-                  <Button
+                <PopoverContent
+                  align="end"
+                  sideOffset={10}
+                  className="
+    w-60
+    mr-3
+    p-2
+    rounded-2xl
+    border border-white/10
+    bg-website-color-darkGray/60
+    backdrop-blur-2xl
+    shadow-[0_20px_50px_rgba(0,0,2,0.35)]
+    text-white
+    z-[60]
+  "
+                >
+                  {/* Dashboard */}
+                  <button
                     onClick={() =>
                       navigate(
                         user?.role === "SUPER_ADMIN" ||
@@ -86,22 +104,146 @@ const Navbar: React.FC = () => {
                           : "/user-dashboard",
                       )
                     }
-                    className="bg-website-color-lightGray text-black w-full cursor-pointer"
+                    className="
+      group
+      w-full
+      flex items-center gap-3
+      px-3 py-3
+      rounded-xl
+      text-left
+      transition-all duration-200
+      hover:bg-white/10
+      cursor-pointer
+    "
                   >
-                    Dashboard
-                  </Button>
-                  <Button
+                    <div
+                      className="
+        h-9 w-9
+        rounded-lg
+        flex items-center justify-center
+        bg-white/10
+        border border-white/10
+        text-white
+        transition-all duration-200
+        group-hover:bg-white
+        group-hover:text-black
+      "
+                    >
+                      <LayoutDashboard size={16} />
+                    </div>
+
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">
+                        Dashboard
+                      </p>
+                      <p className="text-[11px] text-white/40">
+                        Go to your workspace
+                      </p>
+                    </div>
+
+                    <ChevronRight
+                      size={15}
+                      className="
+        text-white/30
+        transition-all duration-200
+        group-hover:text-white
+        group-hover:translate-x-0.5
+      "
+                    />
+                  </button>
+
+                  {/* Settings */}
+                  <button
                     onClick={() => navigate("/profile-settings")}
-                    className="bg-website-color-lightGray text-black w-full cursor-pointer"
+                    className="
+      group
+      w-full
+      flex items-center gap-3
+      px-3 py-3
+      rounded-xl
+      text-left
+      transition-all duration-200
+      hover:bg-white/10
+      cursor-pointer
+    "
                   >
-                    Settings
-                  </Button>
-                  <Button
+                    <div
+                      className="
+        h-9 w-9
+        rounded-lg
+        flex items-center justify-center
+        bg-white/10
+        border border-white/10
+        text-white
+        transition-all duration-200
+        group-hover:bg-white
+        group-hover:text-black
+      "
+                    >
+                      <Settings size={16} />
+                    </div>
+
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">Settings</p>
+                      <p className="text-[11px] text-white/40">
+                        Manage your account
+                      </p>
+                    </div>
+
+                    <ChevronRight
+                      size={15}
+                      className="
+        text-white/30
+        transition-all duration-200
+        group-hover:text-white
+        group-hover:translate-x-0.5
+      "
+                    />
+                  </button>
+
+                  {/* Divider */}
+                  <div className="h-px bg-white/10 my-1" />
+
+                  {/* Logout */}
+                  <button
                     onClick={handleLogout}
-                    className="bg-website-color-lightGray text-black w-full cursor-pointer"
+                    className="
+      group
+      w-full
+      flex items-center gap-3
+      px-3 py-3
+      rounded-xl
+      text-left
+      transition-all duration-200
+      hover:bg-red-500/10
+      cursor-pointer
+    "
                   >
-                    Logout
-                  </Button>
+                    <div
+                      className="
+        h-9 w-9
+        rounded-lg
+        flex items-center justify-center
+        bg-white/10
+        border border-white/10
+        text-white/80
+        transition-all duration-200
+        group-hover:bg-red-500
+        group-hover:text-white
+      "
+                    >
+                      <LogOut size={16} />
+                    </div>
+
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white group-hover:text-red-400">
+                        Logout
+                      </p>
+                      <p className="text-[11px] text-white/40">
+                        Sign out of your account
+                      </p>
+                    </div>
+                  </button>
                 </PopoverContent>
               </Popover>
             ) : (
@@ -123,9 +265,9 @@ const Navbar: React.FC = () => {
               <Popover>
                 <PopoverTrigger className="cursor-pointer">
                   <div className="h-8 w-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
-                    {user?.imagUrl ? (
+                    {getUserPhoto(user) ? (
                       <img
-                        src={user.imagUrl}
+                        src={getUserPhoto(user)}
                         alt={user.name}
                         className="h-full w-full object-cover"
                       />

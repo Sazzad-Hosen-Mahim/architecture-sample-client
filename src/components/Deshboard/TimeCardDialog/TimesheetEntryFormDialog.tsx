@@ -84,13 +84,43 @@ export default function TimesheetEntryFormDialog({
   // Billable entries state — each entry has entryWeek
   const [billableEntries, setBillableEntries] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
+  /** The contract the phase belongs to — the original proposal or an amendment. */
+  const [selectedContract, setSelectedContract] = useState<string>("");
   const [selectedPhase, setSelectedPhase] = useState<string>("");
   const [entryDescription, setEntryDescription] = useState<string>("");
 
+  /** Contracts (original + amendments) on the selected project. */
+  const currentProjectContracts = useMemo(() => {
+    const proj = assignedProjects.find((p: any) => p.id === selectedProject);
+    return proj?.contracts || [];
+  }, [selectedProject, assignedProjects]);
+
+  const currentContract = useMemo(
+    () =>
+      currentProjectContracts.find(
+        (c: any) => (c.id ?? "unassigned") === selectedContract,
+      ),
+    [currentProjectContracts, selectedContract],
+  );
+
+  /** Phases belonging to the chosen contract only. */
   const currentProjectPhases = useMemo(() => {
+    if (currentContract) return currentContract.phases || [];
+    // Older payloads have no contract grouping — fall back to the flat list.
     const proj = assignedProjects.find((p: any) => p.id === selectedProject);
     return proj?.phases || [];
-  }, [selectedProject, assignedProjects]);
+  }, [currentContract, selectedProject, assignedProjects]);
+
+  const handleProjectChange = (value: string) => {
+    setSelectedProject(value);
+    setSelectedContract("");
+    setSelectedPhase("");
+  };
+
+  const handleContractChange = (value: string) => {
+    setSelectedContract(value);
+    setSelectedPhase("");
+  };
 
   // Helper to get empty hours for a week
   const getEmptyHours = () => ({
@@ -201,6 +231,13 @@ export default function TimesheetEntryFormDialog({
       {
         projectRequestId: selectedProject,
         projectName: project?.projectName,
+        // Records which contract the hours belong to, so a phase name shared by
+        // the original contract and an amendment stays unambiguous.
+        proposalId: currentContract?.id || undefined,
+        proposalNumber: currentContract?.proposalNumber || undefined,
+        stageId:
+          currentProjectPhases.find((ph: any) => ph.name === selectedPhase)?.id ||
+          undefined,
         phaseName: selectedPhase,
         description: entryDescription,
         entryWeek: activeWeek,
@@ -267,7 +304,7 @@ export default function TimesheetEntryFormDialog({
 
   // Derive a summary of all phases that have any hours logged for the active week
   const loggedPhasesSummary = useMemo(() => {
-    const phasesMap = new Map<string, { projId: string; projectName: string; phase: string; total: number }>();
+    const phasesMap = new Map<string, { projId: string; projectName: string; phase: string; proposalId?: string; total: number }>();
 
     // Add billable phases
     billableEntries.forEach(be => {
@@ -277,6 +314,7 @@ export default function TimesheetEntryFormDialog({
           projId: be.projectRequestId,
           projectName: be.projectName || "Unknown",
           phase: be.phaseName,
+          proposalId: be.proposalId,
           total: 0
         };
         existing.total += calculateRowTotal(be.hours);
@@ -315,9 +353,18 @@ export default function TimesheetEntryFormDialog({
           const rowTotal = calculateRowTotal(hours);
           if (rowTotal === 0) return; // Skip empty rows
 
+          // Overhead is entered against the same project/phase selection as the
+          // billable rows, so it inherits that line's contract.
+          const owningEntry = billableEntries.find(
+            (be) => be.projectRequestId === projId && be.phaseName === phase,
+          );
+
           entries.push({
             category,
             projectRequestId: projId === "GENERAL" ? null : projId,
+            proposalId: owningEntry?.proposalId || undefined,
+            proposalNumber: owningEntry?.proposalNumber || undefined,
+            stageId: owningEntry?.stageId || undefined,
             phaseName: phase === "GENERAL" ? null : phase,
             entryWeek: parseInt(weekStr) || 1,
             monday: parseFloat(hours.Mon) || 0,
@@ -334,6 +381,9 @@ export default function TimesheetEntryFormDialog({
       const preparedBillableEntries = billableEntries.map(be => ({
         projectRequestId: be.projectRequestId,
         projectName: be.projectName,
+        proposalId: be.proposalId || undefined,
+        proposalNumber: be.proposalNumber || undefined,
+        stageId: be.stageId || undefined,
         phaseName: be.phaseName,
         description: be.description,
         entryWeek: be.entryWeek || 1,
@@ -468,9 +518,9 @@ export default function TimesheetEntryFormDialog({
                 <Plus className="h-4 w-4" /> Select Project & Phase
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                <div className="col-span-12 sm:col-span-4">
+                <div className="col-span-12 sm:col-span-3">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Project</label>
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <Select value={selectedProject} onValueChange={handleProjectChange}>
                     <SelectTrigger className="bg-white border-gray-200">
                       <SelectValue placeholder="Pick a Project..." />
                     </SelectTrigger>
@@ -482,16 +532,54 @@ export default function TimesheetEntryFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-12 sm:col-span-4">
+                {/* The original contract and every amendment on the project.
+                    Phases are scoped to whichever is picked here. */}
+                <div className="col-span-12 sm:col-span-3">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Contract</label>
-                  <Select value={selectedPhase} onValueChange={setSelectedPhase} disabled={!selectedProject}>
+                  <Select
+                    value={selectedContract}
+                    onValueChange={handleContractChange}
+                    disabled={!selectedProject}
+                  >
                     <SelectTrigger className="bg-white border-gray-200">
                       <SelectValue placeholder="Pick a Contract" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-200">
+                      {currentProjectContracts.map((c: any) => (
+                        <SelectItem key={c.id ?? "unassigned"} value={c.id ?? "unassigned"}>
+                          <span className="flex items-center gap-2">
+                            {c.proposalNumber || c.title}
+                            {c.isAmendment && (
+                              <span className="text-[9px] font-black uppercase tracking-wider text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">
+                                Amendment
+                              </span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      ))}
+                      {currentProjectContracts.length === 0 && (
+                        <div className="p-2 text-xs text-gray-400 italic">No contracts on this project</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-12 sm:col-span-2">
+                  <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Phase</label>
+                  <Select
+                    value={selectedPhase}
+                    onValueChange={setSelectedPhase}
+                    disabled={!selectedContract}
+                  >
+                    <SelectTrigger className="bg-white border-gray-200">
+                      <SelectValue placeholder="Pick a Phase" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
                       {currentProjectPhases.map((ph: any) => (
                         <SelectItem key={ph.id} value={ph.name}>{ph.name}</SelectItem>
                       ))}
+                      {currentProjectPhases.length === 0 && (
+                        <div className="p-2 text-xs text-gray-400 italic">No phases on this contract</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -528,6 +616,7 @@ export default function TimesheetEntryFormDialog({
                     key={idx}
                     onClick={() => {
                       setSelectedProject(item.projId);
+                      setSelectedContract(item.proposalId ?? "unassigned");
                       setSelectedPhase(item.phase);
                     }}
                     className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight transition-all border ${selectedProject === item.projId && selectedPhase === item.phase
@@ -565,6 +654,7 @@ export default function TimesheetEntryFormDialog({
                           <tr key={actualIdx} className={`hover:bg-gray-50/50 transition-colors cursor-pointer ${selectedProject === entry.projectRequestId && selectedPhase === entry.phaseName ? "bg-blue-50/50" : ""}`}
                             onClick={() => {
                               setSelectedProject(entry.projectRequestId);
+                              setSelectedContract(entry.proposalId ?? "unassigned");
                               setSelectedPhase(entry.phaseName);
                             }}
                           >

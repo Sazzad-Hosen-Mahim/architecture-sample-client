@@ -28,7 +28,7 @@ export const projects = [
     phone: "+880 1712 345678",
     country: "Bangladesh",
     serviceType: "LANDSCAPE_DESIGN",
-    projectCategory: "LANDSCAPE",
+    projectCategory: "OTHER",
     budgetRange: "$30k – $60k",
     status: "Pending",
   },

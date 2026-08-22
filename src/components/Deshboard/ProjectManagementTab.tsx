@@ -18,13 +18,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { ProjectRequest, useGetProjectRequestsQuery, useGetMyProjectRequestsQuery, useArchiveProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
+import {
+  ProjectRequest,
+  useGetProjectRequestsQuery,
+  useGetMyProjectRequestsQuery,
+  useArchiveProjectMutation,
+} from "@/redux/api/adminDashboard/proposalApi";
 import { getProjectProgress } from "@/utils/projectProgress";
 import { useProjectDeepLink } from "@/hooks/useProjectDeepLink";
 import ProjectDetailsModal from "./ProjectDetailesModal";
 import { BsFillClipboard2PlusFill } from "react-icons/bs";
 import { toast } from "sonner";
-import { Archive, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Archive,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,15 +45,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const PROJECTS_PER_PAGE = 10;
+const PAGE_SIZE_OPTIONS = ["10", "25", "50", "all"] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 export function ProjectManagementTab() {
   const [activeTab, setActiveTab] = useState("all");
   const [assignedFilter, setAssignedFilter] = useState("all");
-  const [selectedProject, setSelectedProject] = useState<ProjectRequest | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pageSize, setPageSize] = useState<PageSize>("10");
+  const [selectedProject, setSelectedProject] = useState<ProjectRequest | null>(
+    null,
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
-  const [projectToArchive, setProjectToArchive] = useState<ProjectRequest | null>(null);
+  const [projectToArchive, setProjectToArchive] =
+    useState<ProjectRequest | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -57,8 +74,16 @@ export function ProjectManagementTab() {
     }
   };
 
-  const { data: allProjectsData, isLoading: isLoadingAll, isError: isErrorAll } = useGetProjectRequestsQuery();
-  const { data: myProjectsData, isLoading: isLoadingMy, isError: isErrorMy } = useGetMyProjectRequestsQuery();
+  const {
+    data: allProjectsData,
+    isLoading: isLoadingAll,
+    isError: isErrorAll,
+  } = useGetProjectRequestsQuery();
+  const {
+    data: myProjectsData,
+    isLoading: isLoadingMy,
+    isError: isErrorMy,
+  } = useGetMyProjectRequestsQuery();
   const [archiveProject] = useArchiveProjectMutation();
 
   const data = assignedFilter === "assigned" ? myProjectsData : allProjectsData;
@@ -70,26 +95,53 @@ export function ProjectManagementTab() {
     return data?.data?.filter((p: ProjectRequest) => !p.isArchived) || [];
   }, [data]);
 
+  // Search by project name, client name and location. Applied before the stage
+  // split so the tab counts describe what the table is actually showing.
+  const searchedProjects = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return nonArchivedProjects;
+
+    return nonArchivedProjects.filter((p: ProjectRequest) => {
+      const clientName =
+        `${p.clientFirstName || ""} ${p.clientLastName || ""}`.trim();
+      const location = [p.projectCity, p.projectState, p.projectCountry]
+        .filter(Boolean)
+        .join(", ");
+
+      return [p.projectName, p.companyName, clientName, location]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term));
+    });
+  }, [nonArchivedProjects, searchTerm]);
+
   // Memoize filtered projects by stage
   const projectsByStage = useMemo(() => {
     const stages = ["all", "inquiry", "scheduled", "active", "completed"];
     const result: Record<string, ProjectRequest[]> = {};
 
-    stages.forEach(stage => {
+    stages.forEach((stage) => {
       if (stage === "all") {
-        result[stage] = nonArchivedProjects;
+        result[stage] = searchedProjects;
       } else if (stage === "inquiry") {
-        result[stage] = nonArchivedProjects.filter(
-          (p) => p.status.toLowerCase() === "pending" || p.status.toLowerCase() === "reviewed"
+        result[stage] = searchedProjects.filter(
+          (p) =>
+            p.status.toLowerCase() === "pending" ||
+            p.status.toLowerCase() === "reviewed",
         );
       } else {
-        result[stage] = nonArchivedProjects.filter(
-          (p) => p.status.toLowerCase() === stage
+        result[stage] = searchedProjects.filter(
+          (p) => p.status.toLowerCase() === stage,
         );
       }
     });
     return result;
-  }, [nonArchivedProjects]);
+  }, [searchedProjects]);
+
+  // Any change to what's being listed puts you back on page one, otherwise you
+  // can end up stranded on a page that no longer exists.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm, assignedFilter, pageSize]);
 
   const handleArchive = useCallback(async () => {
     if (!projectToArchive) return;
@@ -133,10 +185,10 @@ export function ProjectManagementTab() {
   // Helper functions
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   }, []);
 
@@ -159,35 +211,80 @@ export function ProjectManagementTab() {
 
   const getStatusLabel = useCallback((status: string) => {
     switch (status) {
-      case "PENDING": return "Initial";
-      case "REVIEWED": return "Inquiry";
-      case "SCHEDULED": return "Bidding";
-      case "ACTIVE": return "Active";
-      case "COMPLETED": return "Completed";
-      default: return status;
+      case "PENDING":
+        return "Inquiry";
+      case "REVIEWED":
+        return "Inquiry";
+      case "SCHEDULED":
+        return "Bidding";
+      case "ACTIVE":
+        return "Active";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return status;
     }
   }, []);
 
   const getProgress = useCallback((project: ProjectRequest) => {
     const stages = project.stages || [];
-    const completedPhaseCount = stages.filter((s) => s.status === "COMPLETED").length;
-    return getProjectProgress(project.status, completedPhaseCount, stages.length);
+    const completedPhaseCount = stages.filter(
+      (s) => s.status === "COMPLETED",
+    ).length;
+    return getProjectProgress(
+      project.status,
+      completedPhaseCount,
+      stages.length,
+    );
   }, []);
 
   const renderProjectTable = (filteredProjects: ProjectRequest[]) => {
-    const totalPages = Math.ceil(filteredProjects.length / PROJECTS_PER_PAGE);
+    // "all" collapses to a single page holding everything.
+    const perPage =
+      pageSize === "all"
+        ? Math.max(filteredProjects.length, 1)
+        : Number(pageSize);
+    const totalPages = Math.max(
+      1,
+      Math.ceil(filteredProjects.length / perPage),
+    );
+    // Guards against a stale page number when the list shrinks under us.
+    const safePage = Math.min(currentPage, totalPages);
     const paginatedProjects = filteredProjects.slice(
-      (currentPage - 1) * PROJECTS_PER_PAGE,
-      currentPage * PROJECTS_PER_PAGE
+      (safePage - 1) * perPage,
+      safePage * perPage,
     );
 
     return (
       <div className="rounded-lg border bg-card border-gray-200">
-        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-
-          <div className="flex items-center justify-start lg:justify-end w-full gap-2">
+        <div className="p-4 border-b border-gray-200 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 px-3 border border-gray-300 rounded-lg bg-white">
+            <Search className="text-gray-500 shrink-0" size={14} />
+            <input
+              type="text"
+              placeholder="Search by project name, client or location..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 outline-none py-2 bg-transparent text-sm text-gray-700"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="text-xs text-gray-400 hover:text-gray-700 cursor-pointer shrink-0"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-start lg:justify-end gap-2 shrink-0">
             <span className="text-xs font-medium text-gray-500">Filter:</span>
-            <Select value={assignedFilter} onValueChange={(val) => { setAssignedFilter(val); setCurrentPage(1); }}>
+            <Select
+              value={assignedFilter}
+              onValueChange={(val) => {
+                setAssignedFilter(val);
+                setCurrentPage(1);
+              }}
+            >
               <SelectTrigger className="w-[160px] h-8 text-xs bg-white">
                 <SelectValue placeholder="Filter projects" />
               </SelectTrigger>
@@ -200,26 +297,52 @@ export function ProjectManagementTab() {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading projects...</div>
+          <div className="p-8 text-center text-gray-500">
+            Loading projects...
+          </div>
         ) : isError ? (
-          <div className="p-8 text-center text-red-500">Error loading projects. Please try again.</div>
+          <div className="p-8 text-center text-red-500">
+            Error loading projects. Please try again.
+          </div>
         ) : filteredProjects.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No projects found.</div>
+          <div className="p-8 text-center text-gray-500">
+            {searchTerm
+              ? `No projects match "${searchTerm}".`
+              : "No projects found."}
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <Table >
+              <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs font-bold text-gray-600">Project</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Location</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Service Type</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Client</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Assigned Manager</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Initial Appointment Date</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Status</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">Progress</TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">Action</TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">
+                      Project
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      Location
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">
+                      Service Type
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      Client
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      Assigned Manager
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      Initial Appointment Date
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      Progress
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600">
+                      Action
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -230,8 +353,12 @@ export function ProjectManagementTab() {
                     >
                       <TableCell className="whitespace-pre-wrap">
                         <div>
-                          <div className="text-xs font-semibold">{project.projectName}</div>
-                          <div className="text-xs text-gray-400 mt-1">{project.companyName}</div>
+                          <div className="text-xs font-semibold">
+                            {project.projectName}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {project.companyName}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs hidden md:table-cell">
@@ -239,7 +366,9 @@ export function ProjectManagementTab() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs">{(project.serviceType || "").replace(/_/g, ' ')}</span>
+                          <span className="text-xs">
+                            {(project.serviceType || "").replace(/_/g, " ")}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs hidden md:table-cell">
@@ -267,7 +396,9 @@ export function ProjectManagementTab() {
                               style={{ width: `${getProgress(project)}%` }}
                             ></div>
                           </div>
-                          <span className="text-xs">{getProgress(project)}%</span>
+                          <span className="text-xs">
+                            {getProgress(project)}%
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -306,24 +437,40 @@ export function ProjectManagementTab() {
             {/* Pagination UI */}
             <div className="p-4 border-t border-gray-300 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-50/50">
               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
-                Page {currentPage} of {totalPages} ({filteredProjects.length} total)
+                Page {safePage} of {totalPages} ({filteredProjects.length} total)
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500">Show:</span>
+                <Select
+                  value={pageSize}
+                  onValueChange={(val) => setPageSize(val as PageSize)}
+                >
+                  <SelectTrigger className="w-[90px] h-8 text-xs bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200">
+                    {PAGE_SIZE_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option === "all" ? "All" : option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => p - 1)}
-                  className="h-8 w-8 p-0"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage(safePage - 1)}
+                  className="h-8 w-8 p-0 cursor-pointer"
                 >
                   <ChevronLeft size={16} />
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="h-8 w-8 p-0"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage(safePage + 1)}
+                  className="h-8 w-8 p-0 cursor-pointer"
                 >
                   <ChevronRight size={16} />
                 </Button>
@@ -348,15 +495,25 @@ export function ProjectManagementTab() {
                 Archive Project
               </DialogTitle>
               <DialogDescription>
-                Are you sure you want to archive <strong>{projectToArchive?.projectName}</strong>?
-                It will be moved to the <strong>Archived Projects</strong> section in Settings.
+                Are you sure you want to archive{" "}
+                <strong>{projectToArchive?.projectName}</strong>? It will be
+                moved to the <strong>Archived Projects</strong> section in
+                Settings.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" className="cursor-pointer hover:bg-gray-300 hover:border-gray-300 hover:text-gray-900" onClick={() => setArchiveModalOpen(false)}>
+              <Button
+                variant="outline"
+                className="cursor-pointer hover:bg-gray-300 hover:border-gray-300 hover:text-gray-900"
+                onClick={() => setArchiveModalOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button variant="default" className="bg-amber-600 hover:bg-amber-700 cursor-pointer text-white" onClick={handleArchive}>
+              <Button
+                variant="default"
+                className="bg-amber-600 hover:bg-amber-700 cursor-pointer text-white"
+                onClick={handleArchive}
+              >
                 Confirm Archive
               </Button>
             </DialogFooter>
@@ -387,46 +544,51 @@ export function ProjectManagementTab() {
               <TabsList className="flex items-center justify-start gap-1 md:gap-2 w-full bg-transparent border-none">
                 <TabsTrigger
                   value="all"
-                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "all"
-                    ? "border-b-gray-800 text-gray-900 font-bold"
-                    : "border-b-transparent text-gray-500 hover:text-gray-900"
-                    }`}
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${
+                    activeTab === "all"
+                      ? "border-b-gray-800 text-gray-900 font-bold"
+                      : "border-b-transparent text-gray-500 hover:text-gray-900"
+                  }`}
                 >
                   All ({projectsByStage["all"]?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger
                   value="inquiry"
-                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "inquiry"
-                    ? "border-b-gray-800 text-gray-900 font-bold"
-                    : "border-b-transparent text-gray-500 hover:text-gray-900"
-                    }`}
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${
+                    activeTab === "inquiry"
+                      ? "border-b-gray-800 text-gray-900 font-bold"
+                      : "border-b-transparent text-gray-500 hover:text-gray-900"
+                  }`}
                 >
                   Inquiry ({projectsByStage["inquiry"]?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger
                   value="scheduled"
-                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "scheduled"
-                    ? "border-b-gray-800 text-gray-900 font-bold"
-                    : "border-b-transparent text-gray-500 hover:text-gray-900"
-                    }`}
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${
+                    activeTab === "scheduled"
+                      ? "border-b-gray-800 text-gray-900 font-bold"
+                      : "border-b-transparent text-gray-500 hover:text-gray-900"
+                  }`}
                 >
                   Bidding ({projectsByStage["scheduled"]?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger
                   value="active"
-                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "active"
-                    ? "border-b-gray-800 text-gray-900 font-bold"
-                    : "border-b-transparent text-gray-500 hover:text-gray-900"
-                    }`}
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${
+                    activeTab === "active"
+                      ? "border-b-gray-800 text-gray-900 font-bold"
+                      : "border-b-transparent text-gray-500 hover:text-gray-900"
+                  }`}
                 >
                   Active ({projectsByStage["active"]?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger
                   value="completed"
-                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${activeTab === "completed"
-                    ? "border-b-gray-800 text-gray-900 font-bold"
-                    : "border-b-transparent text-gray-500 hover:text-gray-900"
-                    }`}
+                  className={`flex-shrink-0 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap px-3 md:px-4 py-2.5 cursor-pointer transition-all ${
+                    activeTab === "completed"
+                      ? "border-b-gray-800 text-gray-900 font-bold"
+                      : "border-b-transparent text-gray-500 hover:text-gray-900"
+                  }`}
                 >
                   Completed ({projectsByStage["completed"]?.length || 0})
                 </TabsTrigger>
@@ -448,7 +610,10 @@ export function ProjectManagementTab() {
             onClick={() => navigate("/dashboard/new-inquiries")}
             className="bg-black cursor-pointer text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
           >
-            <span className="text-white"><BsFillClipboard2PlusFill /></span> New Inquiry
+            <span className="text-white">
+              <BsFillClipboard2PlusFill />
+            </span>{" "}
+            New Inquiry
           </Button>
         </div>
 

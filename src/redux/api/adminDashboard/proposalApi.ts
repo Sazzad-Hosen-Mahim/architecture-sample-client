@@ -207,12 +207,20 @@ export interface MyProposalsResponse {
     data: Proposal[];
 }
 
+// Upper bound for the "give me every project" list calls. The studio dashboard
+// filters and paginates client-side, so it needs the whole set, not page 1.
+const ALL_PROJECTS_LIMIT = 500;
+
 export const proposalApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         getProjectRequests: builder.query<ProjectRequestsResponse, void>({
             query: () => ({
                 url: "/project-requests-admin",
                 method: "GET",
+                // The API defaults to 10 per page. The dashboards do their own
+                // tab counting, searching and paging over the full list, so ask
+                // for everything instead of silently truncating at 10.
+                params: { limit: ALL_PROJECTS_LIMIT },
             }),
             providesTags: ["Project"],
         }),
@@ -416,8 +424,36 @@ export const proposalApi = baseApi.injectEndpoints({
             query: () => ({
                 url: "/project-requests-admin/my-requests",
                 method: "GET",
+                params: { limit: ALL_PROJECTS_LIMIT },
             }),
             providesTags: ["Project"],
+        }),
+        // Saves the client contact details edited on the proposal wizard's
+        // Client step back onto the project request. Email is not editable
+        // here — it links the request to the client's account.
+        updateProjectClientDetails: builder.mutation<
+            any,
+            {
+                id: string;
+                clientFirstName?: string;
+                clientLastName?: string;
+                companyName?: string;
+                phone?: string;
+                streetAddress?: string;
+                aptSuiteUnit?: string;
+                city?: string;
+                state?: string;
+                zipCode?: string;
+                country?: string;
+                additionalComments?: string;
+            }
+        >({
+            query: ({ id, ...body }) => ({
+                url: `/project-requests-admin/${id}/client-details`,
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["Project"],
         }),
         updateProjectDriveLink: builder.mutation<any, { id: string; driveLink: string }>({
             query: ({ id, driveLink }) => ({
@@ -434,10 +470,13 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
-        deleteProposal: builder.mutation<any, string>({
-            query: (id) => ({
+        // Super admin only, and it takes their password — deleting a proposal
+        // takes its services, phases and contract with it.
+        deleteProposal: builder.mutation<any, { id: string; password: string }>({
+            query: ({ id, password }) => ({
                 url: `/proposals/${id}`,
                 method: "DELETE",
+                body: { password },
             }),
             invalidatesTags: ["Project"],
         }),
@@ -579,6 +618,7 @@ export const {
     useStartPhaseTimerMutation,
     useStopPhaseTimerMutation,
     useGetMyProjectRequestsQuery,
+    useUpdateProjectClientDetailsMutation,
     useUpdateProjectDriveLinkMutation,
     useDeleteProjectDriveLinkMutation,
     useDeleteProposalMutation,

@@ -65,16 +65,18 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
 
     return (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-            <table className="min-w-[800px] w-full text-sm">
+            {/* No fixed min-width: on a phone the secondary columns are hidden
+                so Project Name, Progress and Action fit without sideways scroll. */}
+            <table className="w-full text-sm md:min-w-[800px]">
                 <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                     <tr>
-                        <th className="px-6 py-4 text-left font-semibold">Project Name</th>
-                        <th className="px-6 py-4 text-left font-semibold">Service</th>
-                        <th className="px-6 py-4 text-left font-semibold">Overall Progress</th>
-                        <th className="px-6 py-4 text-left font-semibold">Latest Phase</th>
+                        <th className="px-3 sm:px-6 py-4 text-left font-semibold">Project Name</th>
+                        <th className="hidden md:table-cell px-6 py-4 text-left font-semibold">Service</th>
+                        <th className="px-3 sm:px-6 py-4 text-left font-semibold">Overall Progress</th>
+                        <th className="hidden lg:table-cell px-6 py-4 text-left font-semibold">Latest Phase</th>
                         {/* <th className="px-6 py-4 text-center font-semibold">Deliverables</th> */}
-                        <th className="px-6 py-4 text-center font-semibold">Status</th>
-                        <th className="px-6 py-4 text-right font-semibold">Action</th>
+                        <th className="hidden sm:table-cell px-6 py-4 text-center font-semibold">Status</th>
+                        <th className="px-3 sm:px-6 py-4 text-right font-semibold">Action</th>
                     </tr>
                 </thead>
 
@@ -88,18 +90,18 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
 
                         return (
                             <tr key={project.id} className="hover:bg-blue-50/30 transition-colors">
-                                <td className="px-6 py-4">
+                                <td className="px-3 sm:px-6 py-4">
                                     <div className="font-semibold text-gray-900">{project.projectName}</div>
                                     <div className="text-[10px] text-gray-400 uppercase tracking-tighter mt-0.5 font-mono">
                                         ID: {project.id.split('-')[0]}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="hidden md:table-cell px-6 py-4">
                                     <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 uppercase">
                                         {(project.serviceType || "").replace(/_/g, " ")}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 min-w-[140px]">
+                                <td className="px-3 sm:px-6 py-4 sm:min-w-[140px]">
                                     <div className="flex items-center gap-3">
                                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200/50">
                                             <div
@@ -110,7 +112,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                         <span className="text-xs font-bold text-gray-600 w-8">{progress}%</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="hidden lg:table-cell px-6 py-4">
                                     {currentStage ? (
                                         <div className="flex items-center gap-2">
                                             {currentStage.status === "COMPLETED" ? (
@@ -148,10 +150,10 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                         <span className="text-[10px] text-gray-400 italic">No files yet</span>
                                     )}
                                 </td> */}
-                                <td className="px-6 py-4 text-center">
+                                <td className="hidden sm:table-cell px-6 py-4 text-center">
                                     <StatusBadge status={project.status} />
                                 </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-3 sm:px-6 py-4 text-right">
                                     <div className="flex flex-col items-end gap-2">
                                         <Button
                                             variant="ghost"

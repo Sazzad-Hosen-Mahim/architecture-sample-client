@@ -1,21 +1,24 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom"; // import this
+import { useLocation, Link } from "react-router-dom"; // Add Link import
 import HeroSocialMedia from "../homeComponent/HeroSocialMedia";
+import { FaAngleDown } from "react-icons/fa";
 
 function FloatingMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const location = useLocation(); // get current route
+  const location = useLocation();
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-  // condition to hide on "/new-project"
+  // Close menu when navigating
+  const handleNavigation = () => {
+    setIsMenuOpen(false);
+  };
+
   const hideFloatingButton = [
     "/new-project",
     "/login",
     "/register",
-    "/privacy",
     "/profile-settings",
-    "/terms",
     "/about",
     "/signup",
     "/forgotPassword",
@@ -34,18 +37,19 @@ function FloatingMenu() {
       )}
       {/* Sliding Menu Panel */}
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out lg:py-[25px] py-[10px]  ${isMenuOpen ? "translate-y-0" : "translate-y-full"
-          }`}
+        className={`fixed bottom-0 left-0 right-0 bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out lg:py-[25px] py-[10px] ${
+          isMenuOpen ? "translate-y-0" : "translate-y-full"
+        }`}
       >
         <div className="flex flex-col h-[92vh] md:h-[88vh]">
           <div className="p-6">
             {/* Close Button */}
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-center items-center mb-4">
               <button
                 onClick={toggleMenu}
-                className="text-gray-500 cursor-pointer hover:text-white p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                className="text-gray-500 cursor-pointer hover:text-white p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
               >
-                ✕
+                <FaAngleDown className="w-6 h-6" />
               </button>
             </div>
 
@@ -55,18 +59,20 @@ function FloatingMenu() {
                 Media
               </h3>
               <div className="space-y-2">
-                <a
-                  href="/newsFeed"
+                <Link
+                  to="/newsFeed"
+                  onClick={handleNavigation}
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
                   Newsfeed
-                </a>
-                <a
-                  href="/world-project"
+                </Link>
+                <Link
+                  to="/world-project"
+                  onClick={handleNavigation}
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
                   World Project
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -76,18 +82,20 @@ function FloatingMenu() {
                 Services
               </h3>
               <div className="space-y-2">
-                <a
-                  href="/new-project"
+                <Link
+                  to="/new-project"
+                  onClick={handleNavigation}
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
                   New Project
-                </a>
-                <a
-                  href="/portfolio"
+                </Link>
+                <Link
+                  to="/portfolio"
+                  onClick={handleNavigation}
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
                   View Portfolio
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -96,18 +104,20 @@ function FloatingMenu() {
               <h3 className="text-base font-semibold mb-2 text-gray-700">
                 About
               </h3>
-              <a
-                href="/about"
+              <Link
+                to="/about"
+                onClick={handleNavigation}
                 className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
               >
                 Learn More
-              </a>
-              <a
-                href="/contact"
+              </Link>
+              <Link
+                to="/contact"
+                onClick={handleNavigation}
                 className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
               >
                 Get in Touch
-              </a>
+              </Link>
             </div>
 
             {/* Login Section */}
@@ -115,21 +125,19 @@ function FloatingMenu() {
               <h3 className="text-base font-semibold mb-2 text-gray-700">
                 Account
               </h3>
-              <a
-                href="/login"
+              <Link
+                to="/login"
+                onClick={handleNavigation}
                 className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
               >
                 Log In
-              </a>
+              </Link>
             </div>
-
-
           </div>
 
           {/* Social Media Section */}
-          <HeroSocialMedia />
+          <HeroSocialMedia onNavigation={handleNavigation} />
         </div>
-        {/* wht gap here  */}
       </div>
       {/* Backdrop overlay */}
       {isMenuOpen && (

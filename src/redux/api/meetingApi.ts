@@ -333,6 +333,26 @@ export const meetingApi = baseApi.injectEndpoints({
             invalidatesTags: ["Schedule"],
         }),
 
+        // Narrow an all-day block to specific hours, or move it to another date.
+        updateScheduleBlock: builder.mutation<
+            { success: boolean; message: string; data: ScheduleBlock },
+            {
+                id: string;
+                title?: string;
+                notes?: string;
+                startAt?: string;
+                endAt?: string;
+                allDay?: boolean;
+            }
+        >({
+            query: ({ id, ...body }) => ({
+                url: `/project-requests-admin/schedule-blocks/${id}`,
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["Schedule"],
+        }),
+
         deleteScheduleBlock: builder.mutation<
             { success: boolean; message: string },
             string
@@ -398,5 +418,6 @@ export const {
     useDeleteMeetingMutation,
     useGetScheduleBlocksQuery,
     useCreateScheduleBlockMutation,
+    useUpdateScheduleBlockMutation,
     useDeleteScheduleBlockMutation,
 } = meetingApi;
