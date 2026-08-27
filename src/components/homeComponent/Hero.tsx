@@ -153,32 +153,33 @@ function Hero() {
       {/* Hero content. The wrapper spans the screen, so it is made
           click-through — only the title line below re-enables pointer events,
           leaving the rest of the image to open the project. */}
-      <div className="relative z-10 flex justify-center min-h-screen px-4 md:px-6 pointer-events-none">
-        <div className="text-center text-white max-w-4xl">
+      <div className="relative z-10 flex min-h-screen justify-center md:justify-start px-4 md:px-6 pointer-events-none">
+        <div className="text-center md:text-left text-white max-w-4xl w-full">
           <div
             className="absolute top-0 left-0 right-0 h-48
-                bg-gradient-to-b
-                from-black/60
-                to-transparent"
+        bg-gradient-to-b
+        from-black/60
+        to-transparent"
           />
-          <h1 className="mt-4 text-md uppercase mix-blend-difference text-white pointer-events-auto">
+
+          <h1 className="mt-3 text-[14px] md:text-base mix-blend-difference text-white pointer-events-auto">
             Project Name: {latestMedia?.title || ""}
-            <span className="block sm:inline sm:ml-5">
-              Architect: {latestMedia?.architect || ""}
-            </span>
-            {/* <span className="block sm:inline sm:ml-5">
-              Location: {latestMedia?.location || ""}
-            </span>
-            <span className="block sm:inline sm:ml-5">
-              Year: {latestMedia?.projectYear || ""}
-            </span> */}
           </h1>
+
+          <p className="text-[14px] md:text-base mix-blend-difference text-white">
+            Architect: {latestMedia?.architect || ""}
+          </p>
+
+          <p className="text-[14px] md:text-base mix-blend-difference text-white">
+            Photographer: {latestMedia?.photographer}
+          </p>
+
           {detailPath && (
             <Button
               type="button"
               onClick={() => navigate(detailPath)}
               aria-label={`Read more about ${latestMedia?.title || "this project"}`}
-              className="absolute top-[42px] md:top-[12px] right-4 md:right-12 pointer-events-auto cursor-pointer"
+              className="absolute top-[12px] right-2 md:right-12 text-[14px] md:text-base pointer-events-auto cursor-pointer"
             >
               Read more
             </Button>

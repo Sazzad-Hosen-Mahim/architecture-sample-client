@@ -39,23 +39,23 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="bg-[#ffffff]  sticky top-0 z-50 border-b border-gray-200">
-      <div className=" mx-auto px-4 sm:px-6 lg:px-16">
-        <div className="flex items-center justify-between h-14 ">
+      <div className=" mx-auto px-4 lg:px-16">
+        <div className="grid grid-cols-3 items-center h-14 ">
           {/* Logo */}
           <div className="">{!isHomePage && <Backbutton />}</div>
-          <div className="flex shrink w-full justify-center">
+          <div className="flex justify-center">
             <Link to="/" className="text-black text-2xl ">
               <div className="flex content-center gap-2">
                 <img src={logo} alt="" className="w-10 h-10" />
-                <span className="lg:text-xl text-lg mt-1 font-light tracking-wide ">
-                  Architecture Simple <span className="text-yellow-400">.</span>
+                <span className="hidden md:block lg:text-xl text-lg mt-1 font-light tracking-wide ">
+                  Architecture Simple
                 </span>
               </div>
             </Link>
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center justify-end gap-3">
             {/* Notifications sit beside the avatar for signed-in clients */}
             {user && <NotificationPopover />}
             {user ? (
@@ -248,18 +248,18 @@ const Navbar: React.FC = () => {
               </Popover>
             ) : (
               <>
-                {/* <Button
-                onClick={() => navigate("/login")}
-                className="bg-website-color-lightGray text-black px-4 py-2 cursor-pointer"
-              >
-                Login
-              </Button> */}
+                <Button
+                  onClick={() => navigate("/login")}
+                  className="bg-black text-white hover:bg-gray-800 w-fit cursor-pointer rounded-lg text-xs"
+                >
+                  Login
+                </Button>
               </>
             )}
           </div>
 
           {/* Mobile Menu Button & Avatar */}
-          <div className="md:hidden flex items-center gap-3">
+          <div className="md:hidden flex items-center gap-3 justify-end">
             {user && <NotificationPopover />}
             {user && (
               <Popover>
@@ -314,7 +314,7 @@ const Navbar: React.FC = () => {
             {!user && (
               <Button
                 onClick={() => navigate("/login")}
-                className="bg-black text-white hover:bg-gray-800 w-full cursor-pointer rounded-lg text-xs"
+                className="bg-black text-white hover:bg-gray-800 w-fit cursor-pointer rounded-lg text-xs"
               >
                 Login
               </Button>

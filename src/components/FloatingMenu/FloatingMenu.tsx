@@ -23,6 +23,7 @@ function FloatingMenu() {
     "/signup",
     "/forgotPassword",
     "/resetPassword",
+    "/user-dashboard",
   ].includes(location.pathname);
 
   return (

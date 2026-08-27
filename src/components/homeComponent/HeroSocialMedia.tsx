@@ -48,7 +48,7 @@ function HeroSocialMedia({ onNavigation }: { onNavigation?: () => void }) {
         </div>
 
         <div className="text-center mt-2 space-x-4 flex flex-col justify-center">
-          <div className="block md:hidden">
+          {/* <div className="block md:hidden">
             <Link
               to="/"
               onClick={onNavigation}
@@ -63,7 +63,7 @@ function HeroSocialMedia({ onNavigation }: { onNavigation?: () => void }) {
             >
               Desktop
             </Link>
-          </div>
+          </div> */}
           <div className="flex justify-center items-center gap-2">
             <Link
               to="/terms"
