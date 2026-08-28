@@ -22,6 +22,13 @@ import {
 } from "@/utils/newProjectValidation";
 import { toast } from "sonner";
 
+// Cache state lists by country so coming back to this step shows the dropdown
+// straight away instead of flashing a text input while the API request runs.
+const statesCache = new Map<string, string[]>();
+
+const formatBudget = (digits: string, currency: string) =>
+  digits ? `$${Number(digits).toLocaleString("en-US")} ${currency}` : "";
+
 interface ProjectDetailsSectionProps {
   formData: any;
   updateFormData: (data: any) => void;
@@ -53,6 +60,7 @@ export default function ProjectDetailsSection({
     serviceTypeOther: formData?.serviceTypeOther || "",
     projectTypeOther: formData?.projectTypeOther || "",
     projectSizeUnit: formData?.projectSizeUnit || "sqf",
+    budgetCurrency: formData?.budgetCurrency || "USD",
 
     // ----- address fields (the ones we make dynamic) -----
     projectStreetAddress: formData?.projectStreetAddress || "",
@@ -95,22 +103,28 @@ export default function ProjectDetailsSection({
   /* ------------------------------------------------------------------ */
   /* 3. Dynamic state / city fetching                                    */
   /* ------------------------------------------------------------------ */
-  const [states, setStates] = useState<string[]>([]);
-  const [cities, setCities] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>(
+    () => statesCache.get(formData?.projectCountry || "United States") || [],
+  );
   const [loadingStates, setLoadingStates] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
 
   const selectedCountry = localFormData.projectCountry;
 
-  // ---- fetch states ---------------------------------------------------
+  // ---- fetch states (cached; does NOT wipe a saved state/city on remount) ----
   useEffect(() => {
-    async function fetchStates() {
-      if (!selectedCountry) return;
-      setLoadingStates(true);
-      setStates([]);
-      setCities([]);
-      setLocalFormData((p) => ({ ...p, projectState: "", projectCity: "" }));
+    if (!selectedCountry) return;
 
+    const cached = statesCache.get(selectedCountry);
+    if (cached) {
+      setStates(cached);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingStates(true);
+    setStates([]);
+
+    (async () => {
       try {
         const res = await fetch(
           "https://countriesnow.space/api/v0.1/countries/states",
@@ -121,51 +135,21 @@ export default function ProjectDetailsSection({
           },
         );
         const data = await res.json();
-        if (data?.data?.states) {
-          setStates(data.data.states.map((s: any) => s.name));
-        }
+        const names: string[] =
+          data?.data?.states?.map((s: any) => s.name) ?? [];
+        statesCache.set(selectedCountry, names);
+        if (!cancelled) setStates(names);
       } catch (err) {
         console.error("Error fetching states:", err);
       } finally {
-        setLoadingStates(false);
+        if (!cancelled) setLoadingStates(false);
       }
-    }
+    })();
 
-    fetchStates();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCountry]);
-
-  // ---- fetch cities ---------------------------------------------------
-  useEffect(() => {
-    async function fetchCities() {
-      if (!selectedCountry || !localFormData.projectState) return;
-      setLoadingCities(true);
-      setLocalFormData((p) => ({ ...p, projectCity: "" }));
-
-      try {
-        const res = await fetch(
-          "https://countriesnow.space/api/v0.1/countries/state/cities",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              country: selectedCountry,
-              state: localFormData.projectState,
-            }),
-          },
-        );
-        const data = await res.json();
-        if (Array.isArray(data?.data)) {
-          setCities(data.data);
-        }
-      } catch (err) {
-        console.error("Error fetching cities:", err);
-      } finally {
-        setLoadingCities(false);
-      }
-    }
-
-    fetchCities();
-  }, [localFormData.projectState, selectedCountry]);
 
   /* ------------------------------------------------------------------ */
   /* 4. Generic change handlers                                          */
@@ -191,8 +175,43 @@ export default function ProjectDetailsSection({
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setLocalFormData((prev) => ({ ...prev, [name]: value }));
+    setLocalFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // Changing the country invalidates any previously picked state / city.
+      if (name === "projectCountry") {
+        next.projectState = "";
+        next.projectCity = "";
+      }
+      return next;
+    });
     clearError(name);
+  };
+
+  const budgetDigits = String(localFormData.budgetRange || "").replace(
+    /[^\d]/g,
+    "",
+  );
+
+  const handleBudgetAmountChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const digits = e.target.value.replace(/[^\d]/g, "");
+    setLocalFormData((prev) => ({
+      ...prev,
+      budgetRange: formatBudget(digits, prev.budgetCurrency || "USD"),
+    }));
+    clearError("budgetRange");
+  };
+
+  const handleBudgetCurrencyChange = (currency: string) => {
+    setLocalFormData((prev) => ({
+      ...prev,
+      budgetCurrency: currency,
+      budgetRange: formatBudget(
+        String(prev.budgetRange || "").replace(/[^\d]/g, ""),
+        currency,
+      ),
+    }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,40 +413,15 @@ export default function ProjectDetailsSection({
             <Label className="mb-2" htmlFor="projectCity">
               City <span className="text-red-500 font-semibold">*</span>
             </Label>
-            {loadingCities ? (
-              <p className="text-sm text-gray-500">Loading cities…</p>
-            ) : cities.length > 0 ? (
-              <Select
-                value={localFormData.projectCity}
-                onValueChange={(v) => handleSelectChange("projectCity", v)}
-                disabled={sameAsMailingAddress}
-              >
-                <SelectTrigger className="mt-1 w-full">
-                  <SelectValue placeholder="Select a city" />
-                </SelectTrigger>
-                <SelectContent className="bg-white max-h-[300px] border-gray-300">
-                  {cities.map((c) => (
-                    <SelectItem
-                      key={c}
-                      value={c}
-                      className="hover:bg-gray-800 hover:text-white cursor-pointer"
-                    >
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input
-                id="projectCity"
-                name="projectCity"
-                value={localFormData.projectCity}
-                onChange={handleInputChange}
-                placeholder="Enter city"
-                // className="mt-1"
-                disabled={sameAsMailingAddress}
-              />
-            )}
+            <Input
+              id="projectCity"
+              name="projectCity"
+              value={localFormData.projectCity}
+              onChange={handleInputChange}
+              placeholder="Enter city"
+              className="mt-1"
+              disabled={sameAsMailingAddress}
+            />
             <FieldError message={errors.projectCity} />
           </div>
           <div className="">
@@ -598,14 +592,14 @@ export default function ProjectDetailsSection({
                     }
                   >
                     <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
-                      <SelectValue placeholder="sq² / m²" />
+                      <SelectValue placeholder="sf² / m²" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-300">
                       <SelectItem
                         value="sqf"
                         className="hover:bg-gray-800 hover:text-white cursor-pointer"
                       >
-                        sq²
+                        sf²
                       </SelectItem>
                       <SelectItem
                         value="sqm"
@@ -625,14 +619,42 @@ export default function ProjectDetailsSection({
                 Budget Range{" "}
                 <span className="text-red-500 font-semibold">*</span>
               </Label>
-              <Input
-                id="budgetRange"
-                name="budgetRange"
-                value={localFormData.budgetRange}
-                onChange={handleInputChange}
-                placeholder="e.g. $250,000"
-                className="mt-1 w-full"
-              />
+              <div className="mt-1 flex">
+                <Select
+                  value={localFormData.budgetCurrency || "USD"}
+                  onValueChange={handleBudgetCurrencyChange}
+                >
+                  <SelectTrigger className="w-20 shrink-0 rounded-r-none border-r-0 bg-gray-100">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-300">
+                    <SelectItem
+                      value="USD"
+                      className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                    >
+                      USD
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                    $
+                  </span>
+                  <Input
+                    id="budgetRange"
+                    name="budgetRange"
+                    inputMode="numeric"
+                    value={
+                      budgetDigits
+                        ? Number(budgetDigits).toLocaleString("en-US")
+                        : ""
+                    }
+                    onChange={handleBudgetAmountChange}
+                    placeholder="250,000"
+                    className="w-full rounded-l-none pl-7"
+                  />
+                </div>
+              </div>
               <FieldError message={errors.budgetRange} />
             </div>
           </div>

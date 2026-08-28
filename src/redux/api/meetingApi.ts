@@ -402,6 +402,25 @@ export const meetingApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project", "Schedule"],
         }),
+
+        /**
+         * Payment gate for the "Join Meeting" link in the invitation email.
+         * Returns the real room URL only when the caller is allowed in.
+         */
+        getMeetingJoinAccess: builder.query<
+            {
+                allowed: boolean;
+                meetingUrl: string | null;
+                projectRequestId: string;
+                reason?: "consultation_unpaid" | "no_link";
+            },
+            string
+        >({
+            query: (meetingId) => ({
+                url: `/project-requests-admin/meetings/${meetingId}/join`,
+                method: "GET",
+            }),
+        }),
     }),
 });
 
@@ -416,6 +435,7 @@ export const {
     useGetAvailabilityQuery,
     useAttachMeetingLinkMutation,
     useDeleteMeetingMutation,
+    useGetMeetingJoinAccessQuery,
     useGetScheduleBlocksQuery,
     useCreateScheduleBlockMutation,
     useUpdateScheduleBlockMutation,

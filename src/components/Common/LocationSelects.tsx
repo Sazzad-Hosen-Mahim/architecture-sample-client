@@ -27,13 +27,26 @@ const COUNTRIES_NOW = "https://countriesnow.space/api/v0.1/countries";
 
 const selectItemClass = "hover:bg-gray-800 hover:text-white cursor-pointer";
 
+// Cache state lists by country so a form that re-mounts (e.g. stepping back to
+// an earlier wizard step) shows the dropdown straight away instead of briefly
+// degrading to a plain text input while the request is in flight.
+const statesCache = new Map<string, string[]>();
+
 function useStates(country?: string) {
-  const [states, setStates] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>(
+    () => (country && statesCache.get(country)) || [],
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!country) {
       setStates([]);
+      return;
+    }
+
+    const cached = statesCache.get(country);
+    if (cached) {
+      setStates(cached);
       return;
     }
 
@@ -49,9 +62,10 @@ function useStates(country?: string) {
           body: JSON.stringify({ country }),
         });
         const data = await res.json();
-        if (!cancelled && data?.data?.states) {
-          setStates(data.data.states.map((s: any) => s.name));
-        }
+        const names: string[] =
+          data?.data?.states?.map((s: any) => s.name) ?? [];
+        statesCache.set(country, names);
+        if (!cancelled) setStates(names);
       } catch (err) {
         console.error("Error fetching states:", err);
       } finally {
@@ -65,46 +79,6 @@ function useStates(country?: string) {
   }, [country]);
 
   return { states, loading };
-}
-
-function useCities(country?: string, state?: string) {
-  const [cities, setCities] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!country || !state) {
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setCities([]);
-
-    (async () => {
-      try {
-        const res = await fetch(`${COUNTRIES_NOW}/state/cities`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ country, state }),
-        });
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data?.data)) {
-          setCities(data.data);
-        }
-      } catch (err) {
-        console.error("Error fetching cities:", err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [country, state]);
-
-  return { cities, loading };
 }
 
 interface FieldProps {
@@ -184,45 +158,21 @@ export function StateSelect({
   );
 }
 
+// City is a free-text input everywhere — the city API list is noisy and often
+// missing smaller places, and a plain field is faster for the client.
 export function CitySelect({
   id,
-  country,
-  state,
   value,
   onChange,
   disabled,
-  placeholder = "Select a city",
 }: FieldProps & { country?: string; state?: string }) {
-  const { cities, loading } = useCities(country, state);
-
-  if (loading) {
-    return <p className="text-sm text-gray-500">Loading cities…</p>;
-  }
-
-  if (cities.length === 0) {
-    return (
-      <Input
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Enter city"
-        disabled={disabled}
-      />
-    );
-  }
-
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="max-h-[300px] bg-white border-gray-300">
-        {cities.map((city) => (
-          <SelectItem key={city} value={city} className={selectItemClass}>
-            {city}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Input
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Enter city"
+      disabled={disabled}
+    />
   );
 }

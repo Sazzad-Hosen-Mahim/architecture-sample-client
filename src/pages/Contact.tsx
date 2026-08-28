@@ -55,9 +55,9 @@ const Contact = () => {
         <h1 className="text-3xl font-semibold text-center mb-4 md:mb-8">
           Contact Us
         </h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 ">
+          <div className="flex flex-col justify-between my-0">
+            <form onSubmit={handleSubmit} className="space-y-4 ">
               <div>
                 <label
                   htmlFor="name"
@@ -92,7 +92,7 @@ const Contact = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:border-black"
                 />
               </div>
-              <div>
+              <div className="my-0">
                 <label
                   htmlFor="message"
                   className="block text-sm font-medium text-gray-700 mb-2"
@@ -122,7 +122,7 @@ const Contact = () => {
               />
             </form>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 flex flex-col justify-between">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
               <div className="p-6">
                 <h2 className="text-lg font-semibold mb-4">

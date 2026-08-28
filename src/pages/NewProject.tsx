@@ -55,6 +55,7 @@ function NewProject() {
     projectDescription: "",
     projectTimeline: "",
     budgetRange: "",
+    budgetCurrency: "USD",
     architecturalStyle: "",
     siteConstraints: "",
     sustainabilityGoals: "",

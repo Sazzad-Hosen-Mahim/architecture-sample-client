@@ -1,11 +1,4 @@
-import {
-  X,
-  Loader2,
-  Info,
-  FileText,
-  CalendarClock,
-  Paperclip,
-} from "lucide-react";
+import { X, Loader2, Info, FileText, Paperclip } from "lucide-react";
 import { useGetAmendmentsByProjectQuery } from "@/redux/api/amendmentApi";
 import { useGetProjectRequestByIdQuery } from "@/redux/api/adminDashboard/proposalApi";
 import {
@@ -43,14 +36,21 @@ interface ClientProjectDetailsModalProps {
   initialProposalId?: string | null;
 }
 
-type ClientTab = "details" | "proposals" | "meetings" | "attachments";
+type ClientTab = "details" | "contracts" | "attachments";
 
 const TABS: { key: ClientTab; label: string; icon: any }[] = [
   { key: "details", label: "Project Details", icon: Info },
-  { key: "proposals", label: "Proposals", icon: FileText },
-  { key: "meetings", label: "Meetings & Payment", icon: CalendarClock },
-  { key: "attachments", label: "Attachments", icon: Paperclip },
+  { key: "contracts", label: "Contracts and Meetings", icon: FileText },
+  { key: "attachments", label: "Documents", icon: Paperclip },
 ];
+
+/** Older deep links point at the now-merged Proposals / Meetings tabs. */
+const resolveTab = (tab?: string | null): ClientTab =>
+  tab === "proposals" || tab === "meetings"
+    ? "contracts"
+    : tab === "details" || tab === "contracts" || tab === "attachments"
+      ? tab
+      : "details";
 
 export default function ClientProjectDetailsModal({
   isOpen,
@@ -136,8 +136,7 @@ export default function ClientProjectDetailsModal({
   // Reset to the first tab whenever a different project is opened, unless a
   // notification deep link named the tab to land on.
   useEffect(() => {
-    if (initialProject?.id)
-      setActiveTab((initialTab as ClientTab) || "details");
+    if (initialProject?.id) setActiveTab(resolveTab(initialTab));
   }, [initialProject?.id, initialTab]);
 
   // A deep link may also name a contract to open for signing straight away.
@@ -354,32 +353,33 @@ export default function ClientProjectDetailsModal({
               <ClientProjectInfoTab
                 project={project}
                 paymentInfo={paymentInfo}
-                onGoToPayments={() => setActiveTab("meetings")}
+                onGoToPayments={() => setActiveTab("contracts")}
                 onRequestRefund={handleRequestRefundClick}
                 refundedStageIds={refundedStageIds}
               />
             )}
 
-            {activeTab === "proposals" && (
-              <ClientProposalsTab project={project} amendments={amendments} />
-            )}
-
-            {activeTab === "meetings" && (
-              <ClientMeetingPaymentTab
-                project={project}
-                paymentInfo={paymentInfo}
-                amendments={amendments}
-                isCreatingCheckout={isCreatingCheckout}
-                onPay={handlePay}
-                onPayAmendment={handlePayAmendment}
-                onRequestRefund={handleRequestRefundClick}
-                refundedStageIds={refundedStageIds}
-                onViewAmendmentContract={setContractProposalId}
-                onConsultationPaid={() => {
-                  refetchProject();
-                  refetchPayment();
-                }}
-              />
+            {/* Merged tab: contracts first, then meetings & payment below. */}
+            {activeTab === "contracts" && (
+              <div className="space-y-10">
+                <ClientProposalsTab project={project} amendments={amendments} />
+                <div className="border-t border-gray-100" />
+                <ClientMeetingPaymentTab
+                  project={project}
+                  paymentInfo={paymentInfo}
+                  amendments={amendments}
+                  isCreatingCheckout={isCreatingCheckout}
+                  onPay={handlePay}
+                  onPayAmendment={handlePayAmendment}
+                  onRequestRefund={handleRequestRefundClick}
+                  refundedStageIds={refundedStageIds}
+                  onViewAmendmentContract={setContractProposalId}
+                  onConsultationPaid={() => {
+                    refetchProject();
+                    refetchPayment();
+                  }}
+                />
+              </div>
             )}
 
             {activeTab === "attachments" && (
@@ -387,7 +387,7 @@ export default function ClientProjectDetailsModal({
                 project={project}
                 attachments={attachments}
                 paymentInfo={paymentInfo}
-                onGoToPayments={() => setActiveTab("meetings")}
+                onGoToPayments={() => setActiveTab("contracts")}
               />
             )}
           </div>

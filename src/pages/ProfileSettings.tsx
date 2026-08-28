@@ -12,7 +12,6 @@ import {
   FilePenLine,
   User,
   UserCog,
-  Archive,
   // Loader2,
 } from "lucide-react";
 import { Loader } from "@/components/ui/loader";
@@ -20,11 +19,6 @@ import { Loader } from "@/components/ui/loader";
 const OwnerControlsTab = lazy(() =>
   import("@/components/ProfileSetting/OwnerControlsTab").then((module) => ({
     default: module.OwnerControlsTab,
-  })),
-);
-const ArchivedProjectsTab = lazy(() =>
-  import("@/components/ProfileSetting/ArchivedProjectsTab").then((module) => ({
-    default: module.ArchivedProjectsTab,
   })),
 );
 const NotificationSettingsTab = lazy(() =>
@@ -398,15 +392,6 @@ export function ProfileSettings() {
                   Owner Controls
                 </TabButton>
               )}
-              {isStaff && (
-                <TabButton
-                  value="archives"
-                  icon={Archive}
-                  isActive={activeTab === "archives"}
-                >
-                  Archives
-                </TabButton>
-              )}
               </div>
               <button
                 type="button"
@@ -597,9 +582,6 @@ export function ProfileSettings() {
 
             {/* Owner Controls Tab - Only visible to owners */}
             {isOwner && activeTab === "owner-controls" && <OwnerControlsTab />}
-
-            {/* Archived Projects Tab - Only visible to staff */}
-            {isStaff && activeTab === "archives" && <ArchivedProjectsTab />}
           </Suspense>
         </div>
       </div>

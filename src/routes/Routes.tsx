@@ -35,6 +35,7 @@ const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const NewsFeedDetails = lazy(() => import("@/pages/NewsFeedDetails"));
 const WorldProjectDetails = lazy(() => import("@/pages/WorldProjectDetails"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const MeetingJoin = lazy(() => import("@/pages/MeetingJoin"));
 const UserDashboard = lazy(() => import("@/pages/UserDashboard"));
 const Employees = lazy(() => import("@/pages/Dashboard/Employees"));
 const NewDynamicProposalPage = lazy(
@@ -50,6 +51,9 @@ const Teams = lazy(() => import("@/pages/Dashboard/Teams"));
 const RefundRequests = lazy(() => import("@/pages/Dashboard/RefundRequests"));
 const ClientUsers = lazy(() => import("@/pages/Dashboard/ClientUsers"));
 const AdjustRates = lazy(() => import("@/pages/Dashboard/AdjustRates"));
+const ArchivedProjects = lazy(
+  () => import("@/pages/Dashboard/ArchivedProjects"),
+);
 
 // Loading component for Suspense
 const PageLoader = () => (
@@ -212,6 +216,14 @@ const routes = createBrowserRouter([
         ),
       },
       {
+        path: "/meetings/:id/join",
+        element: (
+          <SuspenseWrapper>
+            <MeetingJoin />
+          </SuspenseWrapper>
+        ),
+      },
+      {
         path: "/profile-settings",
         element: (
           <SuspenseWrapper>
@@ -346,6 +358,14 @@ const routes = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <AdjustRates />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "archived-projects",
+        element: (
+          <SuspenseWrapper>
+            <ArchivedProjects />
           </SuspenseWrapper>
         ),
       },

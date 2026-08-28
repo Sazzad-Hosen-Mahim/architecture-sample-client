@@ -21,6 +21,12 @@ const STAFF_ROLES = [
   "EMPLOYEE",
 ];
 
+/** The Super Admin is the firm's owner — that's how the roster labels them. */
+const roleLabel = (role?: string) =>
+  role === "SUPER_ADMIN"
+    ? "Owner"
+    : (role || "").replace(/_/g, " ");
+
 const SORT_OPTIONS = [
   { value: "name", label: "Name (A–Z)" },
   { value: "role", label: "Role" },
@@ -188,7 +194,7 @@ const Employees = () => {
                   </td>
                   <td className="p-4">
                     <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-bold whitespace-nowrap">
-                      {user.role?.replace(/_/g, " ")}
+                      {roleLabel(user.role)}
                     </span>
                   </td>
                   <td className="p-4 text-gray-600 font-medium max-w-[220px]">

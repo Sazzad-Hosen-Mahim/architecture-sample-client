@@ -414,14 +414,14 @@ export default function ProjectTabForm({
                 }
               >
                 <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
-                  <SelectValue placeholder="sq² / m²" />
+                  <SelectValue placeholder="sf² / m²" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
                   <SelectItem
                     value="sqf"
                     className="hover:bg-gray-800 hover:text-white cursor-pointer"
                   >
-                    sq²
+                    sf²
                   </SelectItem>
                   <SelectItem
                     value="sqm"

@@ -517,8 +517,8 @@ export default function TimesheetEntryFormDialog({
               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
                 <Plus className="h-4 w-4" /> Select Project & Phase
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                <div className="col-span-12 sm:col-span-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4">
+                <div className="lg:col-span-3">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Project</label>
                   <Select value={selectedProject} onValueChange={handleProjectChange}>
                     <SelectTrigger className="bg-white border-gray-200">
@@ -534,7 +534,7 @@ export default function TimesheetEntryFormDialog({
                 </div>
                 {/* The original contract and every amendment on the project.
                     Phases are scoped to whichever is picked here. */}
-                <div className="col-span-12 sm:col-span-3">
+                <div className="lg:col-span-3">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Contract</label>
                   <Select
                     value={selectedContract}
@@ -563,7 +563,7 @@ export default function TimesheetEntryFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-12 sm:col-span-2">
+                <div className="lg:col-span-3">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Phase</label>
                   <Select
                     value={selectedPhase}
@@ -585,7 +585,7 @@ export default function TimesheetEntryFormDialog({
                 </div>
                 {!isReadOnly && (
                   <>
-                    <div className="col-span-12 sm:col-span-3">
+                    <div className="lg:col-span-2">
                       <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Brief Description</label>
                       <Input
                         placeholder="What did you work on?"
@@ -594,13 +594,14 @@ export default function TimesheetEntryFormDialog({
                         onChange={(e) => setEntryDescription(e.target.value)}
                       />
                     </div>
-                    <div className="col-span-12 sm:col-span-1 flex items-end">
+                    <div className="sm:col-span-2 lg:col-span-1 flex items-stretch lg:items-end">
                       <Button
                         onClick={addBillableEntryRow}
                         className="w-full bg-black text-white hover:bg-gray-800"
                         disabled={!selectedPhase}
                       >
                         <Plus className="h-4 w-4" />
+                        <span className="lg:hidden">Add Entry</span>
                       </Button>
                     </div>
                   </>

@@ -105,7 +105,7 @@ export default function AttachmentsTab({ project }: AttachmentsTabProps) {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Attachments</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
                         Drive links and other resources shared with the client for this project.
                     </p>

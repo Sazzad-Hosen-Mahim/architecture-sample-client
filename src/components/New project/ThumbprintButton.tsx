@@ -4,21 +4,24 @@ interface ThumbprintButtonProps {
   onClick: () => void;
   text: string;
   isSubmitButton?: boolean;
+  disabled?: boolean;
 }
 
 export default function ThumbprintButton({
   onClick,
   text,
   isSubmitButton = false,
+  disabled = false,
 }: ThumbprintButtonProps) {
   const uniqueId = useId();
 
   const LINE_HEIGHT = 17;
 
-
-
-  const buttonClasses =
-    "w-20 h-26 bg-black rounded-full shadow-lg cursor-pointer flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out hover:scale-105 relative overflow-hidden";
+  const buttonClasses = `w-20 h-26 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out relative overflow-hidden ${
+    disabled
+      ? "opacity-60 cursor-not-allowed"
+      : "cursor-pointer hover:scale-105"
+  }`;
 
   const gridBackground = (
     <div className="absolute inset-0 pointer-events-none opacity-30">
@@ -60,7 +63,7 @@ export default function ThumbprintButton({
   };
   if (isSubmitButton) {
     return (
-      <button onClick={onClick} className={buttonClasses}>
+      <button onClick={onClick} disabled={disabled} className={buttonClasses}>
         {gridBackground}
         <div className="relative z-10">
           <svg
@@ -98,7 +101,7 @@ export default function ThumbprintButton({
 
   return (
     <div>
-      <button onClick={onClick} className={buttonClasses}>
+      <button onClick={onClick} disabled={disabled} className={buttonClasses}>
         {gridBackground}
         <div className="relative z-10">
           <svg

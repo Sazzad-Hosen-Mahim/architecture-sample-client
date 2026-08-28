@@ -19,6 +19,14 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+// Clamp vertical panning to the drawable part of the Web Mercator world so the
+// view can't drift into the empty gray area above/below the map. Longitude is
+// left wide open so tiles still wrap horizontally without gray edges.
+const WORLD_BOUNDS: L.LatLngBoundsExpression = [
+  [-85, -720],
+  [85, 720],
+];
+
 interface LeafletMapSearchProps {
   onLocationSelect?: (coords: { lat: number; lng: number } | null) => void;
   onProjectClick?: (id: string) => void;
@@ -35,16 +43,36 @@ export default function LeafletMapSearch({
   );
   const mapRef = useRef<L.Map | null>(null);
 
+  // Leaflet measures the container once on mount. If the page is still laying out
+  // (or the viewport later resizes), the map keeps its stale size and tiles only
+  // cover part of the box — the rest shows the gray Leaflet background. Nudging
+  // it with invalidateSize makes the map fill the whole box.
+  useEffect(() => {
+    const invalidate = () => mapRef.current?.invalidateSize();
+    const timer = setTimeout(invalidate, 150);
+    window.addEventListener("resize", invalidate);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", invalidate);
+    };
+  }, []);
+
   // Fly map to bounds when projects changes
   useEffect(() => {
     if (mapRef.current && projects.length > 0) {
       const markers = projects
-        .filter(p => p.location && p.location.lat && p.location.lng)
+        .filter((p) => p.location && p.location.lat && p.location.lng)
         .map((p) => L.marker([p.location.lat, p.location.lng]));
 
       if (markers.length > 0) {
         const group = L.featureGroup(markers);
-        mapRef.current.fitBounds(group.getBounds().pad(0.5));
+        // Cap the zoom so a wide marker spread (e.g. one project per continent)
+        // can't zoom the map out past the point where the world fills the box
+        // and leaves gray bars top and bottom.
+        mapRef.current.fitBounds(group.getBounds(), {
+          padding: [40, 40],
+          maxZoom: 6,
+        });
       }
     }
   }, [projects]);
@@ -89,6 +117,9 @@ export default function LeafletMapSearch({
       <MapContainer
         center={[20, 0]}
         zoom={2}
+        minZoom={1}
+        maxBounds={WORLD_BOUNDS}
+        maxBoundsViscosity={1}
         style={{
           width: "100%",
           height: "100%",

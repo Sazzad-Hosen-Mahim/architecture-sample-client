@@ -23,6 +23,11 @@ import {
 } from "@/utils/newProjectValidation";
 import { toast } from "sonner";
 
+// Cache fetched state lists by country so navigating back to this step shows the
+// State dropdown straight away instead of briefly falling back to a text input
+// while the API request is in flight.
+const statesCache = new Map<string, string[]>();
+
 interface ClientInfoSectionProps {
   formData: any;
   updateFormData: (data: any) => void;
@@ -52,23 +57,29 @@ export default function ClientInfoSection({
     additionalComments: formData?.additionalComments || "",
   });
 
-  const [states, setStates] = useState<string[]>([]);
-  const [cities, setCities] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>(
+    () => statesCache.get(formData?.country || "United States") || [],
+  );
   const [loadingStates, setLoadingStates] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
 
   const selectedCountry = localFormData.country;
-  // const selectedCountryCode =
-  //   countries.find((c) => c.name === selectedCountry)?.code || "";
 
-  // 🆕 Fetch states dynamically when country changes
+  // Fetch the state list when the country changes. A cache hit renders the
+  // dropdown immediately (e.g. when the user navigates back to this step).
   useEffect(() => {
-    async function fetchStates() {
-      if (!selectedCountry) return;
-      setLoadingStates(true);
-      setStates([]);
-      setCities([]);
+    if (!selectedCountry) return;
 
+    const cached = statesCache.get(selectedCountry);
+    if (cached) {
+      setStates(cached);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingStates(true);
+    setStates([]);
+
+    (async () => {
       try {
         const res = await fetch(
           "https://countriesnow.space/api/v0.1/countries/states",
@@ -79,49 +90,21 @@ export default function ClientInfoSection({
           },
         );
         const data = await res.json();
-        if (data?.data?.states) {
-          setStates(data.data.states.map((s: any) => s.name));
-        }
+        const names: string[] =
+          data?.data?.states?.map((s: any) => s.name) ?? [];
+        statesCache.set(selectedCountry, names);
+        if (!cancelled) setStates(names);
       } catch (err) {
         console.error("Error fetching states:", err);
       } finally {
-        setLoadingStates(false);
+        if (!cancelled) setLoadingStates(false);
       }
-    }
+    })();
 
-    fetchStates();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCountry]);
-
-  // 🆕 Fetch cities when state changes
-  useEffect(() => {
-    async function fetchCities() {
-      if (!selectedCountry || !localFormData.state) return;
-      setLoadingCities(true);
-      try {
-        const res = await fetch(
-          "https://countriesnow.space/api/v0.1/countries/state/cities",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              country: selectedCountry,
-              state: localFormData.state,
-            }),
-          },
-        );
-        const data = await res.json();
-        if (data?.data?.length) {
-          setCities(data.data);
-        }
-      } catch (err) {
-        console.error("Error fetching cities:", err);
-      } finally {
-        setLoadingCities(false);
-      }
-    }
-
-    fetchCities();
-  }, [localFormData.state, selectedCountry]);
 
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -355,42 +338,17 @@ export default function ClientInfoSection({
           </div>
         </div>
 
-        {/* 🆕 Dynamic City Dropdown */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
-              {loadingCities ? (
-                <p className="text-sm text-gray-500">Loading cities...</p>
-              ) : cities.length > 0 ? (
-                <Select
-                  value={localFormData.city}
-                  onValueChange={(value) => handleSelectChange("city", value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a city" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white max-h-[300px] border-gray-300">
-                    {cities.map((city) => (
-                      <SelectItem
-                        key={city}
-                        value={city}
-                        className="hover:bg-gray-800 hover:text-white cursor-pointer"
-                      >
-                        {city}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  id="city"
-                  name="city"
-                  value={localFormData.city}
-                  onChange={handleInputChange}
-                  placeholder="Enter city"
-                />
-              )}
+              <Input
+                id="city"
+                name="city"
+                value={localFormData.city}
+                onChange={handleInputChange}
+                placeholder="Enter city"
+              />
             </div>
           </div>
           <div>

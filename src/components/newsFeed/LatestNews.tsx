@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
+  const navigate = useNavigate();
+
   return (
     <div>
       <h2 className="text-2xl font-light mb-6">Latest News</h2>
@@ -10,50 +12,74 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
         {filteredNews.map((news) => (
           <div
             key={news.id}
-            className="border border-gray-200 rounded-lg shadow-sm bg-white"
+            role="link"
+            tabIndex={0}
+            onClick={() => navigate(`/newsFeed/${news.id}`)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigate(`/newsFeed/${news.id}`);
+              }
+            }}
+            className="group border border-gray-200 rounded-lg shadow-sm bg-white cursor-pointer transition-all hover:border-gray-400 hover:shadow-md md:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
           >
             <div className="p-4 sm:p-6">
-              <div className="flex flex-col md:flex-row md:items-start gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
                 {/* Image */}
-                <div className="w-full md:w-32">
+                <div className="w-full md:w-40 md:shrink-0">
                   <img
                     src={news.image || "/placeholder.jpg"}
                     alt={news.title}
-                    className="rounded-lg object-cover w-full h-40 md:h-32"
+                    className="rounded-lg object-cover w-full h-40 md:h-full"
                   />
                 </div>
 
-                {/* Text content */}
-                <div className="flex-1">
-                  <div className="flex flex-col md:flex-col mb-2">
-                    <div className="flex justify-between">
-                      <h2 className="text-sm sm:text-base font-semibold">
-                        {news.title}
-                      </h2>
-                      <p className="font-bold text-sm text-gray-500 mt-2 md:mt-3">
-                        Published date: {news.date}
-                      </p>
-                    </div>
-                    <span className="text-sm sm:text-sm text-gray-500">
-                      <span className="font-semibold">Photographer:</span> {news.photographer}
-                    </span>
-                    <span className="text-sm sm:text-sm text-gray-500">
-                      <span className="font-semibold">Author:</span> {news.source}
-                    </span>
-                  </div>
+                {/* Main content — kept clear of the meta column on the right */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-sm sm:text-base font-semibold group-hover:underline">
+                    {news.title}
+                  </h2>
 
-                  <p className="text-gray-600 text-xs sm:text-sm mb-4 line-clamp-2 md:w-[70%]">
-                    <span className="font-semibold">Description:</span> {news.summary}
+                  <p className="text-sm text-gray-500 mt-1">
+                    <span className="font-semibold">Author:</span> {news.author}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    <span className="font-semibold">Photo Credits:</span>{" "}
+                    {news.photographer || "N/A"}
                   </p>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <Link
-                      to={`/newsFeed/${news.id}`}
-                      className="px-3 sm:px-4 py-2 border border-gray-800 rounded-md text-xs sm:text-sm hover:text-white hover:bg-black text-gray-700 bg-white cursor-pointer focus:outline-none text-center"
-                    >
-                      Read Full Article
-                    </Link>
+                  <p className="text-gray-600 text-xs sm:text-sm mt-2 line-clamp-4">
+                    <span className="font-semibold">Description:</span>{" "}
+                    {news.summary}
+                  </p>
+                </div>
 
+                {/* Meta column — dates top, publisher/source bottom */}
+                <div className="w-full md:w-52 md:shrink-0 flex flex-col justify-between gap-4 text-xs text-gray-500 md:text-right md:border-l md:border-gray-100 md:pl-4">
+                  <div className="space-y-0.5">
+                    {news.uploadDate && (
+                      <p>
+                        <span className="font-semibold">Upload Date:</span>{" "}
+                        {news.uploadDate}
+                      </p>
+                    )}
+                    {news.publishedDate && (
+                      <p>
+                        <span className="font-semibold">Published date:</span>{" "}
+                        {news.publishedDate}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <p>
+                      <span className="font-semibold">Publisher:</span>{" "}
+                      {news.publisher || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Source:</span>{" "}
+                      {news.sourceName || "N/A"}
+                    </p>
                   </div>
                 </div>
               </div>

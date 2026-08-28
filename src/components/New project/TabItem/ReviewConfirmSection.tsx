@@ -41,12 +41,22 @@ const appointmentTypeLabels: Record<string, string> = {
   "video-call": "Video Call",
 };
 
+// Show the budget as "$1,111 USD". Handles a value that's already formatted as
+// well as a bare number typed on an earlier draft.
+const formatBudgetDisplay = (raw: string, currency = "USD") => {
+  if (!raw) return "";
+  const digits = String(raw).replace(/[^\d]/g, "");
+  if (!digits) return String(raw);
+  return `$${Number(digits).toLocaleString("en-US")} ${currency}`;
+};
+
 export default function ReviewConfirmSection({
   formData,
   updateFormData,
   onPaymentSuccess,
 }: any) {
-  const [createProject] = useCreateProjectRequestMutation();
+  const [createProject, { isLoading: isSubmitting }] =
+    useCreateProjectRequestMutation();
   const [createIntent, { isLoading: isCreatingIntent }] =
     useCreateConsultationIntentMutation();
   const { data: consultationFeeData } = useGetConsultationFeeQuery();
@@ -102,6 +112,8 @@ export default function ReviewConfirmSection({
   const [missingFields, setMissingFields] = useState<string[]>([]);
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     const validationErrors = validateProjectRequest(formData);
     if (hasErrors(validationErrors)) {
       setMissingFields(Object.values(validationErrors));
@@ -147,6 +159,12 @@ export default function ReviewConfirmSection({
               {formData.firstName || "Client name"} {formData.middleInitial}{" "}
               {formData.lastName}
             </p>
+            {formData.companyName && (
+              <p className="text-base">
+                <span className="font-medium">Company Name:</span>{" "}
+                {formData.companyName}
+              </p>
+            )}
             <p className="text-base">
               <span className="font-medium">Email:</span>{" "}
               {formData.email || "Client@email.com"}
@@ -198,11 +216,17 @@ export default function ReviewConfirmSection({
             </p>
             <p className="text-base">
               <span className="font-medium">Project Type:</span>{" "}
-              {formData.projectType || "Service type"}
+              {formData.projectType === "other"
+                ? formData.projectTypeOther || "Other"
+                : formData.projectType
+                  ? formData.projectType.charAt(0).toUpperCase() +
+                    formData.projectType.slice(1)
+                  : "Project type"}
             </p>
             <p className="text-base">
               <span className="font-medium">Project Size:</span>{" "}
-              {formData.squareFootage || "Square footage"} sq ft
+              {formData.squareFootage || "Square footage"}{" "}
+              {formData.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}
             </p>
             <p className="text-base">
               <span className="font-medium">Project Address:</span>{" "}
@@ -221,7 +245,10 @@ export default function ReviewConfirmSection({
             </p> */}
             <p className="text-base">
               <span className="font-medium">Budget Range:</span>{" "}
-              {formData.budgetRange || "Budget range"}
+              {formatBudgetDisplay(
+                formData.budgetRange,
+                formData.budgetCurrency,
+              ) || "Budget range"}
             </p>
             <p className="text-base">
               <span className="font-medium">Site Constraints & Notes:</span>{" "}
@@ -389,7 +416,11 @@ export default function ReviewConfirmSection({
         )}
 
         <div className="flex justify-center items-center mt-12">
-          <ThumbprintButton onClick={handleSubmit} text="Submit Project" />
+          <ThumbprintButton
+            onClick={handleSubmit}
+            text={isSubmitting ? "Submitting Project..." : "Submit Project"}
+            disabled={isSubmitting}
+          />
         </div>
       </div>
     </div>

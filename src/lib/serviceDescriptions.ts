@@ -83,6 +83,7 @@ const SERVICE_SCOPES: ServiceScopeEntry[] = [
                     "Roof Plans (If necessary)",
                     "Elevations (If necessary)",
                     "Sections (If necessary)",
+                    "Preliminary Building Systems & Material Selection (If necessary)",
                 ],
             },
             "Preliminary Building Systems & Material Selection (If necessary)",
@@ -116,7 +117,7 @@ const SERVICE_SCOPES: ServiceScopeEntry[] = [
             name.includes("construction document") || name.includes("construction doc"),
         title: "Construction Documents (CDs)",
         bullets: [
-            "Based on the approved Design Development Documents and any adjustments authorized by the Owner in writing, Architecture Simple Inc. shall prepare Construction Documents consisting of Final Architectural & Engineering Plans, Final Spcifications describing in detail the requirements for the construction of the Project.",
+            "Based on the approved Design Development Documents and any adjustments authorized by the Owner in writing, Architecture Simple Inc. shall prepare Construction Documents consisting of Final Architectural & Engineering Plans, Final Specifications describing in detail the requirements for the construction of the Project.",
             "Architecture Simple Inc. shall advise the Owner of any adjustments to the preliminary estimate of Construction Cost. A revised detailed estimate of Construction Cost, if requested, shall be provided as an Additional Service.",
             "Upon full payment for Construction Documents Services and applicable expenses as described in Articles 3 & 4 and written approval of the Construction Document Drawings, Architecture Simple Inc. shall file the appropriate documents required for the approval of governmental authorities having jurisdiction (if permitting is included within this scope) over the Project. The costs associated with filing shall be the responsibility of the Owner.",
         ],

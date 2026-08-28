@@ -334,6 +334,12 @@ export function ProjectManagementTab() {
                     <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
                       Initial Appointment Date
                     </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      Start Date
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                      End Date
+                    </TableHead>
                     <TableHead className="text-xs font-bold text-gray-600">
                       Status
                     </TableHead>
@@ -379,6 +385,16 @@ export function ProjectManagementTab() {
                       </TableCell>
                       <TableCell className="text-xs hidden md:table-cell">
                         {formatDate(project.appointmentDate)}
+                      </TableCell>
+                      <TableCell className="text-xs hidden md:table-cell">
+                        {project.projectStartedAt
+                          ? formatDate(project.projectStartedAt)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs hidden md:table-cell">
+                        {project.projectCompletedAt
+                          ? formatDate(project.projectCompletedAt)
+                          : "T.B.D."}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -497,8 +513,8 @@ export function ProjectManagementTab() {
               <DialogDescription>
                 Are you sure you want to archive{" "}
                 <strong>{projectToArchive?.projectName}</strong>? It will be
-                moved to the <strong>Archived Projects</strong> section in
-                Settings.
+                moved to the <strong>Archived Projects</strong> page under
+                Financials → Accountant's Control.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

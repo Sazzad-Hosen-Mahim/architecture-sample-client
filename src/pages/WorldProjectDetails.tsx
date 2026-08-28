@@ -1,151 +1,219 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
-  // ArrowLeft,
-  // Send,
   MapPin,
   Calendar,
   User,
   Camera,
-  // Heart,
+  Earth,
+  Sun,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-import {
-  useGetMediaByIdOrSlugQuery,
-  // useToggleLikeMutation,
-  // useCreateCommentMutation,
-  // useGetMediaCommentsQuery
-} from "@/redux/features/Media/mediaApi";
+import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
+
+// "NORTH_AMERICA" -> "North America", "TROPICAL" -> "Tropical"
+const toTitleCase = (value: string) =>
+  value
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 function WorldProjectDetails() {
   const { id } = useParams<{ id: string }>();
-  // const navigate = useNavigate();
-
-  // const [newComment, setNewComment] = useState("");
   const [selectedImage, setSelectedImage] = useState(0);
+  // Arrow colour adapts to the brightness of the photo edge behind it.
+  const [arrowTone, setArrowTone] = useState<"light" | "dark">("light");
 
   const { data: response, isLoading } = useGetMediaByIdOrSlugQuery(id || "");
-  // const { data: commentResponse } = useGetMediaCommentsQuery({ id: id || "" }, { skip: !id });
-  // const [toggleLike] = useToggleLikeMutation();
-  // const [addComment] = useCreateCommentMutation();
 
   const item = response?.data;
+  const isPortfolio = item?.contentType === "PORTFOLIO";
 
   const project = useMemo(() => {
     if (!item) return null;
+
+    // Clean location string, no dangling "undefined" / "TBA".
+    let locationName = "Global";
+    if (item.location) {
+      locationName = item.location;
+    } else if (item.city && item.country) {
+      locationName = `${item.city}, ${item.country}`;
+    } else if (item.city || item.country) {
+      locationName = item.city || item.country;
+    }
+
     return {
       id: item.id,
       name: item.title,
-      PublishedDate: item.publishDate ? new Date(item.publishDate).toLocaleDateString() : new Date(item.createdAt).toLocaleDateString(),
+      PublishedDate: item.publishDate
+        ? new Date(item.publishDate).toLocaleDateString()
+        : new Date(item.createdAt).toLocaleDateString(),
       Architect: item.architect || "TBA",
       Photographer: item.photographer || "TBA",
       description: item.content,
-      locationName: item.location || (item.city ? `${item.city}, ${item.country}` : "Global"),
-      country: item.country || "TBA",
-      // continent is showing all capital I want first letter to be capital 
-      // this is the response "continent": "ASIA",
-      // "climate": "TROPICAL",
-      continent: item.continent
-        ? item.continent.charAt(0).toUpperCase() + item.continent.slice(1).toLowerCase()
-        : "TBA",
+      locationName,
+      continent: item.continent ? toTitleCase(item.continent) : "TBA",
+      climate: item.climate ? toTitleCase(item.climate) : "TBA",
+      projectType: item.category ? toTitleCase(item.category) : "TBA",
       year: item.projectYear || 2024,
       tags: item.projectTags || [],
-      images: item.assets?.map((a: any) => a.cdnUrl) || [],
-      climate: item.climate
-        ? item.climate.charAt(0).toUpperCase() + item.climate.slice(1).toLowerCase()
-        : "TBA",
-      style: "Modern",
-      buildingType: item.category || "Building",
-      likeCount: item.likeCount || 0,
+      images: (item.assets?.map((a: any) => a.cdnUrl) || []) as string[],
     };
   }, [item]);
 
-  // const handleVote = async () => {
-  //   if (!id) return;
-  //   try {
-  //     await toggleLike(id).unwrap();
-  //   } catch (err) {
-  //     console.error("Failed to vote:", err);
-  //   }
-  // };
-
-  // const handleAddComment = async () => {
-  //   if (!id || !newComment.trim()) return;
-  //   try {
-  //     await addComment({ id, content: newComment.trim() }).unwrap();
-  //     setNewComment("");
-  //   } catch (err) {
-  //     console.error("Failed to post comment:", err);
-  //   }
-  // };
-
-  if (isLoading) return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-    </div>
+  const images = useMemo(
+    () =>
+      project && project.images.length > 0
+        ? project.images
+        : ["/placeholder.svg"],
+    [project],
   );
+  const activeIndex = Math.min(selectedImage, images.length - 1);
+
+  // Sample the current image's left/right edges to pick a contrasting arrow colour.
+  useEffect(() => {
+    const src = images[activeIndex];
+    if (!src || src === "/placeholder.svg") {
+      setArrowTone("dark");
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const w = 48;
+        const h = 48;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, w, h);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        let total = 0;
+        let count = 0;
+        for (let y = Math.floor(h * 0.35); y < Math.floor(h * 0.65); y++) {
+          for (const x of [1, 2, 3, w - 4, w - 3, w - 2]) {
+            const i = (y * w + x) * 4;
+            total +=
+              0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            count++;
+          }
+        }
+        const avg = count ? total / count : 128;
+        setArrowTone(avg < 140 ? "light" : "dark");
+      } catch {
+        // CORS-tainted canvas — keep the always-visible white + shadow arrows.
+        setArrowTone("light");
+      }
+    };
+    img.onerror = () => !cancelled && setArrowTone("light");
+    img.src = src;
+    return () => {
+      cancelled = true;
+    };
+  }, [images, activeIndex]);
+
+  if (isLoading)
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
 
   if (!project) {
     return (
       <div className="max-w-6xl mx-auto mt-10 px-4">
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
           <h2 className="text-xl font-semibold mb-4">Project not found</h2>
-          {/* <Button onClick={() => navigate("/world-project")} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
-          </Button> */}
         </div>
       </div>
     );
   }
 
-  // const projectComments = commentResponse?.data || [];
+  const goPrev = () =>
+    setSelectedImage((i) => (i - 1 + images.length) % images.length);
+  const goNext = () => setSelectedImage((i) => (i + 1) % images.length);
+
+  const arrowClass =
+    arrowTone === "light"
+      ? "bg-black/20 hover:bg-black/40 text-white [filter:drop-shadow(0_0_3px_rgba(0,0,0,0.75))]"
+      : "bg-white/30 hover:bg-white/55 text-gray-900 [filter:drop-shadow(0_0_3px_rgba(255,255,255,0.8))]";
 
   return (
-    <div className="max-w-5xl mx-auto mt-6 px-4 pb-20">
-      {/* Back Button */}
-      {/* <button
-        onClick={() => navigate("/world-project")}
-        className="flex items-center gap-2 text-gray-600 hover:text-black mb-6 transition-colors"
-      >
-        <ArrowLeft size={20} />
-        <span className="text-sm font-medium">Back to Projects</span>
-      </button> */}
+    <div className="max-w-5xl mx-auto mt-4 px-4 pb-20">
+      {/* Top bar: content type (left) · title (center) · published date (right) */}
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
+        <div className="md:w-1/4 shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            {isPortfolio ? "Portfolio" : "World Project"}
+          </p>
+        </div>
+
+        <h1 className="flex-1 text-base md:text-lg font-semibold text-center order-first md:order-none">
+          {project.name}
+        </h1>
+
+        <div className="md:w-1/4 shrink-0 md:text-right">
+          <span className="text-sm text-gray-500">
+            Published: {project.PublishedDate}
+          </span>
+        </div>
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Main Content Section */}
-        <div className="flex-1 ">
-          {/* Project Title & Meta */}
+        <div className="flex-1">
+          {/* Image gallery */}
           <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              {project.name}
-            </h1>
-            <p className="text-gray-500 text-sm">
-              Published: {project.PublishedDate}
-            </p>
-          </div>
-
-          {/* Main Image Gallery */}
-          <div className="mb-6">
-            <div className="w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-4">
+            <div className="relative w-full h-[300px] md:h-[430px] rounded-xl overflow-hidden mb-4 bg-gray-100">
               <img
-                src={project.images[selectedImage] || "/placeholder.svg"}
+                src={images[activeIndex]}
                 alt={project.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
               />
+
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    aria-label="Previous image"
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-sm transition-colors cursor-pointer ${arrowClass}`}
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    aria-label="Next image"
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-sm transition-colors cursor-pointer ${arrowClass}`}
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Thumbnail Gallery */}
-            {project.images.length > 1 && (
+            {/* Thumbnails */}
+            {images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {project.images.map((img: string, idx: number) => (
+                {images.map((img: string, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx
-                      ? "border-black"
-                      : "border-transparent opacity-70 hover:opacity-100"
-                      }`}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                      activeIndex === idx
+                        ? "border-black"
+                        : "border-transparent opacity-70 hover:opacity-100"
+                    }`}
                   >
                     <img
                       src={img}
@@ -158,46 +226,55 @@ function WorldProjectDetails() {
             )}
           </div>
 
-          {/* Vote Button */}
-          {/* <div className="mb-6">
-            <button
-              onClick={handleVote}
-              className="flex items-center gap-2 px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              <Heart size={18} />
-              <span>Vote ({project.likeCount})</span>
-            </button>
-          </div> */}
-
-          {/* Project Details */}
+          {/* Project Details + Tags */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="md:col-span-2">
-              <div className="bg-gray-50 md:col-span-2 rounded-xl p-3 mb-6 ">
+              <div className="bg-gray-50 rounded-xl p-3 mb-6">
                 <h2 className="text-lg font-semibold mb-4">Project Details</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <User size={18} className="text-gray-600" />
+                  {/* Portfolio has no architect — it shows Project Type in that slot. */}
+                  {isPortfolio ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <Building2 size={18} className="text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Project Type</p>
+                        <p className="text-sm font-medium">
+                          {project.projectType}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Architect</p>
-                      <p className="text-sm font-medium">{project.Architect}</p>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <User size={18} className="text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Architect</p>
+                        <p className="text-sm font-medium">
+                          {project.Architect}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                       <Camera size={18} className="text-gray-600" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Photographer</p>
-                      <p className="text-sm font-medium">{project.Photographer}</p>
+                      <p className="text-sm font-medium">
+                        {project.Photographer}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <Camera size={18} className="text-gray-600" />
+                      <Earth size={18} className="text-gray-600" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Continent</p>
@@ -205,15 +282,13 @@ function WorldProjectDetails() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                       <MapPin size={18} className="text-gray-600" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Location</p>
-                      <p className="text-sm font-medium">
-                        {project.locationName}, {project.country}
-                      </p>
+                      <p className="text-sm font-medium">{project.locationName}</p>
                     </div>
                   </div>
 
@@ -226,19 +301,36 @@ function WorldProjectDetails() {
                       <p className="text-sm font-medium">{project.year}</p>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <Calendar size={18} className="text-gray-600" />
+                      <Sun size={18} className="text-gray-600" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Climate</p>
                       <p className="text-sm font-medium">{project.climate}</p>
                     </div>
                   </div>
+
+                  {/* World projects still list their type, alongside the architect. */}
+                  {!isPortfolio && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <Building2 size={18} className="text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Project Type</p>
+                        <p className="text-sm font-medium">
+                          {project.projectType}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-3 mb-6"><div>
+
+            <div className="bg-gray-50 rounded-xl p-3 mb-6">
               <h2 className="text-lg font-semibold mb-3">Tags</h2>
               <div className="flex flex-wrap gap-2">
                 {project.tags?.map((tag: string) => (
@@ -250,25 +342,19 @@ function WorldProjectDetails() {
                   </span>
                 ))}
               </div>
-            </div></div>
-
+            </div>
           </div>
 
           {/* Description */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-3">Description</h2>
-            <p className="text-gray-600 leading-relaxed">
+            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
               {project.description}
             </p>
           </div>
-
-          {/* Additional Info */}
-
-
-          {/* Tags */}
-
         </div>
       </div>
+
       <div className="mb-22 mt-12">
         <HeroSocialMedia />
       </div>

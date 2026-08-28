@@ -407,7 +407,7 @@ export default function MediaCopyright() {
 
           {/* 13. Contact */}
           <section className="mb-32">
-            <h2 className="text-md font-medium mb-4">16. Contact Us</h2>
+            <h2 className="text-md font-medium mb-4">13. Contact Us</h2>
 
             <p className="text-sm leading-6 mb-2">
               <span className="font-semibold">Architecture Simple</span>

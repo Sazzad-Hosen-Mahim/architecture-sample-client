@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader2, MailCheck } from "lucide-react";
 import { useForgotPasswordMutation } from "@/redux/api/authApi";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 
 // Validation Schema
 const forgotPasswordSchema = z.object({
@@ -34,13 +35,14 @@ const ForgotPassword = () => {
       setSentTo(email);
     } catch (error: any) {
       toast.error(
-        error?.data?.message || "Could not send the reset link. Please try again."
+        error?.data?.message ||
+          "Could not send the reset link. Please try again.",
       );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 md:px-0">
+    <div className="min-h-[calc(100dvh-57px)] bg-gray-50 flex items-center justify-center px-4 md:px-0 py-8">
       <div className="w-full max-w-sm bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {/* Page Header */}
         <h1 className="text-2xl font-semibold text-center text-gray-900 mb-8">
@@ -125,6 +127,9 @@ const ForgotPassword = () => {
               Back to Login
             </Link>
           </p>
+        </div>
+        <div>
+          <HeroSocialMedia />
         </div>
       </div>
     </div>

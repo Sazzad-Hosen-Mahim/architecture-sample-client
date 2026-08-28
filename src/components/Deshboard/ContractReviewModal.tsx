@@ -88,35 +88,43 @@ Font.register({
 });
 
 export const pdfStyles = StyleSheet.create({
-  page: { padding: 50, fontFamily: "Helvetica", fontSize: 10, color: "#333" },
-  header: { marginBottom: 20 },
+  page: {
+    padding: 50,
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    color: "#333",
+    lineHeight: 1.25,
+  },
+  header: { marginBottom: 16 },
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: "center",
     textTransform: "uppercase",
   },
-  companyName: { fontSize: 12, fontWeight: "bold", marginBottom: 10 },
+  companyName: { fontSize: 12, fontWeight: "bold", marginBottom: 8 },
   flexRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 14,
   },
   addressCol: { width: "60%" },
   dateCol: { width: "30%", textAlign: "right" },
   bold: { fontWeight: "bold" },
-  subject: { marginTop: 20, marginBottom: 20 },
-  greeting: { marginBottom: 15 },
+  subject: { marginTop: 12, marginBottom: 12 },
+  greeting: { marginBottom: 12 },
   articleTitle: {
     fontSize: 11,
     fontWeight: "bold",
-    marginTop: 15,
-    marginBottom: 8,
+    marginTop: 14,
+    marginBottom: 6,
     borderLeft: "3px solid #000",
     paddingLeft: 8,
   },
-  content: { lineHeight: 1.5, marginBottom: 10, textAlign: "justify" },
+  // Prose lines sit tight against each other; the gap between blocks (below)
+  // is what separates one point from the next.
+  content: { lineHeight: 1.25, marginBottom: 0, textAlign: "justify" },
   serviceItem: { flexDirection: "row", marginBottom: 5, paddingLeft: 10 },
   bullet: { width: 15 },
   table: { marginTop: 15, border: "1pt solid #eee" },
@@ -216,10 +224,18 @@ export const ContractPDF = ({
         const isPayment = isPaymentArticle(section);
         const services = contract?.services || [];
 
-        // Split content into paragraphs/lines for proper rendering
-        const contentLines = (section.content || "")
-          .split("\n")
-          .filter((line: string) => line.trim() !== "");
+        // Group the body into blocks separated by blank lines. Lines inside a
+        // block render single-spaced (tight); the space between blocks is what
+        // separates one point / numbered clause from the next.
+        const contentBlocks = (section.content || "")
+          .split(/\n[ \t]*\n/)
+          .map((block: string) =>
+            block
+              .split("\n")
+              .map((line: string) => line.trim())
+              .filter((line: string) => line !== ""),
+          )
+          .filter((lines: string[]) => lines.length > 0);
 
         return (
           <View key={section.articleKey} style={{ marginBottom: 10 }}>
@@ -285,36 +301,54 @@ export const ContractPDF = ({
               </View>
             )}
 
-            {/* Render content - handle bullet points (•) as structured items */}
-            {contentLines.map((line: string, lineIdx: number) => {
-              const trimmed = line.trim();
-              const isBullet =
-                trimmed.startsWith("•") || trimmed.startsWith("-");
-              if (isBullet) {
-                const bulletText = trimmed.replace(/^[•\-]\s*/, "");
-                return (
-                  <View
-                    key={lineIdx}
-                    wrap={false}
-                    style={{
-                      flexDirection: "row",
-                      marginBottom: 4,
-                      paddingLeft: 15,
-                    }}
-                  >
-                    <Text style={{ width: 12, fontSize: 10 }}>•</Text>
-                    <Text style={{ flex: 1, lineHeight: 1.5, fontSize: 10 }}>
-                      {bulletText}
+            {/* Render content - blocks stay separated, lines within stay close */}
+            {contentBlocks.map((lines: string[], blockIdx: number) => (
+              <View key={blockIdx} style={{ marginBottom: 9 }}>
+                {lines.map((line: string, lineIdx: number) => {
+                  const isBullet =
+                    line.startsWith("•") || line.startsWith("-");
+                  if (isBullet) {
+                    return (
+                      <View
+                        key={lineIdx}
+                        wrap={false}
+                        style={{
+                          flexDirection: "row",
+                          marginBottom: 4,
+                          paddingLeft: 15,
+                        }}
+                      >
+                        <Text style={{ width: 12, fontSize: 10 }}>•</Text>
+                        <Text
+                          style={{ flex: 1, lineHeight: 1.3, fontSize: 10 }}
+                        >
+                          {line.replace(/^[•\-]\s*/, "")}
+                        </Text>
+                      </View>
+                    );
+                  }
+                  // A numbered clause heading ("3.05 Disputed Invoices") keeps
+                  // a little air above it and reads bold; body prose stays tight.
+                  const isNumberedHeading =
+                    /^\d+\.\d[\d.]*\s+\S/.test(line) && line.length <= 70;
+                  return (
+                    <Text
+                      key={lineIdx}
+                      style={[
+                        pdfStyles.content,
+                        isNumberedHeading && lineIdx > 0
+                          ? { marginTop: 6, fontWeight: "bold" }
+                          : isNumberedHeading
+                            ? { fontWeight: "bold" }
+                            : {},
+                      ]}
+                    >
+                      {line}
                     </Text>
-                  </View>
-                );
-              }
-              return (
-                <View key={lineIdx} wrap={false} style={{ marginBottom: 6 }}>
-                  <Text style={pdfStyles.content}>{trimmed}</Text>
-                </View>
-              );
-            })}
+                  );
+                })}
+              </View>
+            ))}
 
             {/* Scope of Services - service descriptions */}
             {isScope && services.length > 0 && (
@@ -410,7 +444,7 @@ export const ContractPDF = ({
                       </View>
                       {scopeDesc?.intro && (
                         <View style={{ marginBottom: 4, paddingLeft: 25 }}>
-                          <Text style={{ lineHeight: 1.5, fontSize: 9 }}>
+                          <Text style={{ lineHeight: 1.25, fontSize: 9 }}>
                             {scopeDesc.intro}
                           </Text>
                         </View>
@@ -433,7 +467,7 @@ export const ContractPDF = ({
                                 <Text
                                   style={{
                                     flex: 1,
-                                    lineHeight: 1.5,
+                                    lineHeight: 1.3,
                                     fontSize: 9,
                                   }}
                                 >
@@ -457,7 +491,7 @@ export const ContractPDF = ({
                                     <Text
                                       style={{
                                         flex: 1,
-                                        lineHeight: 1.5,
+                                        lineHeight: 1.3,
                                         fontSize: 9,
                                       }}
                                     >

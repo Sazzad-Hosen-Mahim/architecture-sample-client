@@ -23,3 +23,16 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* The shadcn Calendar marks the selected day with `bg-primary` /
+   `text-primary-foreground`, but this project's Tailwind theme doesn't define
+   `--color-primary`, so that styling never appears — only a focus ring that
+   disappears when you click elsewhere. Give the selected day a concrete look
+   so it stays put. */
+[data-slot="calendar"] [data-selected-single="true"],
+[data-slot="calendar"] [data-selected-single="true"]:hover,
+[data-slot="calendar"] [data-selected-single="true"]:focus-visible {
+  background-color: #111827;
+  color: #ffffff;
+  border-radius: 9999px;
+}

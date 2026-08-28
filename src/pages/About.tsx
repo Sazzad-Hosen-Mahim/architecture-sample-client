@@ -1,60 +1,67 @@
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
-import { ArrowLeft } from "lucide-react";
+// import { ArrowLeft } from "lucide-react";
 // import { CiInstagram } from "react-icons/ci";
 // import { FaFacebook } from "react-icons/fa";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const About = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   return (
     <div className="h-screen">
       {/* <Button>About Us Page</Button> */}
-      <div className="max-w-7xl mx-auto pt-4">
+      {/* <div className="max-w-7xl mx-auto pt-4">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-full hover:bg-gray-100 cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-black" />
         </button>
-      </div>
+      </div> */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex justify-center mx-auto w-2/3">
+        <div className="flex justify-center mx-auto w-6/7 md:w-2/3">
           {/* Left Column */}
           <div className="space-y-6">
-            <div className="space-y-6 text-gray-600">
+            <div className="space-y-6 text-gray-600 text-justify">
               <p className="text-sm">
                 Welcome to Architecture Simple. Established in 2023, we are a
-                premier architectural services and media-based company committed
-                to design excellence and innovative practice. Our team offers
-                extensive experience in both the residential and commercial
-                sectors, delivering results that embody our guiding philosophy.
+                Architecture Media Company and Design Firm dedicated to sharing,
+                exploring, and creating Architecture that embodies our care for
+                the practice.
               </p>
               <p className="text-sm">
-                At Architecture Simple, we believe architecture is not simply
-                the act of building but the art of shaping the identity of
-                cities, towns, and villages. Every structure is an expression of
-                its climate, culture, and community and our mission is to create
-                spaces that fulfill our clients’ functional needs while honoring
-                the distinctive character of the land they occupy. We approach
-                each commission with meticulous care and a deep respect for
-                context, history, and sustainability.
+                Through our media platform, we present Architecture from around
+                the world to celebrate the achievements of other respected
+                Architects who share our regard for the land and built world and
+                grapple with the challenges of bringing those two worlds
+                together. We look at Architecture through its ideas, its
+                context, and the way it shapes the places we inhabit.
               </p>
               <p className="text-sm">
-                We are dedicated to producing architectural solutions of
-                enduring quality; works that transcend fleeting trends and
-                provide lasting value to the communities they serve. From
-                revitalizing historic districts to designing contemporary urban
-                environments or intimate residences, we aim to harmonize
-                creativity, practicality, and beauty.
+                Through our design practice, we provide Architectural
+                Professional Services across residential and commercial
+                projects. Each project beginning with an understanding of its
+                place, purpose, and people to develop a clear Architectural
+                response from those conditions.
               </p>
               <p className="text-sm">
-                Discover the difference of working with Architecture Simple. Let
-                us help realize your architectural vision with our expertise,
-                passion, and unwavering commitment to quality. Contact us today
-                to embark on a journey of thoughtful design and meaningful
-                transformation.
+                We believe Architecture is in service to people first, because
+                it is the people that give identity to a place. Climate,
+                culture, history, native material, structure, and craft all
+                contribute to that identity. These ideas should carry through
+                every scale of a project, from the whole to the detail and from
+                what is immediately perceived to what is experienced over time.
               </p>
-              <p className="italic">-CEO Eric Rivera</p>
+              <p className="text-sm">
+                At its core, Architecture Simple exist to purely share
+                Architecture and contribute to it. Our media informs our
+                perspective and our practice puts that perspective into action.
+                It is no more complicated than that.
+              </p>
+              <p className="text-sm">Keep it Simple.</p>
+              <h1 className="text-md font-semibold">
+                Eric Rivera <br />
+                <p className="italic font-light">- Founder & Principal</p>
+              </h1>
             </div>
             <div className="mt-auto">
               <Link to="/contact" className="block">

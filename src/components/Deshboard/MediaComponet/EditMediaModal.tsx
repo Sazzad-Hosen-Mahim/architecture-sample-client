@@ -88,7 +88,11 @@ export default function EditMediaModal({
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
   const [location, setLocation] = useState("");
+  // News-specific
+  const [publisher, setPublisher] = useState("");
+  const [source, setSource] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
+  const [uploadDate, setUploadDate] = useState("");
   const [architect, setArchitect] = useState("");
   const [photographer, setPhotographer] = useState("");
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
@@ -124,14 +128,20 @@ export default function EditMediaModal({
       setDescription(media.content || "");
       setAuthor(media.author || "");
       setLocation(media.location || "");
+      setPublisher(media.publisher || "");
+      setSource(media.source || "");
 
-      // Handle date formatting for datetime-local input
-      if (media.publishDate) {
-        const date = new Date(media.publishDate);
-        setPublishedDate(date.toISOString().slice(0, 16));
-      } else {
-        setPublishedDate("");
-      }
+      // Date-only inputs (no time component)
+      setPublishedDate(
+        media.publishDate
+          ? new Date(media.publishDate).toISOString().slice(0, 10)
+          : "",
+      );
+      setUploadDate(
+        media.uploadDate
+          ? new Date(media.uploadDate).toISOString().slice(0, 10)
+          : "",
+      );
 
       setArchitect(media.architect || "");
       setPhotographer(media.photographer || "");
@@ -206,6 +216,8 @@ export default function EditMediaModal({
 
     if (author) updateData.author = author;
     if (location) updateData.location = location;
+    if (publisher) updateData.publisher = publisher;
+    if (source) updateData.source = source;
     if (architect) updateData.architect = architect;
     if (photographer) updateData.photographer = photographer;
     if (category) updateData.category = category;
@@ -217,6 +229,9 @@ export default function EditMediaModal({
 
     if (publishedDate) {
       updateData.publishDate = new Date(publishedDate).toISOString();
+    }
+    if (uploadDate) {
+      updateData.uploadDate = new Date(uploadDate).toISOString();
     }
 
     try {
@@ -355,12 +370,36 @@ export default function EditMediaModal({
                     <Input value={author} onChange={(e) => setAuthor(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Publisher</label>
+                    <Input
+                      placeholder="e.g., The Independent"
+                      value={publisher}
+                      onChange={(e) => setPublisher(e.target.value)}
+                    />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Publish Date</label>
-                    <Input type="datetime-local" value={publishedDate} onChange={(e) => setPublishedDate(e.target.value)} />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Photo Credits</label>
+                    <Input
+                      placeholder="Photographer name"
+                      value={photographer}
+                      onChange={(e) => setPhotographer(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Source name</label>
+                    <Input
+                      placeholder="e.g., Reuters"
+                      value={source}
+                      onChange={(e) => setSource(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Published Date</label>
+                    <Input type="date" value={publishedDate} onChange={(e) => setPublishedDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Upload Date</label>
+                    <Input type="date" value={uploadDate} onChange={(e) => setUploadDate(e.target.value)} />
                   </div>
                 </div>
               )}
@@ -419,10 +458,10 @@ export default function EditMediaModal({
                       <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Project Type</label>
                       <Select value={category} onValueChange={setCategory}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue placeholder="Select project type" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
                           {PORTFOLIO_CATEGORIES.map((cat) => (
@@ -518,17 +557,13 @@ export default function EditMediaModal({
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Architect</label>
-                      <Input value={architect} onChange={(e) => setArchitect(e.target.value)} />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Photographer</label>
                       <Input value={photographer} onChange={(e) => setPhotographer(e.target.value)} />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                      <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -568,10 +603,10 @@ export default function EditMediaModal({
                       <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Project Type</label>
                       <Select value={category} onValueChange={setCategory}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue placeholder="Select project type" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
                           {PORTFOLIO_CATEGORIES.map((cat) => (

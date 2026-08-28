@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import ThumbprintButton from "../ThumbprintButton";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -28,12 +28,14 @@ export default function ScheduleAppointmentSection({
   goToNextSection,
   goToPreviousSection,
 }: any) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    formData.appointmentDate ? new Date(formData.appointmentDate) : undefined,
+  // Date and time are derived straight from the parent's form data — the single
+  // source of truth — so picking a time can never wipe the calendar's selection.
+  const selectedDate = useMemo(
+    () =>
+      formData.appointmentDate ? new Date(formData.appointmentDate) : undefined,
+    [formData.appointmentDate],
   );
-  const [selectedTime, setSelectedTime] = useState<string | null>(
-    formData.appointmentTime || null,
-  );
+  const selectedTime: string | null = formData.appointmentTime || null;
   const [meetingLocation, setMeetingLocation] = useState(
     formData.meetingLocation || "",
   );
@@ -61,8 +63,6 @@ export default function ScheduleAppointmentSection({
     );
     if (isUnavailable) return;
 
-    setSelectedDate(date);
-    setSelectedTime(null);
     clearError("appointmentDate");
     updateFormData({
       appointmentDate: date.toISOString(),
@@ -71,7 +71,6 @@ export default function ScheduleAppointmentSection({
   };
 
   const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
     clearError("appointmentTime");
     updateFormData({ appointmentTime: time });
   };
@@ -167,12 +166,13 @@ export default function ScheduleAppointmentSection({
                 {getAvailableTimes(selectedDate).map((time) => (
                   <button
                     key={time}
+                    type="button"
                     onClick={() => handleTimeSelect(time)}
                     className={cn(
-                      "relative rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200",
+                      "relative rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
                       selectedTime === time
-                        ? "border-primary bg-primary text-black shadow-lg ring-1 ring-primary/20"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-primary hover:bg-primary/5 hover:shadow-sm",
+                        ? "border-gray-900 bg-gray-900 text-white shadow-lg"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-500 hover:bg-gray-50 hover:shadow-sm",
                     )}
                   >
                     {time}

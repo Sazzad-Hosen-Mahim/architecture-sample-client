@@ -81,9 +81,13 @@ export default function CreateNewMedia() {
   const [isDragActive, setIsDragActive] = useState(false);
 
   // Newsfeed specific
+  const todayStr = () => new Date().toISOString().slice(0, 10);
   const [author, setAuthor] = useState("");
-  const [location, setLocation] = useState("");
+  const [publisher, setPublisher] = useState("");
+  const [source, setSource] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
+  // Upload date defaults to today and can be adjusted before submitting.
+  const [uploadDate, setUploadDate] = useState(todayStr());
 
   // World Project specific
   const [architect, setArchitect] = useState("");
@@ -239,8 +243,10 @@ export default function CreateNewMedia() {
     setDescription("");
     setSelectedFiles([]);
     setAuthor("");
-    setLocation("");
+    setPublisher("");
+    setSource("");
     setPublishedDate("");
+    setUploadDate(todayStr());
     setArchitect("");
     setPhotographer("");
     setWpLocation("");
@@ -267,7 +273,7 @@ export default function CreateNewMedia() {
 
     switch (activeTab) {
       case "newsfeed":
-        if (!author || !location || !publishedDate) {
+        if (!author || !publisher || !source || !publishedDate || !uploadDate) {
           toast.error("Please fill all newsfeed fields.");
           return false;
         }
@@ -316,9 +322,11 @@ export default function CreateNewMedia() {
     switch (activeTab) {
       case "newsfeed":
         metadata.author = author;
-        metadata.location = location;
+        metadata.publisher = publisher;
+        metadata.source = source;
         metadata.photographer = photographer;
         metadata.publishDate = new Date(publishedDate).toISOString();
+        metadata.uploadDate = new Date(uploadDate).toISOString();
         break;
       case "world-project":
         metadata.architect = architect;
@@ -340,6 +348,12 @@ export default function CreateNewMedia() {
           metadata.categoryOther = categoryOther.trim();
         }
         metadata.projectYear = parseInt(year); // Backend field is "projectYear"
+        // Portfolio also collects these — persist them so the detail page can
+        // show something other than "TBA".
+        if (photographer) metadata.photographer = photographer;
+        if (wpLocation) metadata.location = wpLocation;
+        if (continent) metadata.continent = continent;
+        if (climate) metadata.climate = climate;
         break;
     }
 
@@ -402,21 +416,21 @@ export default function CreateNewMedia() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location <span className="text-red-500">*</span>
+                  Publisher <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  placeholder="e.g., California, USA"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g., The Independent"
+                  value={publisher}
+                  onChange={(e) => setPublisher(e.target.value)}
                   className="border-gray-300"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photographer <span className="text-red-500">*</span>
+                  Photo Credits <span className="text-red-500">*</span>
                 </label>
                 <Input
                   placeholder="Enter photographer name"
@@ -427,14 +441,40 @@ export default function CreateNewMedia() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Source name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="e.g., Reuters"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className="border-gray-300"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Published Date <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  type="datetime-local"
+                  type="date"
                   value={publishedDate}
                   onChange={(e) => setPublishedDate(e.target.value)}
                   className="border-gray-300"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload Date <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="date"
+                  value={uploadDate}
+                  onChange={(e) => setUploadDate(e.target.value)}
+                  className="border-gray-300"
+                />
+                <p className="mt-1 text-xs text-gray-500">Defaults to today.</p>
               </div>
             </div>
           </>
@@ -546,14 +586,14 @@ export default function CreateNewMedia() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
+                Project Type <span className="text-red-500">*</span>
               </label>
               <Select
                 value={category}
                 onValueChange={(val) => setCategory(val)}
               >
                 <SelectTrigger className="border-gray-300 w-full text-gray-500">
-                  <SelectValue placeholder="Select Category" />
+                  <SelectValue placeholder="Select Project Type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-300">
                   {CATEGORY.map((config) => (
@@ -727,17 +767,6 @@ export default function CreateNewMedia() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Architect <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="Enter architect name"
-                  value={architect}
-                  onChange={(e) => setArchitect(e.target.value)}
-                  className="border-gray-300"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Photographer <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -747,9 +776,6 @@ export default function CreateNewMedia() {
                   className="border-gray-300"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Location <span className="text-red-500">*</span>
@@ -761,7 +787,9 @@ export default function CreateNewMedia() {
                   className="border-gray-300"
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Year <span className="text-red-500">*</span>
@@ -779,14 +807,14 @@ export default function CreateNewMedia() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
+                Project Type <span className="text-red-500">*</span>
               </label>
               <Select
                 value={category}
                 onValueChange={(val) => setCategory(val)}
               >
                 <SelectTrigger className="border-gray-300 w-full text-gray-500">
-                  <SelectValue placeholder="Select Category" />
+                  <SelectValue placeholder="Select Project Type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
                   {CATEGORY.map((config) => (
@@ -942,7 +970,7 @@ export default function CreateNewMedia() {
           {/* Common Fields */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Project Name <span className="text-red-500">*</span>
+              Title <span className="text-red-500">*</span>
             </label>
             <Input
               placeholder="Enter Project Name"

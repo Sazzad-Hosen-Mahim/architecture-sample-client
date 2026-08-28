@@ -2,8 +2,18 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  // Link,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 // import { jwtDecode } from "jwt-decode";
 import { useAppDispatch } from "@/hooks/useRedux";
 import { toast } from "sonner";
@@ -21,10 +31,20 @@ type LoginFormInputs = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [signupInfoOpen, setSignupInfoOpen] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loginUser, { isLoading }] = useLoginMutation();
   const [isSubmitting] = useState(false);
+
+  // Where to land after login — the meeting-join link (and similar) send the
+  // user here with ?redirect=<same-origin path> so they resume where they were.
+  const redirectParam = searchParams.get("redirect");
+  const safeRedirect =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : null;
 
   const {
     register,
@@ -45,11 +65,13 @@ const Login = () => {
         signIn({
           user,
           accessToken,
-        })
+        }),
       );
 
       toast.success("Login successful!");
-      if (user.role === "USER") {
+      if (safeRedirect) {
+        navigate(safeRedirect, { replace: true });
+      } else if (user.role === "USER") {
         navigate("/user-dashboard");
       } else {
         navigate("/dashboard"); // fallback / admin / other roles
@@ -130,7 +152,7 @@ const Login = () => {
               href="/forgotPassword"
               className="text-sm text-gray-900 hover:text-blue-700"
             >
-              Forgot password
+              Forgot password? Click here to reset.
             </a>
           </div>
 
@@ -159,6 +181,16 @@ const Login = () => {
             Quick Access (Temporary)
           </a> */}
           <p className="text-sm text-gray-600">
+            Why can’t I sign up?{" "}
+            <button
+              type="button"
+              onClick={() => setSignupInfoOpen(true)}
+              className="text-gray-900 font-medium hover:text-gray-700 cursor-pointer"
+            >
+              See Here
+            </button>
+          </p>
+          {/* <p className="text-sm text-gray-600">
             Don’t have an account?{" "}
             <Link
               to="/signup"
@@ -166,12 +198,41 @@ const Login = () => {
             >
               Sign up
             </Link>
-          </p>
+          </p> */}
           <div className="mt-2">
             <HeroSocialMedia />
           </div>
         </div>
       </div>
+
+      <Dialog open={signupInfoOpen} onOpenChange={setSignupInfoOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Why can’t I sign up?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+            <p>
+              This is a private client portal. Accounts are invitation-only.
+            </p>
+            <p>
+              If you’ve submitted a project inquiry (or one was created for you),
+              check your email for a secure link to create your account.
+            </p>
+            <p>
+              Didn’t receive it? Just reach out and we’ll gladly resend it.
+            </p>
+          </div>
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setSignupInfoOpen(false)}
+              className="w-full px-4 py-2.5 text-sm font-medium text-white bg-black hover:bg-gray-800 rounded-md transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -269,7 +269,7 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
 
   // For a project the stat cards come straight from the project totals:
   //   Avg Monthly Revenue = Total Contract / Total Project Months
-  //   Avg Monthly Cost    = (Labor Cost + Project Overhead) / Total Project Months
+  //   Avg Monthly Cost    = Total Cost Incurred / Total Project Months
   //   Avg Monthly Profit  = Avg Monthly Revenue - Avg Monthly Cost
   //   Avg Utilization     = Billable Hours / (Billable + Non-Billable Hours)
   // The firm-wide chart keeps averaging its 12 monthly buckets.
@@ -375,7 +375,7 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
             color: 'red',
             sub: totals
               ? `Total costs / ${monthCount}`
-              : summary ? `(Labor + overhead) / ${monthsLabel}` : 'Total costs / 12',
+              : summary ? `Total cost incurred / ${monthsLabel}` : 'Total costs / 12',
           },
           {
             label: 'Avg Monthly Profit',

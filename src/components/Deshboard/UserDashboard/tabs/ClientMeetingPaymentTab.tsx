@@ -355,15 +355,26 @@ export default function ClientMeetingPaymentTab({
                             </button>
                         </div>
                     ) : isAccepted && meeting.meetingUrl ? (
-                        <a
-                            href={toExternalUrl(meeting.meetingUrl) ?? undefined}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95 flex-shrink-0"
-                        >
-                            <ExternalLink className="w-3 h-3" />
-                            JOIN
-                        </a>
+                        consultationPaid ? (
+                            <a
+                                href={toExternalUrl(meeting.meetingUrl) ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95 flex-shrink-0"
+                            >
+                                <ExternalLink className="w-3 h-3" />
+                                JOIN
+                            </a>
+                        ) : (
+                            <button
+                                onClick={() => setIsConsultationModalOpen(true)}
+                                title="Pay the consultation fee to join this meeting"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-400 text-xs font-bold rounded-lg border border-gray-200 cursor-pointer flex-shrink-0"
+                            >
+                                <Lock className="w-3 h-3" />
+                                JOIN
+                            </button>
+                        )
                     ) : isOwnRequest ? (
                         <div className="px-3 py-2 bg-gray-100 text-gray-400 text-[10px] font-bold rounded-lg uppercase tracking-tight flex-shrink-0">
                             Requested

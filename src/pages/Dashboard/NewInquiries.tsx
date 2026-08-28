@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   FileText,
@@ -75,6 +75,7 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
     projectDescription: "",
     additionalContext: "",
     streetAddress: "",
+    aptSuiteUnit: "",
     city: "",
     state: "",
     zip: "",
@@ -105,6 +106,44 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
       return next;
     });
   };
+
+  // "Same as mailing address" mirrors the client's address into the project
+  // address fields (and the form disables them while it's ticked). The effect
+  // below keeps them in sync if the client address is edited afterwards.
+  const handleSameAsMailingChange = (checked: boolean) => {
+    setProjectInfo((prev) => ({ ...prev, sameAsMailingAddress: checked }));
+    if (checked) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.streetAddress;
+        delete next.city;
+        delete next.state;
+        delete next.zip;
+        return next;
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!projectInfo.sameAsMailingAddress) return;
+    setProjectInfo((prev) => ({
+      ...prev,
+      streetAddress: clientInfo.address,
+      aptSuiteUnit: clientInfo.aptSuiteUnit,
+      city: clientInfo.city,
+      state: clientInfo.state,
+      zip: clientInfo.zip,
+      country: clientInfo.country,
+    }));
+  }, [
+    projectInfo.sameAsMailingAddress,
+    clientInfo.address,
+    clientInfo.aptSuiteUnit,
+    clientInfo.city,
+    clientInfo.state,
+    clientInfo.zip,
+    clientInfo.country,
+  ]);
 
   const handleNext = async () => {
     if (activeStep === "client") {
@@ -192,6 +231,7 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
           projectDescription: projectInfo.projectDescription || undefined,
           additionalContext: projectInfo.additionalContext || undefined,
           streetAddress: projectInfo.streetAddress || undefined,
+          aptSuiteUnit: projectInfo.aptSuiteUnit || undefined,
           city: projectInfo.city || undefined,
           state: projectInfo.state || undefined,
           zip: projectInfo.zip || undefined,
@@ -334,6 +374,7 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
           <ProjectTabFormForInquiry
             projectInfo={projectInfo}
             handleProjectInfoChange={handleProjectInfoChange}
+            onSameAsMailingChange={handleSameAsMailingChange}
             handleNext={handleNext}
             handleBack={handleBack}
             isSubmitting={isCheckingEmail || isSubmitting}
@@ -486,6 +527,7 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
 function ProjectTabFormForInquiry({
   projectInfo,
   handleProjectInfoChange,
+  onSameAsMailingChange,
   handleNext,
   handleBack,
   isSubmitting,
@@ -493,12 +535,13 @@ function ProjectTabFormForInquiry({
 }: {
   projectInfo: any;
   handleProjectInfoChange: (field: string, value: string | boolean) => void;
+  onSameAsMailingChange: (checked: boolean) => void;
   handleNext: () => void;
   handleBack: () => void;
   isSubmitting?: boolean;
   errors: Record<string, string>;
 }) {
-  // Components are now imported at the top of the file
+  const sameAsMailing = projectInfo.sameAsMailingAddress;
 
   return (
     <div className="bg-white">
@@ -560,12 +603,9 @@ function ProjectTabFormForInquiry({
           <div className="flex items-center space-x-2">
             <Checkbox
               id="sameAsMailingAddress"
-              checked={projectInfo.sameAsMailingAddress}
+              checked={sameAsMailing}
               onCheckedChange={(checked: any) =>
-                handleProjectInfoChange(
-                  "sameAsMailingAddress",
-                  checked === true,
-                )
+                onSameAsMailingChange(checked === true)
               }
             />
             <label
@@ -577,17 +617,30 @@ function ProjectTabFormForInquiry({
           </div>
         </div>
 
-        <div className="mt-4">
-          <Label htmlFor="streetAddress" className="mb-3">
-            Street Address
-          </Label>
-          <Input
-            id="streetAddress"
-            value={projectInfo.streetAddress}
-            onChange={(e: any) =>
-              handleProjectInfoChange("streetAddress", e.target.value)
-            }
-          />
+        <div className="flex flex-col md:flex-row items-center gap-4 mt-4">
+          <div className="w-full space-y-2">
+            <Label htmlFor="streetAddress">Street Address</Label>
+            <Input
+              id="streetAddress"
+              value={projectInfo.streetAddress}
+              disabled={sameAsMailing}
+              onChange={(e: any) =>
+                handleProjectInfoChange("streetAddress", e.target.value)
+              }
+            />
+          </div>
+          <div className="space-y-2 w-full">
+            <Label htmlFor="aptSuiteUnit">Apt / Suite / Unit</Label>
+            <Input
+              id="aptSuiteUnit"
+              name="aptSuiteUnit"
+              value={projectInfo.aptSuiteUnit}
+              disabled={sameAsMailing}
+              onChange={(e: any) =>
+                handleProjectInfoChange("aptSuiteUnit", e.target.value)
+              }
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
@@ -596,6 +649,7 @@ function ProjectTabFormForInquiry({
             <CountrySelect
               id="projectCountry"
               value={projectInfo.country}
+              disabled={sameAsMailing}
               onChange={(value) => {
                 handleProjectInfoChange("country", value);
                 handleProjectInfoChange("state", "");
@@ -609,6 +663,7 @@ function ProjectTabFormForInquiry({
               id="projectState"
               country={projectInfo.country}
               value={projectInfo.state}
+              disabled={sameAsMailing}
               onChange={(value) => {
                 handleProjectInfoChange("state", value);
                 handleProjectInfoChange("city", "");
@@ -622,6 +677,7 @@ function ProjectTabFormForInquiry({
               country={projectInfo.country}
               state={projectInfo.state}
               value={projectInfo.city}
+              disabled={sameAsMailing}
               onChange={(value) => handleProjectInfoChange("city", value)}
             />
           </div>
@@ -630,6 +686,7 @@ function ProjectTabFormForInquiry({
             <Input
               id="projectZip"
               value={projectInfo.zip}
+              disabled={sameAsMailing}
               onChange={(e: any) =>
                 handleProjectInfoChange("zip", e.target.value)
               }
@@ -774,14 +831,14 @@ function ProjectTabFormForInquiry({
                 }
               >
                 <SelectTrigger className="w-full border-l-0 border-gray-300 rounded-l-none bg-gray-300">
-                  <SelectValue placeholder="sq² / m²" />
+                  <SelectValue placeholder="sf² / m²" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
                   <SelectItem
                     value="sqf"
                     className="hover:bg-gray-800 hover:text-white cursor-pointer"
                   >
-                    sq²
+                    sf²
                   </SelectItem>
                   <SelectItem
                     value="sqm"
@@ -807,7 +864,6 @@ function ProjectTabFormForInquiry({
             className="w-full"
           />
         </div>
-
       </div>
 
       <div className="flex justify-between">

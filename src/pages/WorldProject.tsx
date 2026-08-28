@@ -36,6 +36,17 @@ const CONTINENT_OPTIONS = [
   "AFRICA",
   "AUSTRALIA",
 ];
+const PROJECT_TYPE_OPTIONS = [
+  "RESIDENTIAL",
+  "COMMERCIAL",
+  "INTERIOR",
+  "MIXED_USE",
+  "TENANT_IMPROVEMENT",
+  "REMODEL",
+  "ADDITION",
+  "OTHER",
+];
+const PAGE_SIZE = 9;
 // "ALPINE" -> "Alpine", "NORTH_AMERICA" -> "North America"
 const toTitleCase = (value: string) =>
   value
@@ -95,9 +106,11 @@ function WorldProject() {
   } | null>(null);
   const [continentFilter, setContinentFilter] = useState("");
   const [climateFilter, setClimateFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [showTagPopup, setShowTagPopup] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
   const [geocodedLocations, setGeocodedLocations] = useState<
     Record<string, { lat: number; lng: number }>
   >({});
@@ -163,6 +176,7 @@ function WorldProject() {
           (item.city ? `${item.city}, ${item.country}` : "Global"),
         continent: item.continent || "",
         climate: item.climate || "",
+        category: item.category || "",
         city: item.city || "",
         country: item.country || "",
         state: item.state || "",
@@ -198,6 +212,7 @@ function WorldProject() {
     searchQuery ||
     continentFilter ||
     climateFilter ||
+    typeFilter ||
     yearFilter ||
     selectedTags.length > 0 ||
     selectedLocation;
@@ -205,6 +220,7 @@ function WorldProject() {
     setSearchQuery("");
     setContinentFilter("");
     setClimateFilter("");
+    setTypeFilter("");
     setYearFilter("");
     setSelectedTags([]);
     setSelectedLocation(null);
@@ -242,18 +258,48 @@ function WorldProject() {
     filtered = filtered.filter((p: any) => p.climate === climateFilter);
   }
 
+  // Step 4b: Project type (category) filter
+  if (typeFilter) {
+    filtered = filtered.filter((p: any) => p.category === typeFilter);
+  }
+
   // Step 5: Year filter
   if (yearFilter) {
     filtered = filtered.filter((p: any) => String(p.year) === yearFilter);
   }
 
   // Step 6: Location filter (if map location is selected)
-  let displayedProjects = selectedLocation
+  const displayedProjects = selectedLocation
     ? filtered.filter(
         (p: any) =>
           p.location && getDistanceKm(p.location, selectedLocation) <= 200,
       )
     : filtered;
+
+  // Pagination — the grid shows one page at a time; the map still gets every
+  // project so all markers stay visible.
+  const totalPages = Math.max(
+    1,
+    Math.ceil(displayedProjects.length / PAGE_SIZE),
+  );
+  const currentPage = Math.min(page, totalPages);
+  const pageProjects = displayedProjects.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
+  // Reset to page 1 whenever the filtered result set changes.
+  useEffect(() => {
+    setPage(1);
+  }, [
+    searchQuery,
+    continentFilter,
+    climateFilter,
+    typeFilter,
+    yearFilter,
+    selectedTags,
+    selectedLocation,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -281,8 +327,8 @@ function WorldProject() {
     <div>
       <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4 pb-34">
         {/* Header & Filters */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between  gap-4">
-          <div className="relative flex flex-col md:w-1/3 w-full">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
+          <div className="relative flex flex-col md:w-1/3 w-full order-2 md:order-1">
             <div className="flex items-center gap-2 px-4 w-full border border-gray-400 rounded-lg bg-white shadow-sm relative z-20">
               <Search className="text-gray-600" size={14} />
               <input
@@ -331,24 +377,24 @@ function WorldProject() {
               </div>
             )}
           </div>
-          <h1 className="text-xl w-1/3  flex justify-center text-center">
+          <h1 className="text-xl w-full md:w-1/3 flex justify-center text-center order-1 md:order-2">
             World Projects
           </h1>
 
-          <div className="flex flex-wrap w-1/3 md:flex-nowrap justify-center md:justify-end gap-2 md:w-1/3">
-            <div className="relative">
+          <div className="flex flex-wrap w-full md:w-1/3 items-center justify-center md:justify-end gap-3 md:gap-2 order-3">
+            <div className="relative shrink-0 ">
               <button
                 onClick={() => setShowTagPopup(!showTagPopup)}
-                className="border border-gray-400 rounded-lg px-3 py-2 bg-white flex items-center gap-2"
+                className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white flex items-center gap-1.5"
               >
-                <SlidersHorizontal size={16} />
+                <SlidersHorizontal size={14} />
                 Tags
               </button>
 
               {showTagPopup && (
                 <div
                   id="tag-popup"
-                  className="absolute top-full mt-2 right-0 w-56 bg-white shadow-lg border border-gray-400  rounded-lg p-4 z-50"
+                  className="absolute top-full mt-2 left-0 right-auto md:left-auto md:right-0 w-56 max-w-[calc(100vw-2rem)] bg-white shadow-lg border border-gray-400  rounded-lg p-4 z-50"
                 >
                   <h3 className="text-sm font-semibold mb-2">Filter by Tags</h3>
                   <div className="max-h-48 overflow-y-auto space-y-2">
@@ -393,7 +439,33 @@ function WorldProject() {
             </div>
 
             <select
-              className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-white"
+              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white"
+              onChange={(e) => setTypeFilter(e.target.value)}
+              value={typeFilter}
+            >
+              <option value="">Types</option>
+              {PROJECT_TYPE_OPTIONS.map((type: string) => (
+                <option key={type} value={type}>
+                  {toTitleCase(type)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white shrink-0"
+              onChange={(e) => setYearFilter(e.target.value)}
+              value={yearFilter}
+            >
+              <option value="">All Years</option>
+              {availableYears.map((year: number) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white shrink-0"
               onChange={(e) => setClimateFilter(e.target.value)}
               value={climateFilter}
             >
@@ -406,7 +478,7 @@ function WorldProject() {
             </select>
 
             <select
-              className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-white"
+              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white shrink-0"
               onChange={(e) => setContinentFilter(e.target.value)}
               value={continentFilter}
             >
@@ -418,27 +490,13 @@ function WorldProject() {
               ))}
             </select>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-white"
-              onChange={(e) => setYearFilter(e.target.value)}
-              value={yearFilter}
+            <button
+              onClick={clearAllFilters}
+              disabled={!hasActiveFilters}
+              className="border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50"
             >
-              <option value="">All Years</option>
-              {availableYears.map((year: number) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="border border-gray-400 rounded-lg px-1 py-1 text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-              >
-                Clear All
-              </button>
-            )}
+              Clear All
+            </button>
           </div>
         </div>
 
@@ -461,7 +519,7 @@ function WorldProject() {
               <h2>No projects found for this area.</h2>
             </div>
           ) : (
-            displayedProjects.map((project: any) => (
+            pageProjects.map((project: any) => (
               <Card
                 key={project.id}
                 className="cursor-pointer bg-white p-0 border-gray-300 overflow-hidden hover:shadow-lg transition-shadow"
@@ -469,20 +527,43 @@ function WorldProject() {
               >
                 <Carousel className="w-full bg-black">
                   <CarouselContent>
-                    {project.images.map((image: string, index: number) => (
+                    {(project.images.length > 0
+                      ? project.images
+                      : ["/placeholder.svg"]
+                    ).map((image: string, index: number) => (
                       <CarouselItem key={index}>
                         <div className="h-56 w-full overflow-hidden">
                           <img
                             src={image || "/placeholder.svg"}
-                            alt={`image-${index}`}
+                            alt={`${project.name} image ${index + 1}`}
                             className="w-full h-full rounded-lg object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg";
+                            }}
                           />
                         </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10 cursor-pointer" />
-                  <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10 cursor-pointer" />
+                  {/*
+                    Each arrow sits in a positioned hit-zone that swallows the
+                    click so it never reaches the card's navigate handler. This
+                    also covers the first/last slide, where the button is
+                    `disabled` (pointer-events: none) and the click would
+                    otherwise fall through to the image behind it.
+                  */}
+                  <div
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <CarouselPrevious className="static translate-y-0 cursor-pointer" />
+                  </div>
+                  <div
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <CarouselNext className="static translate-y-0 cursor-pointer" />
+                  </div>
                 </Carousel>
 
                 <CardContent className="py-4">
@@ -508,12 +589,21 @@ function WorldProject() {
                     <span className="font-semibold">Location:</span>{" "}
                     {project.locationName}
                   </p>
+                  {project.continent && (
+                    <p className="text-sm text-gray-500">
+                      <span className="font-semibold">Continent:</span>{" "}
+                      {toTitleCase(project.continent)}
+                    </p>
+                  )}
+                  {project.climate && (
+                    <p className="text-sm text-gray-500">
+                      <span className="font-semibold">Climate:</span>{" "}
+                      {toTitleCase(project.climate)}
+                    </p>
+                  )}
                   <p className="text-sm text-gray-500">
                     <span className="font-semibold">Description:</span>{" "}
                     {project.description}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Location: {project.locationName || "Unknown"}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {project.tags?.map((tag: string) => (
@@ -584,17 +674,31 @@ function WorldProject() {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-center items-center space-x-2 mt-10">
-          <Button variant="outline" size="sm">
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Button>
-          <span className="text-sm">Page s</span>
-          <Button variant="outline" size="sm">
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-10">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
       <div className="mb-44 mt-12">
         <HeroSocialMedia />

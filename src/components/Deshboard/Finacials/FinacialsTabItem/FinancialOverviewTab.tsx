@@ -187,7 +187,7 @@ export default function FinancialOverviewTab() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500 italic text-[10px] mt-1">
-                    <span>* Labor overhead derived from non-billable timecards at ${projectFinancials?.firmBillingRate || "N/A"}/hr</span>
+                    <span>* Wage cost of non-billable hours on approved timecards, at each employee's own rate</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Expense Items</span>
@@ -226,13 +226,13 @@ export default function FinancialOverviewTab() {
                     Labor
                   </h3>
                   <span className="text-sm font-bold text-blue-600">
-                    ${(labor?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    ${(labor?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Total Salaries (Gross)</span>
-                    <span className="font-medium">${(labor?.totalSalaries || 0).toLocaleString()}</span>
+                    <span className="font-medium">${(labor?.totalSalaries || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Taxes</span>
@@ -307,12 +307,6 @@ export default function FinancialOverviewTab() {
                       ${(projectFinancials?.totalLabor || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Project Overhead</span>
-                    <span className="font-bold text-orange-600">
-                      ${(projectFinancials?.totalProjectOverhead || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </span>
-                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -352,7 +346,7 @@ export default function FinancialOverviewTab() {
                     <div className="flex justify-between text-sm">
                       <span>Cash Reserves</span>
                       <span className="font-medium">
-                        ${Math.max(0, Math.round(profit.total * 0.3)).toLocaleString()}
+                        ${profit.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
@@ -362,8 +356,9 @@ export default function FinancialOverviewTab() {
                       ></div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {profit.total > 0 && overhead.monthlyExpenses > 0
-                        ? `${((profit.total * 0.3) / overhead.monthlyExpenses).toFixed(1)} months of expenses`
+                      {/* Months of Expenses = (Gross Profit / Total Cost) × 12 */}
+                      {totalCosts > 0
+                        ? `${((profit.total / totalCosts) * 12).toFixed(1)} months of expenses`
                         : "Insufficient reserves"}
                     </p>
                   </div>

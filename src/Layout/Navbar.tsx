@@ -44,10 +44,10 @@ const Navbar: React.FC = () => {
           {/* Logo */}
           <div className="">{!isHomePage && <Backbutton />}</div>
           <div className="flex justify-center">
-            <Link to="/" className="text-black text-2xl ">
-              <div className="flex content-center gap-2">
+            <Link to="/" className="text-black text-2xl">
+              <div className="flex items-center gap-2">
                 <img src={logo} alt="" className="w-10 h-10" />
-                <span className="hidden md:block lg:text-xl text-lg mt-1 font-light tracking-wide ">
+                <span className="hidden md:block lg:text-xl text-lg font-light tracking-wide">
                   Architecture Simple
                 </span>
               </div>

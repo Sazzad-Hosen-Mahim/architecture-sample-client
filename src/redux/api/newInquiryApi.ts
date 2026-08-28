@@ -20,6 +20,7 @@ export interface NewInquiryProjectInfo {
     projectDescription?: string;
     additionalContext?: string;
     streetAddress?: string;
+    aptSuiteUnit?: string;
     city?: string;
     state?: string;
     zip?: string;

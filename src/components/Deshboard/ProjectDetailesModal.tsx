@@ -141,7 +141,7 @@ export default function ProjectDetailsModal({
     },
     {
       key: "attachments" as ModalTab,
-      label: "Attachments",
+      label: "Documents",
       icon: <LinkIcon className="w-4 h-4" />,
     },
   ];

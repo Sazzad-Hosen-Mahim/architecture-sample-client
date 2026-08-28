@@ -16,11 +16,11 @@ import {
 } from "@/redux/features/Media/mediaApi";
 import EditMediaModal from "./EditMediaModal";
 
-type MediaFilterType = "WORLD_PROJECT" | "NEWS" | "PORTFOLIO";
+// Only World Project and Portfolio media can be featured on the home hero.
+type MediaFilterType = "WORLD_PROJECT" | "PORTFOLIO";
 
 const MEDIA_TYPE_OPTIONS: { label: string; value: MediaFilterType }[] = [
   { label: "World Project", value: "WORLD_PROJECT" },
-  { label: "Newsfeed", value: "NEWS" },
   { label: "Portfolio", value: "PORTFOLIO" },
 ];
 

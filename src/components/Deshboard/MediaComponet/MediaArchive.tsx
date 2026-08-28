@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useGetAllMediaAdminQuery } from "@/redux/features/Media/mediaApi";
@@ -23,27 +23,28 @@ export default function MediaArchive() {
       <CardHeader className="border-b border-gray-200 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-sm text-gray-800">Media Archive</CardTitle>
-          <p className="text-xs text-gray-600 mt-1">
-            Browse archived media
-          </p>
+          <p className="text-xs text-gray-600 mt-1">Browse archived media</p>
         </div>
         {/* Was a dead button — it now opens the full archive list, the same
             state "View More" toggles into. */}
-        <Button
+        {/* <Button
           variant="outline"
           size="sm"
           onClick={() => setIsExpanded(true)}
           className="text-xs border-gray-300 text-gray-700 bg-transparent cursor-pointer"
         >
           Open Archive
-        </Button>
+        </Button> */}
+        <h3 className="text-sm font-semibold text-gray-600 mb-4">
+          Archived Items
+        </h3>
       </CardHeader>
 
-      <CardContent className="pt-6">
+      <CardContent>
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-gray-600 mb-4">
+          {/* <h3 className="text-sm font-semibold text-gray-600 mb-4">
             Archived Items
-          </h3>
+          </h3> */}
 
           <div
             className={`transition-all duration-300 ${
@@ -54,9 +55,13 @@ export default function MediaArchive() {
             }}
           >
             {isLoading ? (
-               <p className="text-center text-sm text-gray-500 py-4">Loading archive...</p>
+              <p className="text-center text-sm text-gray-500 py-4">
+                Loading archive...
+              </p>
             ) : archiveItems.length === 0 ? (
-              <p className="text-center text-sm text-gray-500 py-4">No archived items found.</p>
+              <p className="text-center text-sm text-gray-500 py-4">
+                No archived items found.
+              </p>
             ) : (
               archiveItems.map((item: any) => (
                 <div
@@ -69,7 +74,9 @@ export default function MediaArchive() {
                         {item.title}
                       </p>
                     </div>
-                    <p className="text-xs text-gray-400">{item.contentType.replace("_", " ")}</p>
+                    <p className="text-xs text-gray-400">
+                      {item.contentType.replace("_", " ")}
+                    </p>
                   </div>
                   <div className="text-right ml-4 flex-shrink-0">
                     <p className="text-xs text-gray-400">

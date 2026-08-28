@@ -1,14 +1,19 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { useRegisterMutation } from "@/redux/api/authApi";
 import { toast } from "sonner";
+import {
+  CountrySelect,
+  StateSelect,
+} from "@/components/Common/LocationSelects";
 
 const signUpSchema = z
   .object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
+    companyName: z.string().optional(),
     username: z.string().min(1, "Username is required"),
     email: z.string().email("Invalid email format"),
     password: z.string().min(8, "Password must be at least 8 characters"),
@@ -19,6 +24,7 @@ const signUpSchema = z
     city: z.string().optional(),
     streetAddress: z.string().optional(),
     zipCode: z.string().optional(),
+    aptSuiteUnit: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords must match",
@@ -36,6 +42,8 @@ const SignUp = () => {
   const {
     register,
     handleSubmit,
+    control,
+    watch,
     formState: { errors },
   } = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -57,11 +65,13 @@ const SignUp = () => {
         lastName: data.lastName.trim(),
         email: data.email.trim(),
         password: data.password,
+        companyName: optional(data.companyName),
         country: optional(data.country),
         state: optional(data.state),
         city: optional(data.city),
         streetAddress: optional(data.streetAddress),
         zipCode: optional(data.zipCode),
+        aptSuiteUnit: optional(data.aptSuiteUnit),
       };
 
       const res = await registerUser(payload).unwrap();
@@ -126,6 +136,23 @@ const SignUp = () => {
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Company Name (optional) */}
+          <div>
+            <label
+              htmlFor="companyName"
+              className="block text-sm font-medium text-gray-900 mb-2"
+            >
+              Company Name (optional)
+            </label>
+            <input
+              type="text"
+              id="companyName"
+              placeholder="Enter your company name"
+              {...register("companyName")}
+              className={inputClass}
+            />
           </div>
 
           {/* Username */}
@@ -220,12 +247,42 @@ const SignUp = () => {
 
           {/* Optional address details */}
           <div className="pt-2 border-t border-gray-200">
-            <p className="text-sm font-medium text-gray-900 mt-4 mb-1">
-              Address
+            <p className="text-md font-light text-gray-900 mt-4 mb-2">
+              Address (Optional)
             </p>
-            <p className="text-xs text-gray-500 mb-4">
+            {/* <p className="text-xs text-gray-500 mb-4">
               Optional — you can add this later from Profile Settings.
-            </p>
+            </p> */}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
+              <div>
+                <label
+                  htmlFor="streetAddress"
+                  className="block text-sm font-medium text-gray-900 mb-2"
+                >
+                  Street Address
+                </label>
+                <input
+                  type="text"
+                  id="streetAddress"
+                  placeholder="Street address"
+                  {...register("streetAddress")}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  APT / Suite
+                </label>
+                <input
+                  type="text"
+                  id="aptSuiteUnit"
+                  placeholder="Enter apartment or suite number"
+                  {...register("aptSuiteUnit")}
+                  className={inputClass}
+                />
+              </div>
+            </div>
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -236,12 +293,17 @@ const SignUp = () => {
                   >
                     Country
                   </label>
-                  <input
-                    type="text"
-                    id="country"
-                    placeholder="Country"
-                    {...register("country")}
-                    className={inputClass}
+                  <Controller
+                    name="country"
+                    control={control}
+                    render={({ field }) => (
+                      <CountrySelect
+                        id="country"
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Select country"
+                      />
+                    )}
                   />
                 </div>
 
@@ -252,12 +314,18 @@ const SignUp = () => {
                   >
                     State
                   </label>
-                  <input
-                    type="text"
-                    id="state"
-                    placeholder="State / Region"
-                    {...register("state")}
-                    className={inputClass}
+                  <Controller
+                    name="state"
+                    control={control}
+                    render={({ field }) => (
+                      <StateSelect
+                        id="state"
+                        country={watch("country")}
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Select a state"
+                      />
+                    )}
                   />
                 </div>
               </div>
@@ -294,22 +362,6 @@ const SignUp = () => {
                     className={inputClass}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="streetAddress"
-                  className="block text-sm font-medium text-gray-900 mb-2"
-                >
-                  Street Address
-                </label>
-                <input
-                  type="text"
-                  id="streetAddress"
-                  placeholder="Street address"
-                  {...register("streetAddress")}
-                  className={inputClass}
-                />
               </div>
             </div>
           </div>
