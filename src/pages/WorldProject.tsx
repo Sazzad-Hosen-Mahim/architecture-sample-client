@@ -9,12 +9,12 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  SlidersHorizontal,
-} from "lucide-react";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import LeafletMapSearch from "@/test/LeafletMapSearch";
 import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
@@ -108,7 +108,6 @@ function WorldProject() {
   const [climateFilter, setClimateFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
-  const [showTagPopup, setShowTagPopup] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [geocodedLocations, setGeocodedLocations] = useState<
@@ -226,6 +225,15 @@ function WorldProject() {
     setSelectedLocation(null);
   };
 
+  // Shown as a badge on the funnel so applied filters are visible when it's closed.
+  const activeFilterCount =
+    (continentFilter ? 1 : 0) +
+    (climateFilter ? 1 : 0) +
+    (typeFilter ? 1 : 0) +
+    (yearFilter ? 1 : 0) +
+    (selectedTags.length > 0 ? 1 : 0) +
+    (selectedLocation ? 1 : 0);
+
   // Step 1: Search filter
   let filtered = worldProjectsDynamic.filter(
     (p: any) =>
@@ -301,21 +309,6 @@ function WorldProject() {
     selectedLocation,
   ]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const popup = document.getElementById("tag-popup");
-      if (popup && !popup.contains(e.target as Node)) {
-        setShowTagPopup(false);
-      }
-    };
-    if (showTagPopup) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showTagPopup]);
-
   if (isLoading)
     return (
       <div className="flex justify-center items-center h-screen">
@@ -325,177 +318,205 @@ function WorldProject() {
 
   return (
     <div>
-      <div className="max-w-6xl mx-auto mt-10 md:px-0 px-4 pb-34">
+      <div className="max-w-6xl mx-auto mt-2 md:px-0 px-4 pb-34">
         {/* Header & Filters */}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
-          <div className="relative flex flex-col md:w-1/3 w-full order-2 md:order-1">
-            <div className="flex items-center gap-2 px-4 w-full border border-gray-400 rounded-lg bg-white shadow-sm relative z-20">
-              <Search className="text-gray-600" size={14} />
-              <input
-                type="text"
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 outline-none py-2 bg-transparent text-gray-700 text-sm"
-              />
-            </div>
-            {searchQuery.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
-                {displayedProjects.length > 0 ? (
-                  displayedProjects.map((project: any) => (
-                    <div
-                      key={project.id}
-                      className="p-3 border-b hover:bg-gray-50 cursor-pointer flex gap-3"
-                      onClick={() => navigate(`/world-project/${project.id}`)}
-                    >
-                      <img
-                        src={project.images[0] || "/placeholder.svg"}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <div className="flex-1 text-sm">
-                        <div className="font-bold flex justify-between">
-                          <span>{project.name}</span>
-                          <span className="text-gray-500 font-normal">
-                            {project.locationName}
-                          </span>
-                        </div>
-                        <div className="text-gray-600 flex justify-between text-xs mt-1">
-                          <span>Architect: {project.Architect}</span>
-                          <span>Year: {project.projectYear}</span>
-                        </div>
-                        <div className="text-gray-600 text-xs mt-1">
-                          Photographer: {project.Photographer}
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-3 md:gap-4">
+          {/* Search + funnel + clear — one line on every screen. On desktop the
+              funnel + clear are pushed to the end, right before the title. */}
+          <div className="flex items-center gap-2 flex-1 min-w-0 order-2 md:order-1">
+            <div className="relative flex-1 min-w-0">
+              <div className="flex items-center gap-2 px-3 w-full border border-gray-400 rounded-lg bg-white shadow-sm">
+                <Search className="text-gray-600 shrink-0" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 min-w-0 outline-none py-2 bg-transparent text-gray-700 text-sm"
+                />
+              </div>
+              {searchQuery.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {displayedProjects.length > 0 ? (
+                    displayedProjects.map((project: any) => (
+                      <div
+                        key={project.id}
+                        className="p-3 border-b hover:bg-gray-50 cursor-pointer flex gap-3"
+                        onClick={() => navigate(`/world-project/${project.id}`)}
+                      >
+                        <img
+                          src={project.images[0] || "/placeholder.svg"}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                        <div className="flex-1 text-sm">
+                          <div className="font-bold flex justify-between">
+                            <span>{project.name}</span>
+                            <span className="text-gray-500 font-normal">
+                              {project.locationName}
+                            </span>
+                          </div>
+                          <div className="text-gray-600 flex justify-between text-xs mt-1">
+                            <span>Architect: {project.Architect}</span>
+                            <span>Year: {project.projectYear}</span>
+                          </div>
+                          <div className="text-gray-600 text-xs mt-1">
+                            Photographer: {project.Photographer}
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No projects found
                     </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-sm text-gray-500">
-                    No projects found
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          <h1 className="text-xl w-full md:w-1/3 flex justify-center text-center order-1 md:order-2">
-            World Projects
-          </h1>
-
-          <div className="flex flex-wrap w-full md:w-1/3 items-center justify-center md:justify-end gap-3 md:gap-2 order-3">
-            <div className="relative shrink-0 ">
-              <button
-                onClick={() => setShowTagPopup(!showTagPopup)}
-                className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white flex items-center gap-1.5"
-              >
-                <SlidersHorizontal size={14} />
-                Tags
-              </button>
-
-              {showTagPopup && (
-                <div
-                  id="tag-popup"
-                  className="absolute top-full mt-2 left-0 right-auto md:left-auto md:right-0 w-56 max-w-[calc(100vw-2rem)] bg-white shadow-lg border border-gray-400  rounded-lg p-4 z-50"
-                >
-                  <h3 className="text-sm font-semibold mb-2">Filter by Tags</h3>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {availableTags.map((tag: string) => (
-                      <label
-                        key={tag}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedTags.includes(tag)}
-                          onChange={() => {
-                            if (selectedTags.includes(tag)) {
-                              setSelectedTags(
-                                selectedTags.filter((t: string) => t !== tag),
-                              );
-                            } else {
-                              setSelectedTags([...selectedTags, tag]);
-                            }
-                          }}
-                        />
-                        {tag}
-                      </label>
-                    ))}
-                  </div>
-                  <div className="flex justify-between mt-4">
-                    <button
-                      onClick={() => setSelectedTags([])}
-                      className="text-xs px-3 py-1 border border-gray-400 rounded"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => setShowTagPopup(false)}
-                      className="text-xs px-3 py-1 bg-black text-white rounded"
-                    >
-                      Apply
-                    </button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
+          </div>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white"
-              onChange={(e) => setTypeFilter(e.target.value)}
-              value={typeFilter}
-            >
-              <option value="">Types</option>
-              {PROJECT_TYPE_OPTIONS.map((type: string) => (
-                <option key={type} value={type}>
-                  {toTitleCase(type)}
-                </option>
-              ))}
-            </select>
+          <h1 className="text-xl w-full md:w-1/3 md:shrink-0 flex justify-center text-center order-1 md:order-2">
+            World Projects
+          </h1>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white shrink-0"
-              onChange={(e) => setYearFilter(e.target.value)}
-              value={yearFilter}
-            >
-              <option value="">All Years</option>
-              {availableYears.map((year: number) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+          {/* Balances the search side so the title stays centred on desktop */}
+          <div className="flex justify-end items-center gap-2 w-auto md:w-1/3 order-3">
+            {/* Filters funnel — every filter control lives in here */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Filters"
+                  title="Filters"
+                  className="relative cursor-pointer shrink-0 border border-gray-400 rounded-lg p-2 bg-white flex items-center hover:bg-gray-50"
+                >
+                  <Filter size={16} />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-black text-white text-[10px] font-bold flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-300 p-4 space-y-3"
+              >
+                <h3 className="text-sm font-semibold">Filters</h3>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white shrink-0"
-              onChange={(e) => setClimateFilter(e.target.value)}
-              value={climateFilter}
-            >
-              <option value="">Climate</option>
-              {CLIMATE_OPTIONS.map((climate: string) => (
-                <option key={climate} value={climate}>
-                  {toTitleCase(climate)}
-                </option>
-              ))}
-            </select>
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-500">
+                    Project Type
+                  </span>
+                  <select
+                    className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    value={typeFilter}
+                  >
+                    <option value="">All Types</option>
+                    {PROJECT_TYPE_OPTIONS.map((type: string) => (
+                      <option key={type} value={type}>
+                        {toTitleCase(type)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1 py-1.5 text-sm bg-white shrink-0"
-              onChange={(e) => setContinentFilter(e.target.value)}
-              value={continentFilter}
-            >
-              <option value="">All Continents</option>
-              {CONTINENT_OPTIONS.map((continent: string) => (
-                <option key={continent} value={continent}>
-                  {toTitleCase(continent)}
-                </option>
-              ))}
-            </select>
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-500">Year</span>
+                  <select
+                    className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                    onChange={(e) => setYearFilter(e.target.value)}
+                    value={yearFilter}
+                  >
+                    <option value="">All Years</option>
+                    {availableYears.map((year: number) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-500">
+                    Climate
+                  </span>
+                  <select
+                    className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                    onChange={(e) => setClimateFilter(e.target.value)}
+                    value={climateFilter}
+                  >
+                    <option value="">All Climates</option>
+                    {CLIMATE_OPTIONS.map((climate: string) => (
+                      <option key={climate} value={climate}>
+                        {toTitleCase(climate)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-500">
+                    Continent
+                  </span>
+                  <select
+                    className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                    onChange={(e) => setContinentFilter(e.target.value)}
+                    value={continentFilter}
+                  >
+                    <option value="">All Continents</option>
+                    {CONTINENT_OPTIONS.map((continent: string) => (
+                      <option key={continent} value={continent}>
+                        {toTitleCase(continent)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div>
+                  <span className="text-xs font-medium text-gray-500">Tags</span>
+                  <div className="mt-1 max-h-40 overflow-y-auto space-y-1.5 border border-gray-200 rounded-lg p-2">
+                    {availableTags.length === 0 ? (
+                      <p className="text-xs text-gray-400">No tags available</p>
+                    ) : (
+                      availableTags.map((tag: string) => (
+                        <label
+                          key={tag}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTags.includes(tag)}
+                            onChange={() => {
+                              if (selectedTags.includes(tag)) {
+                                setSelectedTags(
+                                  selectedTags.filter((t: string) => t !== tag),
+                                );
+                              } else {
+                                setSelectedTags([...selectedTags, tag]);
+                              }
+                            }}
+                          />
+                          {tag}
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Clear — always beside the funnel, never inside it */}
             <button
+              type="button"
               onClick={clearAllFilters}
               disabled={!hasActiveFilters}
-              className="border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+              aria-label="Clear all filters"
+              title="Clear all filters"
+              className="shrink-0 cursor-pointer border border-gray-400 rounded-lg p-2 bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50"
             >
-              Clear All
+              <X size={16} />
             </button>
           </div>
         </div>

@@ -8,7 +8,12 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useEffect, useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
@@ -86,6 +91,9 @@ export default function Portfolio() {
     setYearFilter("");
   };
 
+  // Shown as a badge on the funnel so applied filters are visible when it's closed.
+  const activeFilterCount = (filterBy ? 1 : 0) + (yearFilter ? 1 : 0);
+
   const filteredAndSortedProjects = useMemo(() => {
     return projects
       .filter((project: any) => {
@@ -152,108 +160,159 @@ export default function Portfolio() {
 
   return (
     <div>
-      <div className="max-w-6xl mx-auto mt-4 md:px-0 px-4 pb-34">
+      <div className="max-w-6xl mx-auto mt-2 md:px-0 px-4 pb-34">
         {/* Header & Filters */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
-          <div className="relative flex flex-col md:w-1/3 w-full order-2 md:order-1">
-            <div className="flex items-center gap-2 px-4 w-full border border-gray-400 rounded-lg bg-white shadow-sm relative z-20">
-              <Search className="text-gray-600" size={14} />
-              <input
-                type="text"
-                placeholder="Search projects..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 outline-none py-2 bg-transparent text-gray-700 text-sm"
-              />
-            </div>
-            {searchTerm.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
-                {filteredAndSortedProjects.length > 0 ? (
-                  filteredAndSortedProjects.map((project: any) => (
-                    <div
-                      key={project.id}
-                      className="p-3 border-b hover:bg-gray-50 cursor-pointer flex gap-3"
-                      onClick={() => navigate(`/world-project/${project.id}`)}
-                    >
-                      <img
-                        src={project.image[0] || "/placeholder.svg"}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <div className="flex-1 text-sm">
-                        <div className="font-bold flex justify-between">
-                          <span>{project.title}</span>
-                          <span className="text-gray-500 font-normal">
-                            {project.category
-                              ? toTitleCase(project.category)
-                              : ""}
-                          </span>
-                        </div>
-                        <div className="text-gray-600 flex justify-between text-xs mt-1">
-                          <span>Photographer: {project.Photographer}</span>
-                          <span>Year: {project.year}</span>
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-3 md:gap-4">
+          {/* Search + funnel + clear — one line on every screen. On desktop the
+              funnel + clear are pushed to the end, right before the title. */}
+          <div className="flex items-center gap-2 flex-1 min-w-0 order-2 md:order-1">
+            <div className="relative flex-1 min-w-0">
+              <div className="flex items-center gap-2 px-3 w-full border border-gray-400 rounded-lg bg-white shadow-sm">
+                <Search className="text-gray-600 shrink-0" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 min-w-0 outline-none py-2 bg-transparent text-gray-700 text-sm"
+                />
+              </div>
+              {searchTerm.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {filteredAndSortedProjects.length > 0 ? (
+                    filteredAndSortedProjects.map((project: any) => (
+                      <div
+                        key={project.id}
+                        className="p-3 border-b hover:bg-gray-50 cursor-pointer flex gap-3"
+                        onClick={() => navigate(`/world-project/${project.id}`)}
+                      >
+                        <img
+                          src={project.image[0] || "/placeholder.svg"}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                        <div className="flex-1 text-sm">
+                          <div className="font-bold flex justify-between">
+                            <span>{project.title}</span>
+                            <span className="text-gray-500 font-normal">
+                              {project.category
+                                ? toTitleCase(project.category)
+                                : ""}
+                            </span>
+                          </div>
+                          <div className="text-gray-600 flex justify-between text-xs mt-1">
+                            <span>Photographer: {project.Photographer}</span>
+                            <span>Year: {project.year}</span>
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No projects found
                     </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-sm text-gray-500">
-                    No projects found
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Filters funnel — every sort / filter control lives in here */}
           </div>
 
-          <h1 className="text-xl w-full md:w-1/3 flex justify-center text-center order-1 md:order-2">
+          <h1 className="text-xl w-full md:w-1/3 md:shrink-0 flex justify-center text-center order-1 md:order-2">
             Portfolio
           </h1>
 
-          <div className="flex flex-wrap w-full md:w-1/3 items-center justify-center md:justify-end gap-1.5 md:gap-2 order-3">
-            <select
-              className="border border-gray-400 rounded-lg px-1.5 py-1.5 text-sm bg-white shrink-0"
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              value={sortBy}
-            >
-              <option value="newest">Sort by: Newest</option>
-              <option value="oldest">Sort by: Oldest</option>
-              <option value="title-asc">Project Title: A–Z</option>
-              <option value="title-desc">Project Title: Z–A</option>
-            </select>
+          {/* Balances the search side so the title stays centred on desktop */}
+          <div className="flex justify-end items-center gap-2 w-auto md:w-1/3 order-3">
+            <div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Filters"
+                    title="Filters"
+                    className="relative cursor-pointer shrink-0 border border-gray-400 rounded-lg p-2 bg-white flex items-center hover:bg-gray-50"
+                  >
+                    <Filter size={16} />
+                    {activeFilterCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-black text-white text-[10px] font-bold flex items-center justify-center">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-300 p-4 space-y-3"
+                >
+                  <h3 className="text-sm font-semibold">Sort &amp; Filter</h3>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1.5 py-1.5 text-sm bg-white shrink-0"
-              onChange={(e) => setFilterBy(e.target.value)}
-              value={filterBy}
-            >
-              <option value="">All Categories</option>
-              {categories.map((category: string) => (
-                <option key={category} value={category.toLowerCase()}>
-                  {toTitleCase(category)}
-                </option>
-              ))}
-            </select>
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-500">
+                      Sort by
+                    </span>
+                    <select
+                      className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                      onChange={(e) => setSortBy(e.target.value as SortOption)}
+                      value={sortBy}
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="title-asc">Project Title: A–Z</option>
+                      <option value="title-desc">Project Title: Z–A</option>
+                    </select>
+                  </label>
 
-            <select
-              className="border border-gray-400 rounded-lg px-1.5 py-1.5 text-sm bg-white shrink-0"
-              onChange={(e) => setYearFilter(e.target.value)}
-              value={yearFilter}
-            >
-              <option value="">All Years</option>
-              {availableYears.map((year: number) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-500">
+                      Project Type
+                    </span>
+                    <select
+                      className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                      onChange={(e) => setFilterBy(e.target.value)}
+                      value={filterBy}
+                    >
+                      <option value="">All Categories</option>
+                      {categories.map((category: string) => (
+                        <option key={category} value={category.toLowerCase()}>
+                          {toTitleCase(category)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 transition-colors shrink-0"
-              >
-                Clear All
-              </button>
-            )}
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-500">
+                      Year
+                    </span>
+                    <select
+                      className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
+                      onChange={(e) => setYearFilter(e.target.value)}
+                      value={yearFilter}
+                    >
+                      <option value="">All Years</option>
+                      {availableYears.map((year: number) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Clear — always beside the funnel, never inside it */}
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              disabled={!hasActiveFilters}
+              aria-label="Clear all filters"
+              title="Clear all filters"
+              className="shrink-0 cursor-pointer border border-gray-400 rounded-lg p-2 bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
 

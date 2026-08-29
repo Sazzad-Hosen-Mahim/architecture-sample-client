@@ -81,14 +81,15 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
             <th className="hidden md:table-cell md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
               Service
             </th>
-            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            <th className="hidden sm:table-cell sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
               Overall Progress
             </th>
             <th className="hidden lg:table-cell lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
               Latest Phase
             </th>
             {/* <th className="px-6 py-4 text-center font-semibold">Deliverables</th> */}
-            <th className="hidden sm:table-cell sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            {/* Status takes the middle slot on a phone (where Progress is hidden). */}
+            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
               Status
             </th>
             <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
@@ -131,7 +132,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                     {(project.serviceType || "").replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="px-3 sm:px-4 py-4 align-middle">
+                <td className="hidden sm:table-cell px-3 sm:px-4 py-4 align-middle">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 min-w-0 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200/50">
                       <div
@@ -184,7 +185,7 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                                         <span className="text-[10px] text-gray-400 italic">No files yet</span>
                                     )}
                                 </td> */}
-                <td className="hidden sm:table-cell px-3 sm:px-4 py-4 text-center align-middle">
+                <td className="px-3 sm:px-4 py-4 text-center align-middle">
                   <StatusBadge status={project.status} />
                 </td>
                 <td className="px-3 sm:px-4 py-4 text-center align-middle">
@@ -231,9 +232,10 @@ const StatusBadge = ({ status }: { status: string }) => {
       label: "Active",
       style: "bg-green-100 text-green-700 border-green-200",
     },
+    // PENDING and REVIEWED are the same "Inquiry" stage — show them identically.
     PENDING: {
-      label: "Initial",
-      style: "bg-amber-100 text-amber-700 border-amber-200",
+      label: "Inquiry",
+      style: "bg-blue-100 text-blue-700 border-blue-200",
     },
     COMPLETED: {
       label: "Completed",

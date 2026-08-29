@@ -131,7 +131,7 @@ function NewsFeed() {
       </p>
     );
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-2">
       <div className="mb-8 flex flex-col md:flex-row justify-between items-center gap-2">
         {/* search bar  */}
         <div className="flex items-center px-4 py-3 rounded-md border-2 border-gray-200 overflow-hidden w-full md:w-1/3 order-2 md:order-1">

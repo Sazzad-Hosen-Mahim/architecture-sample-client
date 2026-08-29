@@ -40,13 +40,13 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-[#ffffff]  sticky top-0 z-50 border-b border-gray-200">
       <div className=" mx-auto px-4 lg:px-16">
-        <div className="grid grid-cols-3 items-center h-14 ">
+        <div className="grid grid-cols-3 items-center h-16">
           {/* Logo */}
           <div className="">{!isHomePage && <Backbutton />}</div>
           <div className="flex justify-center">
             <Link to="/" className="text-black text-2xl">
               <div className="flex items-center gap-2">
-                <img src={logo} alt="" className="w-10 h-10" />
+                <img src={logo} alt="" className="w-12 h-12" />
                 <span className="hidden md:block lg:text-xl text-lg font-light tracking-wide">
                   Architecture Simple
                 </span>

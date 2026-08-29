@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 // import HeroSocialMedia from "./HeroSocialMedia";
-import { HashLoader } from "react-spinners";
+// import { HashLoader } from "react-spinners";
 import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -95,8 +95,11 @@ function Hero() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <HashLoader size={50} color="#000" />
+      // <div className="flex items-center justify-center min-h-screen">
+      //   <HashLoader size={50} color="#000" />
+      // </div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -154,7 +157,7 @@ function Hero() {
           click-through — only the title line below re-enables pointer events,
           leaving the rest of the image to open the project. */}
       <div className="relative z-10 flex min-h-screen justify-center md:justify-start px-4 md:px-6 pointer-events-none">
-        <div className="text-center md:text-left text-white max-w-4xl w-full">
+        <div className="text-left text-white max-w-4xl w-full">
           <div
             className="absolute top-0 left-0 right-0 h-48
         bg-gradient-to-b
@@ -179,7 +182,7 @@ function Hero() {
               type="button"
               onClick={() => navigate(detailPath)}
               aria-label={`Read more about ${latestMedia?.title || "this project"}`}
-              className="absolute top-[12px] right-2 md:right-12 text-[14px] md:text-base pointer-events-auto cursor-pointer"
+              className="absolute top-[4px] right-2 md:right-12 text-[14px] md:text-base pointer-events-auto cursor-pointer"
             >
               Read more
             </Button>

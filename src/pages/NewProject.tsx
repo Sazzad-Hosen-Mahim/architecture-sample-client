@@ -84,6 +84,11 @@ function NewProject() {
   // Profile Settings in another tab) would overwrite what's been typed here.
   const hasPrefilled = useRef(false);
 
+  // The horizontal step strip and its buttons — used to keep the active step
+  // scrolled into the centre on narrow screens (see the effect below).
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
   // A signed-in client has already given us their details — at sign-up or in
   // Profile Settings — so the Client Information step starts filled in rather
   // than asking for the same thing twice. Anything they change here stays
@@ -136,17 +141,35 @@ function NewProject() {
     }
   };
 
+  // Keep the current step centred in the horizontal step strip, so on a phone
+  // you never have to drag the strip by hand to see which step you're on.
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    const activeTab = tabRefs.current[activeSection];
+    if (!strip || !activeTab) return;
+
+    const stripRect = strip.getBoundingClientRect();
+    const tabRect = activeTab.getBoundingClientRect();
+    const delta =
+      tabRect.left - stripRect.left - strip.clientWidth / 2 + tabRect.width / 2;
+
+    strip.scrollTo({ left: strip.scrollLeft + delta, behavior: "smooth" });
+  }, [activeSection]);
+
   return (
     <div>
       <div className="min-h-screen bg-white text-foreground">
         {/* Fixed header section */}
         <div className="fixed top-[50px] left-0 right-0 bg-white z-20 border-b border-gray-50 ">
           <div className="max-w-4xl mx-auto px-4">
-            <div className="overflow-x-auto">
+            <div ref={tabStripRef} className="overflow-x-auto">
               <div className="flex space-x-2 md:space-x-4 py-4">
                 {sections.map((section, index) => (
                   <button
                     key={index}
+                    ref={(el) => {
+                      tabRefs.current[index] = el;
+                    }}
                     className={`py-1 px-2 text-xs md:text-[16px] cursor-pointer font-medium whitespace-nowrap transition-colors duration-300 ease-in-out ${
                       index === activeSection
                         ? "text-primary border-b-2 border-primary"

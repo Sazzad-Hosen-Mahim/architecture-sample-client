@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom"; // Add Link import
 import HeroSocialMedia from "../homeComponent/HeroSocialMedia";
-import { FaAngleDown } from "react-icons/fa";
+import { IoChevronDownSharp } from "react-icons/io5";
 
 function FloatingMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -64,9 +64,9 @@ function FloatingMenu() {
             <div className="flex justify-center items-center">
               <button
                 onClick={handleCloseArrowClick}
-                className="text-gray-500 cursor-pointer hover:text-white p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                className="text-gray-500 cursor-pointer hover:text-white mr-[4px] hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
               >
-                <FaAngleDown
+                <IoChevronDownSharp
                   className={`w-10 h-10 transition-transform duration-300 hover:rotate-180 ${
                     isCloseArrowRotated ? "rotate-180" : ""
                   }`}
