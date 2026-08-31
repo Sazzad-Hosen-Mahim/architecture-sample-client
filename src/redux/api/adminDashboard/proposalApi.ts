@@ -39,6 +39,22 @@ export interface ProjectRequest {
     driveLink: string | null;
     isNewInquiry: boolean;
     consultationPaymentId?: string | null;
+    // Account-less inquiry lifecycle — null for regular, account-linked requests.
+    inquiryStatus?:
+        | "AWAITING_DECISION"
+        | "ACCEPTED"
+        | "DECLINED"
+        | "CONVERTED"
+        | null;
+    inquiryDecidedAt?: string | null;
+    claimInviteSentAt?: string | null;
+    claimInviteCount?: number;
+    consultationRefund?: {
+        id: string;
+        status: "PENDING" | "PROCESSED";
+        amount: string;
+        processedAt: string | null;
+    } | null;
     isArchived: boolean;
     archiverId: string | null;
     archivedAt: string | null;
@@ -502,6 +518,31 @@ export const proposalApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["Project"],
         }),
+
+        // Account-less inquiry: accept (emails a signup-claim link) or decline
+        // (emails the client and raises a consultation refund if a fee was paid).
+        decideInquiry: builder.mutation<
+            { success: boolean; message: string },
+            { id: string; decision: "ACCEPT" | "DECLINE" }
+        >({
+            query: ({ id, decision }) => ({
+                url: `/project-requests-admin/${id}/inquiry-decision`,
+                method: "PATCH",
+                body: { decision },
+            }),
+            invalidatesTags: ["Project"],
+        }),
+
+        resendInquiryInvite: builder.mutation<
+            { success: boolean; message: string },
+            string
+        >({
+            query: (id) => ({
+                url: `/project-requests-admin/${id}/resend-invite`,
+                method: "POST",
+            }),
+            invalidatesTags: ["Project"],
+        }),
         getArchivedProjects: builder.query<ProjectRequest[], void>({
             query: () => ({
                 url: "/project-requests-admin/archived",
@@ -625,6 +666,8 @@ export const {
     useArchiveProjectMutation,
     useUnarchiveProjectMutation,
     useDeleteProjectMutation,
+    useDecideInquiryMutation,
+    useResendInquiryInviteMutation,
     useGetArchivedProjectsQuery,
     useGetProjectManagersQuery,
     useAssignProjectManagerMutation,

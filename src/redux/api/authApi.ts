@@ -18,6 +18,26 @@ interface RegisterRequest {
   city?: string;
   streetAddress?: string;
   zipCode?: string;
+  companyName?: string;
+  aptSuiteUnit?: string;
+  /** One-time token from an "Inquiry Accepted" email. */
+  claimToken?: string;
+}
+
+export interface ClaimInfo {
+  valid: boolean;
+  expired?: boolean;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string | null;
+  projectName?: string;
+  country?: string | null;
+  state?: string | null;
+  city?: string | null;
+  streetAddress?: string | null;
+  aptSuiteUnit?: string | null;
+  zipCode?: string | null;
 }
 
 export const authApi = baseApi.injectEndpoints({
@@ -70,6 +90,26 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+
+    // Prefill + validity for a signup opened from an "Inquiry Accepted" link.
+    getClaimInfo: builder.query<{ success: boolean; data: ClaimInfo }, string>({
+      query: (token) => ({
+        url: `/auth/claim/${encodeURIComponent(token)}`,
+        method: "GET",
+      }),
+    }),
+
+    // "My signup link expired" — re-issues a fresh link to the same email.
+    resendClaim: builder.mutation<
+      { success: boolean; message: string },
+      { email: string }
+    >({
+      query: (body) => ({
+        url: "/auth/claim/resend",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -80,4 +120,6 @@ export const {
   useVerifyEmailMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useGetClaimInfoQuery,
+  useResendClaimMutation,
 } = authApi;

@@ -12,7 +12,7 @@ import {
     Lock,
     Handshake,
     Rocket,
-    Layers,
+    // Layers, // PHASE PROGRESS MEETINGS DISABLED (2026-08-31)
     Link as LinkIcon,
     Trash2,
 } from "lucide-react";
@@ -74,15 +74,18 @@ const MEETING_SECTIONS: MeetingSection[] = [
         icon: Rocket,
         defaultTitle: (p) => `Project Kick-off — ${p}`,
     },
-    {
-        type: "PHASE_PROGRESS",
-        heading: "Phase Progress Meetings",
-        blurb:
-            "Requested by the client once a phase is complete and paid for. Accept the time, then send the joining link.",
-        icon: Layers,
-        defaultTitle: (p) => `Phase Progress — ${p}`,
-        clientInitiated: true,
-    },
+    // ── PHASE PROGRESS MEETINGS — TEMPORARILY DISABLED (2026-08-31) ──────────
+    // Only the two meetings above are in use for now. Re-enable by uncommenting
+    // this section (backend phase-meeting logic must be restored too).
+    // {
+    //     type: "PHASE_PROGRESS",
+    //     heading: "Phase Progress Meetings",
+    //     blurb:
+    //         "Requested by the client once a phase is complete and paid for. Accept the time, then send the joining link.",
+    //     icon: Layers,
+    //     defaultTitle: (p) => `Phase Progress — ${p}`,
+    //     clientInitiated: true,
+    // },
 ];
 
 export default function MeetingRequestTab({ project }: MeetingRequestTabProps) {

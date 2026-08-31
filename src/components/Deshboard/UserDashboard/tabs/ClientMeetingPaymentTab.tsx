@@ -755,7 +755,12 @@ export default function ClientMeetingPaymentTab({
                 </>
             )}
 
-            {/* ─── Phase progress meetings ─── */}
+            {/* ── PHASE PROGRESS MEETINGS — TEMPORARILY DISABLED (2026-08-31) ──
+                Only initial-consultation requests are live for now. Re-enable
+                by removing the `false &&` wrapper (the backend phase-meeting
+                logic must be restored too). */}
+            {false && (
+              <>
             <div className="flex items-center gap-3 mb-4">
                 <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">
                     Phase Progress Meetings
@@ -896,6 +901,9 @@ export default function ClientMeetingPaymentTab({
                     })}
                 </div>
             )}
+              </>
+            )}
+            {/* ── end PHASE PROGRESS MEETINGS (disabled) ── */}
 
             {/* ─── Original Proposal meetings ─── */}
             <div className="flex items-center gap-3 mb-4">

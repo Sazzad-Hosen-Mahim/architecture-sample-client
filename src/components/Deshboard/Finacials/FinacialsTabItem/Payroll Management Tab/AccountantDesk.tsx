@@ -61,6 +61,19 @@ const AccountantDesk = () => {
                             </button>
                         </Link>
 
+                        <Link to="/dashboard/consultation-refunds" className="block w-full">
+                            <button
+                                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                        <DollarSign size={16} />
+                                    </div>
+                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Consultation Refunds</span>
+                                </div>
+                            </button>
+                        </Link>
+
                         <Link to="/dashboard/client-users" className="block w-full">
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"

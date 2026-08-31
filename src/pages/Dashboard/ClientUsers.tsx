@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     useGetClientUsersQuery
 } from "@/redux/api/clientUsersApi";
@@ -28,6 +28,14 @@ export default function ClientUsers() {
 
     const clients = clientsData?.data || [];
     const runningProjects = selectedUser?.runningProjects || [];
+
+    // A deleted client drops out of the refetched list — clear the side panel
+    // if it was showing them.
+    useEffect(() => {
+        if (selectedUser && !clients.some((c: any) => c.id === selectedUser.id)) {
+            setSelectedUser(null);
+        }
+    }, [clients, selectedUser]);
 
     const filteredClients = clients.filter((c: any) =>
         c.name?.toLowerCase().includes(search.toLowerCase()) ||

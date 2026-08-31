@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom"; // Add Link import
 import HeroSocialMedia from "../homeComponent/HeroSocialMedia";
 import { IoChevronDownSharp } from "react-icons/io5";
@@ -8,6 +8,12 @@ function FloatingMenu() {
   // Only true after the user actually clicks the down-arrow button — starts at 0°.
   const [isCloseArrowRotated, setIsCloseArrowRotated] = useState(false);
   const location = useLocation();
+
+  // Close the panel on any route change — e.g. clicking "Login" in the navbar,
+  // which navigates without touching this component's handlers.
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const openMenu = () => {
     setIsCloseArrowRotated(false);

@@ -1,9 +1,15 @@
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
-import { useRegisterMutation } from "@/redux/api/authApi";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  useRegisterMutation,
+  useGetClaimInfoQuery,
+  useResendClaimMutation,
+} from "@/redux/api/authApi";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import {
   CountrySelect,
   StateSelect,
@@ -38,16 +44,53 @@ const inputClass =
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const claimToken = searchParams.get("claim") || "";
+
+  // When the page is opened from an "Inquiry Accepted" email, prefill what we
+  // already know and lock the email to the address the invite went to.
+  const { data: claimResp, isLoading: isLoadingClaim } = useGetClaimInfoQuery(
+    claimToken,
+    { skip: !claimToken },
+  );
+  const claim = claimResp?.data;
+  const isValidClaim = Boolean(claimToken && claim?.valid);
+  const isExpiredClaim = Boolean(claimToken && claim && !claim.valid);
+
+  const [resendClaim, { isLoading: isResending }] = useResendClaimMutation();
+  const [resendEmail, setResendEmail] = useState("");
 
   const {
     register,
     handleSubmit,
     control,
     watch,
+    reset,
     formState: { errors },
   } = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
   });
+
+  useEffect(() => {
+    if (!claim?.valid) return;
+    // Prefill everything we already captured from the inquiry; the visitor
+    // just picks a username and password.
+    reset({
+      firstName: claim.firstName || "",
+      lastName: claim.lastName || "",
+      companyName: claim.companyName || "",
+      username: "",
+      email: claim.email || "",
+      password: "",
+      confirmPassword: "",
+      country: claim.country || "",
+      state: claim.state || "",
+      city: claim.city || "",
+      streetAddress: claim.streetAddress || "",
+      zipCode: claim.zipCode || "",
+      aptSuiteUnit: claim.aptSuiteUnit || "",
+    });
+  }, [claim, reset]);
 
   const [registerUser, { isLoading }] = useRegisterMutation();
 
@@ -72,6 +115,7 @@ const SignUp = () => {
         streetAddress: optional(data.streetAddress),
         zipCode: optional(data.zipCode),
         aptSuiteUnit: optional(data.aptSuiteUnit),
+        claimToken: claimToken || undefined,
       };
 
       const res = await registerUser(payload).unwrap();
@@ -83,13 +127,89 @@ const SignUp = () => {
     }
   };
 
+  const handleResend = async () => {
+    const email = resendEmail.trim() || claim?.email || "";
+    if (!email) {
+      toast.error("Enter the email your inquiry was submitted with.");
+      return;
+    }
+    try {
+      const res = await resendClaim({ email }).unwrap();
+      toast.success(res?.message || "If an accepted inquiry exists, a new link was sent.");
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Could not send a new link.");
+    }
+  };
+
+  if (claimToken && isLoadingClaim) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (isExpiredClaim) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-10 px-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+          <h1 className="text-xl font-semibold text-gray-900">
+            This signup link has expired
+          </h1>
+          <p className="text-sm text-gray-600">
+            Enter the email address you used for your inquiry and we'll send a
+            fresh link.
+          </p>
+          <input
+            type="email"
+            value={resendEmail}
+            onChange={(e) => setResendEmail(e.target.value)}
+            placeholder={claim?.email || "you@example.com"}
+            className={inputClass}
+          />
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={isResending}
+            className="w-full bg-black text-white py-2.5 px-4 rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-60 cursor-pointer"
+          >
+            {isResending ? "Sending..." : "Send me a new link"}
+          </button>
+          <p className="text-sm text-center text-gray-600">
+            Questions?{" "}
+            <a
+              href="mailto:contactus@architecturesimple.com"
+              className="text-gray-900 font-medium hover:text-gray-700"
+            >
+              Contact us
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-10 px-4">
       <div className="w-full max-w-lg bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {/* Header */}
-        <h1 className="text-2xl font-semibold text-center text-gray-900 mb-8">
+        <h1 className="text-2xl font-semibold text-center text-gray-900 mb-4">
           Create Account
         </h1>
+
+        {isValidClaim && (
+          <div className="mb-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            Your inquiry
+            {claim?.projectName ? (
+              <>
+                {" "}
+                for <span className="font-semibold">{claim.projectName}</span>
+              </>
+            ) : null}{" "}
+            has been accepted. Finish creating your account below — you'll be
+            added to our client list right away.
+          </div>
+        )}
 
         {/* Sign Up Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -189,9 +309,15 @@ const SignUp = () => {
               type="email"
               id="email"
               placeholder="Enter your email"
+              readOnly={isValidClaim}
               {...register("email")}
-              className={inputClass}
+              className={`${inputClass} ${isValidClaim ? "bg-gray-100 text-gray-500" : ""}`}
             />
+            {isValidClaim && (
+              <p className="text-xs text-gray-500 mt-1">
+                This is the address your invitation was sent to.
+              </p>
+            )}
             {errors.email && (
               <p className="text-sm text-red-600 mt-1">
                 {errors.email.message}

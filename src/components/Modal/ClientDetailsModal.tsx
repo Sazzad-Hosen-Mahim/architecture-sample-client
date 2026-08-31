@@ -125,6 +125,11 @@ export default function ClientDetailsModal({ client, onClose }: ClientDetailsMod
                 Delete {client.name || "this client"}'s account? This cannot be undone.
                 Enter your password to confirm.
               </p>
+              <p className="text-[11px] font-medium text-gray-600">
+                Their projects, signed contracts and payment history stay on
+                file — the financial reports are unaffected. Only the client
+                account itself is removed.
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="password"

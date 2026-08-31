@@ -10,6 +10,8 @@ interface ConfirmationPageProps {
   projectName: string;
   clientName: string;
   clientEmail: string;
+  /** Submitted without an account — the studio still has to accept the inquiry. */
+  isAnonymous?: boolean;
 }
 
 export default function ConfirmationPage({
@@ -19,7 +21,56 @@ export default function ConfirmationPage({
   projectName,
   clientName,
   clientEmail,
+  isAnonymous,
 }: ConfirmationPageProps) {
+  if (isAnonymous) {
+    return (
+      <div>
+        <div className="max-w-2xl mx-auto py-12">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                Inquiry Submitted
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-center text-lg">
+                Thank you for choosing Architecture Simple. Your inquiry for "
+                {projectName}" has been received and your consultation fee has
+                been paid.
+              </p>
+              <div className="bg-gray-50 p-6 rounded-lg space-y-1">
+                <h3 className="font-semibold mb-2">What happens next</h3>
+                <p className="text-sm text-gray-700">
+                  Our team will review your inquiry. If it's accepted, we'll
+                  email <strong>{clientEmail || "you"}</strong> a link to create
+                  your account — that's where you'll track the project and
+                  confirm your consultation.
+                </p>
+                <p className="text-sm text-gray-700">
+                  If we're unable to take on your project, your consultation fee
+                  is refunded in full.
+                </p>
+              </div>
+              <p className="text-sm text-gray-600">
+                Please check your inbox (and spam folder) over the next few
+                days. Questions? Email contactus@architecturesimple.com.
+              </p>
+              <div className="flex justify-center">
+                <Link to="/">
+                  <Button className="cursor-pointer bg-gray-800 text-white p-4 hover:bg-black">
+                    Home Page
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="max-w-2xl mx-auto py-12">

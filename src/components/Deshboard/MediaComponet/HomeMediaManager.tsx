@@ -50,12 +50,17 @@ export default function HomeMediaManager() {
   const featuredItems = allMedia.filter((item: any) => item.isFeatured);
   const dialogMediaList = filteredMediaResponse?.data || [];
 
-  // Filter by search query
-  const filteredDialogList = dialogMediaList.filter((item: any) =>
-    item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.architect?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.location?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Only PUBLISHED items can be added to the home hero — each card links through
+  // to a public detail page ("Read more"), which drafts / unpublished content
+  // don't have. Then narrow by the search query.
+  const filteredDialogList = dialogMediaList
+    .filter((item: any) => item.status === "PUBLISHED")
+    .filter(
+      (item: any) =>
+        item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.architect?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   const handleSetFeatured = async (id: string) => {
     try {
@@ -279,7 +284,7 @@ export default function HomeMediaManager() {
                 </div>
               ) : filteredDialogList.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 py-8">
-                  No {getTypeLabel(selectedMediaType)} projects found
+                  No published {getTypeLabel(selectedMediaType)} projects found
                 </p>
               ) : (
                 filteredDialogList.map((item: any) => (

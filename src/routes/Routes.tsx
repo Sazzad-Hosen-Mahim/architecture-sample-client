@@ -49,6 +49,9 @@ const NewInquiriesListPage = lazy(
 const TimecardsPage = lazy(() => import("@/pages/Dashboard/TimecardsPage"));
 const Teams = lazy(() => import("@/pages/Dashboard/Teams"));
 const RefundRequests = lazy(() => import("@/pages/Dashboard/RefundRequests"));
+const ConsultationRefunds = lazy(
+  () => import("@/pages/Dashboard/ConsultationRefunds"),
+);
 const ClientUsers = lazy(() => import("@/pages/Dashboard/ClientUsers"));
 const AdjustRates = lazy(() => import("@/pages/Dashboard/AdjustRates"));
 const ArchivedProjects = lazy(
@@ -342,6 +345,14 @@ const routes = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <RefundRequests />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "consultation-refunds",
+        element: (
+          <SuspenseWrapper>
+            <ConsultationRefunds />
           </SuspenseWrapper>
         ),
       },

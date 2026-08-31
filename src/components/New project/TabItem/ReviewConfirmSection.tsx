@@ -7,7 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateProjectRequestMutation } from "@/redux/api/newProjectAPi";
+import {
+  useCreateProjectRequestMutation,
+  useCreateProjectRequestPublicMutation,
+} from "@/redux/api/newProjectAPi";
 import { buildProjectPayload } from "@/utils/projectPayload";
 import {
   validateProjectRequest,
@@ -19,8 +22,13 @@ import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import StripeConsultationForm from "../StripeConsultationForm";
-import { useCreateConsultationIntentMutation } from "@/redux/api/paymentApi";
+import {
+  useCreateConsultationIntentMutation,
+  useCreateConsultationIntentPublicMutation,
+} from "@/redux/api/paymentApi";
 import { useGetConsultationFeeQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
+import { useAppSelector } from "@/hooks/useRedux";
+import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import ThumbprintButton from "../ThumbprintButton";
 
 // const stripePromise = loadStripe("pk_test_51TVdfBBWI93tV1QCki5PX3VSlmoRzRwyO5qWwvO9zFL13niyNZTqv5ZBPi8vVCHnGNWeCDY2RVFl2oJgbdPMRc0Q00jlx3EsiG");  //client's publishable key
@@ -55,10 +63,22 @@ export default function ReviewConfirmSection({
   updateFormData,
   onPaymentSuccess,
 }: any) {
-  const [createProject, { isLoading: isSubmitting }] =
+  // A signed-in client's project links straight to their account; a visitor
+  // with no account submits through the public endpoints and the studio
+  // accepts/declines the resulting inquiry.
+  const currentUser = useAppSelector(selectCurrentUser);
+  const isAnonymous = !currentUser;
+
+  const [createProject, { isLoading: isSubmittingAuthed }] =
     useCreateProjectRequestMutation();
-  const [createIntent, { isLoading: isCreatingIntent }] =
+  const [createProjectPublic, { isLoading: isSubmittingPublic }] =
+    useCreateProjectRequestPublicMutation();
+  const isSubmitting = isSubmittingAuthed || isSubmittingPublic;
+  const [createIntent, { isLoading: isCreatingIntentAuthed }] =
     useCreateConsultationIntentMutation();
+  const [createIntentPublic, { isLoading: isCreatingIntentPublic }] =
+    useCreateConsultationIntentPublicMutation();
+  const isCreatingIntent = isCreatingIntentAuthed || isCreatingIntentPublic;
   const { data: consultationFeeData } = useGetConsultationFeeQuery();
   const [, setError] = useState<string | null>(null);
   console.log("formData in ReviewConfirmSection:", formData);
@@ -85,8 +105,17 @@ export default function ReviewConfirmSection({
     updateFormData({ paymentMethod: value });
 
     if (value === "stripe" && !paymentIntentId) {
+      if (isAnonymous && !formData.email?.trim()) {
+        toast.error(
+          "Please enter your email in the Client Details step before paying.",
+        );
+        setPaymentMethod("");
+        return;
+      }
       try {
-        const result = await createIntent({}).unwrap();
+        const result = isAnonymous
+          ? await createIntentPublic({ email: formData.email.trim() }).unwrap()
+          : await createIntent({}).unwrap();
         setClientSecret(result.data.clientSecret);
         // We already have the amount in dollars from consultationFeeData, so we don't need to overwrite it with Stripe's amount which is in cents.
       } catch (err) {
@@ -136,10 +165,15 @@ export default function ReviewConfirmSection({
         paymentIntentId: paymentIntentId,
       };
 
-      await createProject(payload).unwrap();
-      toast.success("Project request submitted successfully");
+      if (isAnonymous) {
+        await createProjectPublic(payload).unwrap();
+        toast.success("Inquiry submitted — check your email for next steps.");
+      } else {
+        await createProject(payload).unwrap();
+        toast.success("Project request submitted successfully");
+      }
       if (onPaymentSuccess) {
-        onPaymentSuccess();
+        onPaymentSuccess(isAnonymous);
       }
     } catch (err: any) {
       setError(err?.data?.message || "Failed to submit project request");
@@ -305,6 +339,17 @@ export default function ReviewConfirmSection({
 
         <div>
           <h2 className="text-xl font-bold mb-6">Payment</h2>
+          {/* {isAnonymous && (
+            <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+              You don't need an account to submit. Once our team accepts your
+              inquiry we'll email{" "}
+              <span className="font-medium">
+                {formData.email?.trim() || "your address"}
+              </span>{" "}
+              a link to create one. If we can't take on your project, the
+              consultation fee is refunded in full.
+            </div>
+          )} */}
           <div className="bg-gray-50 p-6 rounded-lg mb-6">
             <div className="flex justify-between items-center mb-4">
               <span className="text-base font-medium">

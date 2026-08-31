@@ -1,4 +1,10 @@
-import { ProjectRequest, useGetProposalInfoQuery, useDeleteProjectMutation } from "@/redux/api/adminDashboard/proposalApi";
+import {
+  ProjectRequest,
+  useGetProposalInfoQuery,
+  useDeleteProjectMutation,
+  useDecideInquiryMutation,
+  useResendInquiryInviteMutation,
+} from "@/redux/api/adminDashboard/proposalApi";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   FileTextIcon,
@@ -9,10 +15,15 @@ import {
   ChevronLeft,
   ChevronRight,
   LinkIcon,
+  Check,
+  Ban,
+  RefreshCw,
 } from "lucide-react";
 
 // Tab components
-const ProjectInformationTab = lazy(() => import("./tabs/ProjectInformationTab"));
+const ProjectInformationTab = lazy(
+  () => import("./tabs/ProjectInformationTab"),
+);
 const ContractsTab = lazy(() => import("./tabs/ContractsTab"));
 const ProjectMgmtTab = lazy(() => import("./tabs/ProjectMgmtTab"));
 const MeetingRequestTab = lazy(() => import("./tabs/MeetingRequestTab"));
@@ -21,7 +32,12 @@ const AttachmentsTab = lazy(() => import("./tabs/AttachmentsTab"));
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { Loader } from "@/components/ui/loader";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const TabLoader = () => <Loader fullScreen={false} />;
@@ -35,7 +51,12 @@ type ProjectModalProps = {
   initialTab?: ModalTab | null;
 };
 
-type ModalTab = "information" | "contracts" | "management" | "meeting" | "attachments";
+type ModalTab =
+  | "information"
+  | "contracts"
+  | "management"
+  | "meeting"
+  | "attachments";
 
 const STATUS_OPTIONS = [
   { value: "PENDING", label: "PENDING" },
@@ -63,7 +84,15 @@ export default function ProjectDetailsModal({
 
   const [deletePasswordModalOpen, setDeletePasswordModalOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
-  const [deleteProject, { isLoading: isDeletingProject }] = useDeleteProjectMutation();
+  const [deleteProject, { isLoading: isDeletingProject }] =
+    useDeleteProjectMutation();
+
+  const [decideInquiry, { isLoading: isDeciding }] = useDecideInquiryMutation();
+  const [resendInvite, { isLoading: isResending }] =
+    useResendInquiryInviteMutation();
+  const [inquiryModal, setInquiryModal] = useState<null | "accept" | "decline">(
+    null,
+  );
 
   const scrollTabs = (direction: "left" | "right") => {
     if (tabsContainerRef.current) {
@@ -75,13 +104,37 @@ export default function ProjectDetailsModal({
     }
   };
 
-  // Fetch fresh project details including meeting links
-  const { data: refreshedProject, isLoading } = useGetProposalInfoQuery(initialProject?.id as string, {
-    skip: !isOpen || !initialProject?.id,
-  });
+  // Fetch fresh project details including meeting links.
+  //
+  // Use `currentData`, not `data`: `data` lingers on the PREVIOUS project while
+  // the newly opened one loads, which flashed the wrong project's details for a
+  // second every time you closed one card and opened another.
+  const { currentData, isFetching } = useGetProposalInfoQuery(
+    initialProject?.id as string,
+    {
+      skip: !isOpen || !initialProject?.id,
+    },
+  );
 
-  const project = refreshedProject || initialProject;
+  const detail =
+    currentData && currentData.id === initialProject?.id
+      ? currentData
+      : undefined;
+
+  // First fetch of a project whose full details aren't cached yet — show a
+  // spinner rather than the sparse list row. A reopen is instant because
+  // `detail` is already populated.
+  const isDetailLoading = isFetching && !detail;
+
+  const project = detail || initialProject;
   const meetingLinks = project?.meetingLinks || [];
+
+  // Account-less inquiry that hasn't been converted into a client account yet.
+  // Everything but Project Information is locked until the studio decides and
+  // the client signs up.
+  const inquiryStatus = project?.inquiryStatus ?? null;
+  const isGatedInquiry = !!inquiryStatus && inquiryStatus !== "CONVERTED";
+  const consultationRefund = project?.consultationRefund ?? null;
 
   // Reset tab when project changes, honouring a deep-linked tab if given.
   useEffect(() => {
@@ -89,6 +142,31 @@ export default function ProjectDetailsModal({
       setActiveTab(initialTab || "information");
     }
   }, [initialProject, initialTab]);
+
+  useEffect(() => {
+    if (isGatedInquiry) setActiveTab("information");
+  }, [isGatedInquiry]);
+
+  const handleInquiryDecision = async (decision: "ACCEPT" | "DECLINE") => {
+    if (!project) return;
+    try {
+      const res = await decideInquiry({ id: project.id, decision }).unwrap();
+      toast.success(res.message || "Done");
+      setInquiryModal(null);
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Action failed");
+    }
+  };
+
+  const handleResendInvite = async () => {
+    if (!project) return;
+    try {
+      const res = await resendInvite(project.id).unwrap();
+      toast.success(res.message || "Invite re-sent");
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to resend invite");
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -147,12 +225,20 @@ export default function ProjectDetailsModal({
   ];
 
   const isStaff = user?.role === "DRAFTER" || user?.role === "EMPLOYEE";
-  const tabs = isStaff ? allTabs.filter(t => t.key === "information" || t.key === "management") : allTabs;
+  const roleTabs = isStaff
+    ? allTabs.filter((t) => t.key === "information" || t.key === "management")
+    : allTabs;
+  const tabs = isGatedInquiry
+    ? roleTabs.filter((t) => t.key === "information")
+    : roleTabs;
 
   const handleDeleteProject = async () => {
     if (!project || !deletePassword) return;
     try {
-      await deleteProject({ id: project.id, password: deletePassword }).unwrap();
+      await deleteProject({
+        id: project.id,
+        password: deletePassword,
+      }).unwrap();
       toast.success("Project permanently deleted");
       setDeletePasswordModalOpen(false);
       setDeletePassword("");
@@ -178,10 +264,12 @@ export default function ProjectDetailsModal({
                 <h2 className="text-xl font-semibold text-gray-900">
                   {project.projectName}
                 </h2>
-                {isLoading && (
+                {isFetching && detail && (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full animate-pulse border border-blue-100">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    <span className="text-[10px] font-bold uppercase tracking-tight">Updating...</span>
+                    <span className="text-[10px] font-bold uppercase tracking-tight">
+                      Updating...
+                    </span>
                   </div>
                 )}
               </div>
@@ -200,12 +288,16 @@ export default function ProjectDetailsModal({
 
             {!readOnly && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                {project && project.meetingLinks && project.meetingLinks.filter((m: any) => m.status === "PENDING_CLIENT_REQUEST").length > 0 && (
-                  <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg border border-amber-200 font-bold animate-pulse flex items-center gap-2">
-                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                    NEW MEETING REQUEST
-                  </div>
-                )}
+                {project &&
+                  project.meetingLinks &&
+                  project.meetingLinks.filter(
+                    (m: any) => m.status === "PENDING_CLIENT_REQUEST",
+                  ).length > 0 && (
+                    <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg border border-amber-200 font-bold animate-pulse flex items-center gap-2">
+                      <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                      NEW MEETING REQUEST
+                    </div>
+                  )}
                 {isSuperAdmin && (
                   <button
                     onClick={() => setDeletePasswordModalOpen(true)}
@@ -217,6 +309,113 @@ export default function ProjectDetailsModal({
               </div>
             )}
           </div>
+
+          {/* Account-less inquiry gate — Accept / Decline / invite status */}
+          {isGatedInquiry && !readOnly && (
+            <div
+              className={`mb-3 rounded-lg border p-3 ${
+                inquiryStatus === "AWAITING_DECISION"
+                  ? "border-amber-200 bg-amber-50"
+                  : inquiryStatus === "ACCEPTED"
+                    ? "border-blue-200 bg-blue-50"
+                    : "border-gray-200 bg-gray-50"
+              }`}
+            >
+              {inquiryStatus === "AWAITING_DECISION" && (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">
+                      Awaiting your decision
+                    </p>
+                    {/* <p className="text-xs text-amber-800">
+                      Submitted without an account
+                      {project.consultationPaymentId
+                        ? " — the consultation fee has been paid"
+                        : ""}
+                      . Accept to email a signup link, or decline
+                      {project.consultationPaymentId
+                        ? " to email the client and refund the fee"
+                        : ""}
+                      .
+                    </p> */}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => setInquiryModal("accept")}
+                      className="inline-flex cursor-pointer items-center gap-1.5 bg-green-500 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-md"
+                    >
+                      <Check className="w-4 h-4" /> Accept
+                    </button>
+                    <button
+                      onClick={() => setInquiryModal("decline")}
+                      className="inline-flex cursor-pointer items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-md"
+                    >
+                      <Ban className="w-4 h-4" /> Decline
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {inquiryStatus === "ACCEPTED" && (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">
+                      Signup invite sent — awaiting client signup
+                    </p>
+                    <p className="text-xs text-blue-800">
+                      Emailed to {project.email}
+                      {project.claimInviteSentAt
+                        ? ` · last sent ${new Date(project.claimInviteSentAt).toLocaleDateString()}`
+                        : ""}
+                      {project.claimInviteCount
+                        ? ` · ${project.claimInviteCount}× total`
+                        : ""}
+                      . The other tabs unlock once they sign up.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleResendInvite}
+                    disabled={isResending}
+                    className="inline-flex items-center gap-1.5 bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50 shrink-0"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${isResending ? "animate-spin" : ""}`}
+                    />
+                    Resend invite
+                  </button>
+                </div>
+              )}
+
+              {inquiryStatus === "DECLINED" && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Inquiry declined
+                    {project.inquiryDecidedAt
+                      ? ` on ${new Date(project.inquiryDecidedAt).toLocaleDateString()}`
+                      : ""}
+                  </p>
+                  {consultationRefund ? (
+                    <p className="text-xs text-gray-600">
+                      Consultation refund $
+                      {Number(consultationRefund.amount).toLocaleString()} —{" "}
+                      {consultationRefund.status === "PROCESSED"
+                        ? `refunded${
+                            consultationRefund.processedAt
+                              ? ` ${new Date(consultationRefund.processedAt).toLocaleDateString()}`
+                              : ""
+                          }`
+                        : "pending in Consultation Refunds"}
+                      .
+                    </p>
+                  ) : project.consultationPaymentId ? (
+                    <p className="text-xs text-gray-600">
+                      No refund record was raised for the consultation fee.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tab Navigation Wrapper */}
           <div className="relative flex items-center w-full">
@@ -238,10 +437,11 @@ export default function ProjectDetailsModal({
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.key
-                    ? "border-gray-900 text-gray-900 font-bold"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
+                  className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                    activeTab === tab.key
+                      ? "border-gray-900 text-gray-900 font-bold"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
                 >
                   {tab.icon}
                   {tab.label}
@@ -262,23 +462,33 @@ export default function ProjectDetailsModal({
 
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
-          <Suspense fallback={<TabLoader />}>
-            {activeTab === "information" && (
-              <ProjectInformationTab project={{ ...project, meetingLinks }} />
-            )}
-            {activeTab === "meeting" && (
-              <MeetingRequestTab project={{ ...project, meetingLinks }} />
-            )}
-            {activeTab === "contracts" && (
-              <ContractsTab project={{ ...project, meetingLinks }} />
-            )}
-            {activeTab === "management" && (
-              <ProjectMgmtTab project={{ ...project, meetingLinks }} readOnly={readOnly} />
-            )}
-            {activeTab === "attachments" && (
-              <AttachmentsTab project={{ ...project, meetingLinks }} />
-            )}
-          </Suspense>
+          {isDetailLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24 text-gray-400">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-gray-700" />
+              <span className="text-xs font-medium">Loading project…</span>
+            </div>
+          ) : (
+            <Suspense fallback={<TabLoader />}>
+              {activeTab === "information" && (
+                <ProjectInformationTab project={{ ...project, meetingLinks }} />
+              )}
+              {activeTab === "meeting" && (
+                <MeetingRequestTab project={{ ...project, meetingLinks }} />
+              )}
+              {activeTab === "contracts" && (
+                <ContractsTab project={{ ...project, meetingLinks }} />
+              )}
+              {activeTab === "management" && (
+                <ProjectMgmtTab
+                  project={{ ...project, meetingLinks }}
+                  readOnly={readOnly}
+                />
+              )}
+              {activeTab === "attachments" && (
+                <AttachmentsTab project={{ ...project, meetingLinks }} />
+              )}
+            </Suspense>
+          )}
         </div>
 
         {/* Close button */}
@@ -289,6 +499,80 @@ export default function ProjectDetailsModal({
           ×
         </button>
       </div>
+
+      {/* Accept / Decline confirmation for an account-less inquiry */}
+      <Dialog
+        open={inquiryModal !== null}
+        onOpenChange={(open) => {
+          if (!open) setInquiryModal(null);
+        }}
+      >
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>
+              {inquiryModal === "accept"
+                ? "Accept this inquiry?"
+                : "Decline this inquiry?"}
+            </DialogTitle>
+            <p className="text-sm text-gray-500">
+              {inquiryModal === "accept" ? (
+                <>
+                  <span className="font-semibold text-gray-700">
+                    {project.email}
+                  </span>{" "}
+                  will be emailed a one-time link to create their account. Once
+                  they sign up they're added to the client list and every tab
+                  unlocks.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-gray-700">
+                    {project.email}
+                  </span>{" "}
+                  will be emailed that the inquiry can't proceed.
+                  {project.consultationPaymentId
+                    ? " A full consultation-fee refund will be raised and will appear in Consultation Refunds for finance to process."
+                    : ""}{" "}
+                  This can't be undone.
+                </>
+              )}
+            </p>
+          </DialogHeader>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setInquiryModal(null)}
+              className="flex-1 px-4 py-2.5 text-sm cursor-pointer font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() =>
+                handleInquiryDecision(
+                  inquiryModal === "accept" ? "ACCEPT" : "DECLINE",
+                )
+              }
+              disabled={isDeciding}
+              className={`flex-1 cursor-pointer px-4 py-2.5 text-sm font-medium text-white rounded-md transition-colors disabled:opacity-50 flex items-center justify-center ${
+                inquiryModal === "accept"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-red-600 hover:bg-red-700"
+              }`}
+            >
+              {isDeciding ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Working...
+                </>
+              ) : inquiryModal === "accept" ? (
+                "Accept & send invite"
+              ) : (
+                "Decline inquiry"
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Inquiry password confirmation */}
       <Dialog
@@ -305,8 +589,11 @@ export default function ProjectDetailsModal({
             <DialogTitle>Delete Inquiry</DialogTitle>
             <p className="text-sm text-gray-500">
               This will permanently delete{" "}
-              <span className="font-semibold text-gray-700">{project.projectName}</span> and
-              all related data. This action cannot be undone. Enter your password to confirm.
+              <span className="font-semibold text-gray-700">
+                {project.projectName}
+              </span>{" "}
+              and all related data. This action cannot be undone. Enter your
+              password to confirm.
             </p>
           </DialogHeader>
 

@@ -19,6 +19,19 @@ export const paymentApi = baseApi.injectEndpoints({
         method: 'POST',
       }),
     }),
+
+    // Consultation-fee PaymentIntent for a visitor with no account yet.
+    // Bound to the typed email instead of a user id.
+    createConsultationIntentPublic: builder.mutation<
+      { success: boolean; data: { clientSecret: string; paymentIntentId: string; amount: number } },
+      { email: string }
+    >({
+      query: (body) => ({
+        url: '/payments/create-consultation-intent/public',
+        method: 'POST',
+        body,
+      }),
+    }),
  
     // Get my payment history
     getMyPayments: builder.query({
@@ -52,6 +65,7 @@ export const paymentApi = baseApi.injectEndpoints({
 export const {
   useCreateCheckoutSessionMutation,
   useCreateConsultationIntentMutation,
+  useCreateConsultationIntentPublicMutation,
   useGetMyPaymentsQuery,
   useGetPaymentStatusQuery,
   useConfirmPaymentMutation,

@@ -77,6 +77,10 @@ function NewProject() {
     paymentMethod: "",
   });
   const [paymentSuccessful, setPaymentSuccessful] = useState(false);
+  // True when the wizard was completed without a logged-in account — the
+  // confirmation copy then talks about the signup invite instead of a
+  // confirmed appointment.
+  const [submittedAnonymously, setSubmittedAnonymously] = useState(false);
   //   const { toast } = useToast();
 
   const user = useAppSelector(selectCurrentUser) as any;
@@ -196,6 +200,7 @@ function NewProject() {
                 projectName={formData.projectName}
                 clientName={`${formData.firstName} ${formData.lastName}`}
                 clientEmail={formData.email}
+                isAnonymous={submittedAnonymously}
               />
             ) : (
               <div className="relative">
@@ -236,7 +241,10 @@ function NewProject() {
                     <ReviewConfirmSection
                       formData={formData}
                       updateFormData={updateFormData}
-                      onPaymentSuccess={() => setPaymentSuccessful(true)}
+                      onPaymentSuccess={(anon?: boolean) => {
+                        setSubmittedAnonymously(Boolean(anon));
+                        setPaymentSuccessful(true);
+                      }}
                     />
                   )}
                 </div>
