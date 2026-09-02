@@ -145,6 +145,13 @@ function NewProject() {
     }
   };
 
+  // Every step change (Next, Back, or a tab click) — and the final confirmation
+  // screen — lands you at the top, otherwise on a phone you're dropped into the
+  // middle of the new content.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [activeSection, paymentSuccessful]);
+
   // Keep the current step centred in the horizontal step strip, so on a phone
   // you never have to drag the strip by hand to see which step you're on.
   useEffect(() => {
@@ -162,11 +169,16 @@ function NewProject() {
 
   return (
     <div>
-      <div className="min-h-screen bg-white text-foreground">
-        {/* Fixed header section */}
-        <div className="fixed top-[50px] left-0 right-0 bg-white z-20 border-b border-gray-50 ">
+      {/* On desktop the panel holds a full viewport height; on mobile it flows
+          to its content so a short step (e.g. step 1) doesn't leave a big empty
+          band above the footer. */}
+      <div className="md:min-h-screen bg-white text-foreground">
+        {/* Step strip — sticks just below the app navbar. `sticky` (not
+            `fixed`) so it stays in normal flow and the content below needs no
+            padding hack to clear it. */}
+        <div className="sticky top-16 bg-white z-20 border-b border-gray-50">
           <div className="max-w-4xl mx-auto px-4">
-            <div ref={tabStripRef} className="overflow-x-auto">
+            <div ref={tabStripRef} className="overflow-x-auto scrollbar-hide">
               <div className="flex space-x-2 md:space-x-4 py-4">
                 {sections.map((section, index) => (
                   <button
@@ -189,8 +201,8 @@ function NewProject() {
           </div>
         </div>
 
-        {/* Content area with padding for fixed header */}
-        <div className="pt-[70px] pb-8 bg-white">
+        {/* Content area */}
+        <div className=" bg-white">
           <div className="max-w-7xl mx-auto px-4 ">
             {paymentSuccessful ? (
               <ConfirmationPage
@@ -205,7 +217,7 @@ function NewProject() {
             ) : (
               <div className="relative">
                 {/* Section content */}
-                <div className="space-y-8 mt-8">
+                <div className="space-y-8">
                   {activeSection === 0 && (
                     <BeginNewProjectSection
                       formData={formData}
@@ -253,7 +265,7 @@ function NewProject() {
           </div>
         </div>
       </div>
-      <div className="mb-32">
+      <div className="mb-8 md:mb-32">
         <HeroSocialMedia />
       </div>
     </div>

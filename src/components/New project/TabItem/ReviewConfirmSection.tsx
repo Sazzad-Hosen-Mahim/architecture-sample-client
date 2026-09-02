@@ -32,7 +32,17 @@ import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import ThumbprintButton from "../ThumbprintButton";
 
 // const stripePromise = loadStripe("pk_test_51TVdfBBWI93tV1QCki5PX3VSlmoRzRwyO5qWwvO9zFL13niyNZTqv5ZBPi8vVCHnGNWeCDY2RVFl2oJgbdPMRc0Q00jlx3EsiG");  //client's publishable key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as
+  | string
+  | undefined;
+
+// `loadStripe(undefined)` throws an uncaught promise rejection that silently
+// kills the whole card form (no error, no card input). Guard it so a missing
+// build-time key surfaces a clear message instead. If this is null on a
+// deployed site, VITE_STRIPE_PUBLISHABLE_KEY was not set for that build.
+const stripePromise = STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 // Select values from ProjectDetailsSection -> readable labels for the review page
 const serviceTypeLabels: Record<string, string> = {
@@ -420,6 +430,12 @@ export default function ReviewConfirmSection({
                     <div className="mt-4 text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full font-mono">
                       Ref: {paymentIntentId}
                     </div>
+                  </div>
+                ) : !stripePromise ? (
+                  <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
+                    Card payments aren't configured for this site yet. Please
+                    contact us at contactus@architecturesimple.com to submit
+                    your project.
                   </div>
                 ) : clientSecret ? (
                   <Elements stripe={stripePromise} options={{ clientSecret }}>

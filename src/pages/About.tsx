@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 const About = () => {
   // const navigate = useNavigate();
   return (
-    <div className="h-screen">
+    <div className="">
       {/* <Button>About Us Page</Button> */}
       {/* <div className="max-w-7xl mx-auto pt-4">
         <button
@@ -17,7 +17,7 @@ const About = () => {
           <ArrowLeft className="w-5 h-5 text-black" />
         </button>
       </div> */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 lg:px-8">
         <div className="flex justify-center mx-auto w-6/7 md:w-2/3">
           {/* Left Column */}
           <div className="space-y-6">
@@ -75,7 +75,7 @@ const About = () => {
         </div>
 
         {/* Footer section */}
-        <div className="mb-32 mt-12">
+        <div>
           <HeroSocialMedia />
         </div>
       </div>

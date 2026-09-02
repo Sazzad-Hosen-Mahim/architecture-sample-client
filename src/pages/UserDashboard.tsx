@@ -185,7 +185,7 @@ const UserDashboard = () => {
           <span className="text-white">
             <BsFillClipboard2PlusFill />
           </span>{" "}
-          Create New Proposal
+          New Project
         </Button>
       </div>
 

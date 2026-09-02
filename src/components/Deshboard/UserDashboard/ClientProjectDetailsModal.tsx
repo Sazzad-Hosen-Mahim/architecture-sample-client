@@ -40,7 +40,7 @@ type ClientTab = "details" | "contracts" | "attachments";
 
 const TABS: { key: ClientTab; label: string; icon: any }[] = [
   { key: "details", label: "Project Details", icon: Info },
-  { key: "contracts", label: "Contracts and Meetings", icon: FileText },
+  { key: "contracts", label: "Contracts & Meetings", icon: FileText },
   { key: "attachments", label: "Documents", icon: Paperclip },
 ];
 
@@ -324,8 +324,10 @@ export default function ClientProjectDetailsModal({
               </button>
             </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-1 mt-4 -mb-px overflow-x-auto scrollbar-hide">
+            {/* Tabs — on a phone all three share the row (icon over a wrapping
+                label) so nothing scrolls off; from sm they're the usual
+                single-line row. */}
+            <div className="grid grid-cols-3 sm:flex sm:items-center gap-1 mt-4 -mb-px sm:overflow-x-auto sm:scrollbar-hide">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.key;
@@ -333,13 +335,13 @@ export default function ClientProjectDetailsModal({
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-2.5 text-[11px] leading-tight sm:text-sm text-center sm:text-left font-medium border-b-2 transition-all sm:whitespace-nowrap ${
                       isActive
                         ? "border-gray-900 text-gray-900 font-bold"
                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 shrink-0" />
                     {tab.label}
                   </button>
                 );

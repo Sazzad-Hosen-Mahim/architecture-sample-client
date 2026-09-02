@@ -1,16 +1,13 @@
-import UserAvatar from "@/ui/UserAvatar";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { LogOut, Settings } from "lucide-react";
 import { useAppDispatch } from "@/hooks/useRedux";
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
 import logo from "@/assets/logo.png";
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
+import AvatarMenu, {
+  type AvatarMenuAction,
+} from "@/components/Common/AvatarMenu";
 import { signOut } from "@/redux/features/auth/authActions";
 
 export default function NavbarAdminDashboard() {
@@ -24,6 +21,24 @@ export default function NavbarAdminDashboard() {
     dispatch(signOut());
     navigate("/login");
   };
+
+  const avatarActions: AvatarMenuAction[] = [
+    {
+      key: "settings",
+      icon: Settings,
+      label: "Settings",
+      description: "Manage your account",
+      onClick: () => navigate("/profile-settings"),
+    },
+    {
+      key: "logout",
+      icon: LogOut,
+      label: "Logout",
+      description: "Sign out of your account",
+      onClick: handleLogout,
+      danger: true,
+    },
+  ];
 
   return (
     <nav className="bg-white sticky top-0 z-50 border-b border-gray-200 px-16">
@@ -88,25 +103,7 @@ export default function NavbarAdminDashboard() {
             <NotificationPopover />
 
             {/* User Avatar Dropdown */}
-            <Popover>
-              <PopoverTrigger className="cursor-pointer">
-                <UserAvatar userName="Shaikot mr9" />
-              </PopoverTrigger>
-              <PopoverContent className="mr-3 bg-white border border-gray-200 space-y-2 text-white">
-                <Button className=" text-black w-full  cursor-pointer hover:bg-gray-400">
-                  Time Card
-                </Button>
-                <Button className=" text-black w-full cursor-pointer hover:bg-gray-400">
-                  Setting
-                </Button>
-                <Button
-                  onClick={handleLogout}
-                  className=" text-black w-full cursor-pointer hover:bg-gray-400"
-                >
-                  Logout
-                </Button>
-              </PopoverContent>
-            </Popover>
+            <AvatarMenu actions={avatarActions} />
           </div>
 
           {/* Mobile Hamburger and Avatar */}
@@ -142,19 +139,7 @@ export default function NavbarAdminDashboard() {
             </button>
 
             {/* User Avatar */}
-            <Popover>
-              <PopoverTrigger className="cursor-pointer">
-                <UserAvatar userName="Shaikot mr9" />
-              </PopoverTrigger>
-              <PopoverContent className="mr-3 bg-website-color-darkGray border-none text-white">
-                <Button
-                  onClick={handleLogout}
-                  className="bg-website-color-lightGray text-black w-full"
-                >
-                  Logout
-                </Button>
-              </PopoverContent>
-            </Popover>
+            <AvatarMenu actions={avatarActions} />
           </div>
         </div>
       </div>

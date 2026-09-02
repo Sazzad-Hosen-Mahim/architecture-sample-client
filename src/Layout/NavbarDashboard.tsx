@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { CalendarClock, LogOut, Settings } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
 import logo from "@/assets/logo.png";
 import TimeCardDialog from "@/components/Deshboard/TimeCardDialog/TimeCardDialog";
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
+import AvatarMenu, {
+  type AvatarMenuAction,
+} from "@/components/Common/AvatarMenu";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { signOut } from "@/redux/features/auth/authActions";
-import { getUserPhoto } from "@/utils/userPhoto";
 
 export default function NavbarDashboard() {
   const navigate = useNavigate();
@@ -30,6 +27,31 @@ export default function NavbarDashboard() {
     dispatch(signOut());
     navigate("/login");
   };
+
+  const avatarActions: AvatarMenuAction[] = [
+    {
+      key: "timecard",
+      icon: CalendarClock,
+      label: "Time Card",
+      description: "View & submit timesheets",
+      onClick: () => setShowTimecardDialog(true),
+    },
+    {
+      key: "settings",
+      icon: Settings,
+      label: "Settings",
+      description: "Manage your account",
+      onClick: () => navigate("/profile-settings"),
+    },
+    {
+      key: "logout",
+      icon: LogOut,
+      label: "Logout",
+      description: "Sign out of your account",
+      onClick: handleLogout,
+      danger: true,
+    },
+  ];
 
   // Close mobile menu on outside click
   useEffect(() => {
@@ -167,48 +189,7 @@ export default function NavbarDashboard() {
             <NotificationPopover />
 
             {/* User Avatar Dropdown */}
-            <Popover>
-              <PopoverTrigger className="cursor-pointer">
-                {/* <UserAvatar userName="Shaikot mr9" /> */}
-                <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
-                  {getUserPhoto(user) ? (
-                    <img
-                      src={getUserPhoto(user)}
-                      alt={user?.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    user?.name?.charAt(0)?.toUpperCase()
-                  )}
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="mr-3 bg-white border border-gray-200 space-y-2 text-white">
-                <Button
-                  onClick={() => setShowTimecardDialog(true)}
-                  className=" text-black w-full  cursor-pointer hover:bg-gray-400"
-                >
-                  Time Card
-                </Button>
-
-                {/* Time card  component */}
-                <TimeCardDialog
-                  open={showTimecardDialog}
-                  onOpenChange={setShowTimecardDialog}
-                />
-                <Button
-                  onClick={() => navigate("/profile-settings")}
-                  className=" text-black w-full cursor-pointer hover:bg-gray-400"
-                >
-                  Setting
-                </Button>
-                <Button
-                  onClick={handleLogout}
-                  className=" text-black w-full cursor-pointer hover:bg-gray-400"
-                >
-                  Logout
-                </Button>
-              </PopoverContent>
-            </Popover>
+            <AvatarMenu actions={avatarActions} />
           </div>
 
           {/* Mobile Hamburger and Avatar */}
@@ -245,56 +226,16 @@ export default function NavbarDashboard() {
             </button>
 
             {/* User Avatar */}
-            <Popover>
-              <PopoverTrigger className="cursor-pointer">
-                <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-700">
-                  {getUserPhoto(user) ? (
-                    <img
-                      src={getUserPhoto(user)}
-                      alt={user?.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    user?.name?.charAt(0)?.toUpperCase()
-                  )}
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="mr-3 bg-white border-none text-white">
-                <Button
-                  onClick={() => setShowTimecardDialog(true)}
-                  className=" text-black w-full  cursor-pointer hover:bg-gray-400"
-                >
-                  Time Card
-                </Button>
-
-                {/* Time card  component */}
-                <TimeCardDialog
-                  open={showTimecardDialog}
-                  onOpenChange={setShowTimecardDialog}
-                />
-                <Button
-                  onClick={() => navigate("/profile-settings")}
-                  className=" text-black w-full cursor-pointer hover:bg-gray-400"
-                >
-                  setting
-                </Button>
-                <Button
-                  onClick={handleLogout}
-                  className=" text-black w-full cursor-pointer hover:bg-gray-400"
-                >
-                  Logout
-                </Button>
-                {/* <Button
-                  onClick={handleLogout}
-                  className="bg-website-color-lightGray text-black w-full"
-                >
-                  Logout
-                </Button> */}
-              </PopoverContent>
-            </Popover>
+            <AvatarMenu actions={avatarActions} />
           </div>
         </div>
       </div>
+
+      {/* Timesheet dialog — opened from the avatar menu's "Time Card" item */}
+      <TimeCardDialog
+        open={showTimecardDialog}
+        onOpenChange={setShowTimecardDialog}
+      />
 
       {/* Mobile Menu */}
       {isOpen && (

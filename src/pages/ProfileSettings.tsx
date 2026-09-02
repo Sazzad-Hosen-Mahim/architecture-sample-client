@@ -229,21 +229,29 @@ export function ProfileSettings() {
     icon: Icon,
     children,
     isActive,
+    fill,
   }: {
     value: string;
     icon: any;
     children: React.ReactNode;
     isActive: boolean;
+    /** Stretch to share the row evenly (used when there are few enough tabs
+        to fit without scrolling — i.e. the client view). */
+    fill?: boolean;
   }) => (
     <button
       onClick={() => setActiveTab(value)}
-      className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+      className={`flex items-center py-2 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+        fill
+          ? "flex-1 min-w-0 justify-center px-1.5 sm:px-3"
+          : "px-3 sm:px-4"
+      } ${
         isActive
           ? "bg-white border-b-2 border-gray-800"
           : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
       }`}
     >
-      <Icon className="h-4 w-4 mr-2" />
+      <Icon className="h-4 w-4 mr-1.5 sm:mr-2 shrink-0" />
       {children}
     </button>
   );
@@ -267,8 +275,8 @@ export function ProfileSettings() {
       <div className="grid grid-cols-12 gap-6">
         {/* Sidebar */}
         <div className="col-span-12 md:col-span-4 lg:col-span-3">
-          <Card>
-            <CardContent className="p-6">
+          <Card className="border-2 border-gray-300 shadow-lg">
+            <CardContent className="px-6">
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
                   <Avatar className="h-24 w-24 border">
@@ -320,46 +328,73 @@ export function ProfileSettings() {
         {/* Main content */}
         <div className="col-span-12 md:col-span-8 lg:col-span-9">
           <div className="mb-6">
-            {/* The tab strip runs past the panel on smaller screens, so it gets
-                its own arrows rather than relying on a scrollbar that is hidden
-                by design. Padding keeps the first and last tab clear of them. */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => scrollTabs("left")}
-                aria-label="Scroll tabs left"
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div
-                ref={tabsContainerRef}
-                className="flex space-x-1 bg-gray-100 p-1 px-10 rounded-lg overflow-x-auto scrollbar-hide scroll-smooth"
-              >
-              <TabButton
-                value="profile"
-                icon={User}
-                isActive={activeTab === "profile"}
-              >
-                Profile
-              </TabButton>
-              <TabButton
-                value="security"
-                icon={Shield}
-                isActive={activeTab === "security"}
-              >
-                Security
-              </TabButton>
-              <TabButton
-                value="notifications"
-                icon={Bell}
-                isActive={activeTab === "notifications"}
-              >
-                Notifications
-              </TabButton>
-              {/* Scheduling and contract templates are staff-only. */}
-              {!isClient && (
-                <>
+            {isClient ? (
+              /* Only three tabs — they fit on one row at every width, so no
+                 scroll arrows. Each stretches to share the space evenly. */
+              <div className="flex gap-1 sm:gap-2 bg-gray-100 p-1 rounded-lg">
+                <TabButton
+                  value="profile"
+                  icon={User}
+                  isActive={activeTab === "profile"}
+                  fill
+                >
+                  Profile
+                </TabButton>
+                <TabButton
+                  value="security"
+                  icon={Shield}
+                  isActive={activeTab === "security"}
+                  fill
+                >
+                  Security
+                </TabButton>
+                <TabButton
+                  value="notifications"
+                  icon={Bell}
+                  isActive={activeTab === "notifications"}
+                  fill
+                >
+                  Notifications
+                </TabButton>
+              </div>
+            ) : (
+              /* Staff / owner have more tabs than fit on smaller screens, so
+                 the strip scrolls and gets its own arrows. Padding keeps the
+                 first and last tab clear of them. */
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => scrollTabs("left")}
+                  aria-label="Scroll tabs left"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <div
+                  ref={tabsContainerRef}
+                  className="flex space-x-1 bg-gray-100 p-1 px-10 rounded-lg overflow-x-auto scrollbar-hide scroll-smooth"
+                >
+                  <TabButton
+                    value="profile"
+                    icon={User}
+                    isActive={activeTab === "profile"}
+                  >
+                    Profile
+                  </TabButton>
+                  <TabButton
+                    value="security"
+                    icon={Shield}
+                    isActive={activeTab === "security"}
+                  >
+                    Security
+                  </TabButton>
+                  <TabButton
+                    value="notifications"
+                    icon={Bell}
+                    isActive={activeTab === "notifications"}
+                  >
+                    Notifications
+                  </TabButton>
                   <TabButton
                     value="masterSchedule"
                     icon={CalendarDays}
@@ -381,33 +416,32 @@ export function ProfileSettings() {
                   >
                     Amendment Contract
                   </TabButton>
-                </>
-              )}
-              {isOwner && (
-                <TabButton
-                  value="owner-controls"
-                  icon={Key}
-                  isActive={activeTab === "owner-controls"}
+                  {isOwner && (
+                    <TabButton
+                      value="owner-controls"
+                      icon={Key}
+                      isActive={activeTab === "owner-controls"}
+                    >
+                      Owner Controls
+                    </TabButton>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => scrollTabs("right")}
+                  aria-label="Scroll tabs right"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all"
                 >
-                  Owner Controls
-                </TabButton>
-              )}
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => scrollTabs("right")}
-                aria-label="Scroll tabs right"
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/95 hover:bg-white text-gray-600 hover:text-black rounded-full border border-gray-200 shadow-sm cursor-pointer active:scale-95 transition-all"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            )}
           </div>
 
           <Suspense fallback={<TabLoader />}>
             {/* Profile Tab */}
             {activeTab === "profile" && (
-              <Card>
+              <Card className="border-2 border-gray-300 shadow-lg">
                 <form onSubmit={handleProfileUpdate}>
                   <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
@@ -430,7 +464,7 @@ export function ProfileSettings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="middleInitial">MI</Label>
+                        <Label htmlFor="middleInitial">Middle Name</Label>
                         <Input
                           id="middleInitial"
                           name="middleInitial"

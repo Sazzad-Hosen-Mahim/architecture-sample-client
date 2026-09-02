@@ -98,7 +98,7 @@ function FloatingMenu() {
                   onClick={handleNavigation}
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
-                  World Project
+                  World Projects
                 </Link>
               </div>
             </div>
@@ -121,7 +121,7 @@ function FloatingMenu() {
                   onClick={handleNavigation}
                   className="block py-1 px-4 rounded-lg text-sm hover:bg-gray-100 hover:text-black font-extralight"
                 >
-                  View Portfolio
+                  Portfolio
                 </Link>
               </div>
             </div>

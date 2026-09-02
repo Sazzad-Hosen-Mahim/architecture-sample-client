@@ -50,12 +50,12 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 flex-1">
-        <h1 className="text-3xl font-semibold text-center mb-4 md:mb-8">
+    <div className="flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 py-2 sm:px-6 lg:px-8 flex-1">
+        <h1 className="text-2xl font-light text-center mb-2 md:mb-8">
           Contact Us
         </h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 ">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-12 ">
           <div className="flex flex-col justify-between my-0">
             <form onSubmit={handleSubmit} className="space-y-4 ">
               <div>
@@ -174,7 +174,7 @@ const Contact = () => {
       </div>
 
       {/* HeroSocialMedia with proper spacing */}
-      <div className="mt-16 mb-32">
+      <div className=" mb-32">
         <HeroSocialMedia />
       </div>
     </div>

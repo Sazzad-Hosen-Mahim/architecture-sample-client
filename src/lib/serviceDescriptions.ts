@@ -86,7 +86,6 @@ const SERVICE_SCOPES: ServiceScopeEntry[] = [
                     "Preliminary Building Systems & Material Selection (If necessary)",
                 ],
             },
-            "Preliminary Building Systems & Material Selection (If necessary)",
             "Architecture Simple Inc. submit to the Owner a preliminary estimate of Construction Cost based on a cost per square foot basis.",
             "Upon full payment for Schematic Design Services and applicable expenses as described in Article 3, 9, 10, and 12 and written approval of the Schematic Design Drawings, the Design Development phase shall commence.",
         ],
