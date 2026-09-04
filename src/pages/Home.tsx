@@ -13,7 +13,8 @@ const Home = () => {
 
   return (
     // <CommonWrapper>
-    <div className="h-screen bg-transparent">
+    // Passes the layout's leftover height straight through to the hero.
+    <div className="flex flex-1 flex-col bg-transparent">
       <Hero />
     </div>
     // </CommonWrapper>

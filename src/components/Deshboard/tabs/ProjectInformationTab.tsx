@@ -20,6 +20,7 @@ import {
     Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import SharedFolderCard from "@/components/Deshboard/Common/SharedFolderCard";
 import {
     Select,
     SelectContent,
@@ -85,7 +86,10 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
         }
     }, [project]);
 
-    const formatDate = (dateString: string) => {
+    // In-person requests carry no appointment date — the studio arranges those
+    // after review — so an absent value is normal, not an error.
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return "—";
         const date = new Date(dateString);
         return date.toLocaleDateString("en-US", {
             weekday: "long",
@@ -428,6 +432,10 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                     )}
                 </div>
 
+                {/* The external folder, shared with the client. Sits directly
+                    below the internal one so the two are read together: above
+                    is architect-only, below is what the client can see. */}
+                <SharedFolderCard projectId={project.id} side="ARCHITECT" />
 
             </div>
 

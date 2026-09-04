@@ -97,22 +97,40 @@ export function validateProjectDetails(data: any): ValidationErrors {
   return errors;
 }
 
+/**
+ * The appointment step asks for different things depending on the type, so the
+ * rules branch rather than demanding everything:
+ *
+ * - Video call — a date and time off the calendar, and no address.
+ * - In-person — the address to meet at. No slot is picked here; the studio
+ *   arranges the visit once it has seen where it is.
+ */
 export function validateAppointment(data: any): ValidationErrors {
   const errors: ValidationErrors = {};
+
+  if (isBlank(data?.appointmentType)) {
+    errors.appointmentType = "Please select an appointment type";
+    return errors;
+  }
+
+  if (data.appointmentType === "in-person") {
+    if (isBlank(data?.meetingStreetAddress))
+      errors.meetingStreetAddress = "Street address is required";
+    if (isBlank(data?.meetingCountry))
+      errors.meetingCountry = "Country is required";
+    if (isBlank(data?.meetingState))
+      errors.meetingState = "State / province is required";
+    if (isBlank(data?.meetingCity)) errors.meetingCity = "City is required";
+    if (isBlank(data?.meetingZipCode))
+      errors.meetingZipCode = "Zip / postal code is required";
+
+    return errors;
+  }
 
   if (isBlank(data?.appointmentDate))
     errors.appointmentDate = "Please select an appointment date";
   if (isBlank(data?.appointmentTime))
     errors.appointmentTime = "Please select an appointment time";
-
-  if (isBlank(data?.appointmentType)) {
-    errors.appointmentType = "Please select an appointment type";
-  } else if (
-    data.appointmentType === "in-person" &&
-    isBlank(data?.meetingLocation)
-  ) {
-    errors.meetingLocation = "Meeting location is required for in-person meetings";
-  }
 
   return errors;
 }

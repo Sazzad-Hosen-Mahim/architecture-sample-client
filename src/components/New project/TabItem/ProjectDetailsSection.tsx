@@ -192,9 +192,7 @@ export default function ProjectDetailsSection({
     "",
   );
 
-  const handleBudgetAmountChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleBudgetAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/[^\d]/g, "");
     setLocalFormData((prev) => ({
       ...prev,
@@ -656,6 +654,10 @@ export default function ProjectDetailsSection({
                 </div>
               </div>
               <FieldError message={errors.budgetRange} />
+              <p className="text-xs text-red-500 mt-1">
+                Note: This is a budget estimate for the entire project, not just
+                the design package.
+              </p>
             </div>
           </div>
         </div>

@@ -52,10 +52,18 @@ export interface ProjectRequestPayload {
   siteConstraints?: string;
   sustainabilityGoals?: string;
   specialRequirements?: string;
-  appointmentDate: string;
-  appointmentTime: string;
+  // Absent for in-person meetings — those are scheduled after review.
+  appointmentDate?: string;
+  appointmentTime?: string;
   appointmentType: string;
-  meetingLocation?: string;
+  // In-person only. The server composes the one-line `meetingLocation` from
+  // these, so it is never sent from here.
+  meetingStreetAddress?: string;
+  meetingAptSuiteUnit?: string;
+  meetingCity?: string;
+  meetingState?: string;
+  meetingZipCode?: string;
+  meetingCountry?: string;
   additionalNotes?: string;
   files?: File[];
   paymentIntentId?: string;
@@ -92,10 +100,17 @@ export interface ProjectResponse {
   siteConstraints: string | null;
   sustainabilityGoals: string | null;
   specialRequirements: string | null;
-  appointmentDate: string;
-  appointmentTime: string;
+  appointmentDate: string | null;
+  appointmentTime: string | null;
   appointmentType: string;
+  /** One-line rendering of the meeting address fields below. */
   meetingLocation: string | null;
+  meetingStreetAddress: string | null;
+  meetingAptSuiteUnit: string | null;
+  meetingCity: string | null;
+  meetingState: string | null;
+  meetingZipCode: string | null;
+  meetingCountry: string | null;
   additionalNotes: string | null;
   status: string;
   userId: string | null;
@@ -162,11 +177,24 @@ function buildProjectRequestFormData(data: ProjectRequestPayload): FormData {
   if (data.specialRequirements)
     formData.append("specialRequirements", data.specialRequirements);
 
-  formData.append("appointmentDate", data.appointmentDate);
-  formData.append("appointmentTime", data.appointmentTime);
+  // Conditional: an in-person request has no slot, and appending an empty
+  // string would fail the server's @IsDateString check rather than being
+  // treated as "not provided".
+  if (data.appointmentDate)
+    formData.append("appointmentDate", data.appointmentDate);
+  if (data.appointmentTime)
+    formData.append("appointmentTime", data.appointmentTime);
   formData.append("appointmentType", data.appointmentType);
-  if (data.meetingLocation)
-    formData.append("meetingLocation", data.meetingLocation);
+  if (data.meetingStreetAddress)
+    formData.append("meetingStreetAddress", data.meetingStreetAddress);
+  if (data.meetingAptSuiteUnit)
+    formData.append("meetingAptSuiteUnit", data.meetingAptSuiteUnit);
+  if (data.meetingCity) formData.append("meetingCity", data.meetingCity);
+  if (data.meetingState) formData.append("meetingState", data.meetingState);
+  if (data.meetingZipCode)
+    formData.append("meetingZipCode", data.meetingZipCode);
+  if (data.meetingCountry)
+    formData.append("meetingCountry", data.meetingCountry);
   if (data.additionalNotes)
     formData.append("additionalNotes", data.additionalNotes);
 

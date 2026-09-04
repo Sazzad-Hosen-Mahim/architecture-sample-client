@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import {
   CheckCircle2,
   Clock,
-  ExternalLink,
   Package,
   MapPin,
   Mail,
@@ -11,12 +10,9 @@ import {
   User,
   Calendar,
   DollarSign,
-  CreditCard,
   RefreshCcw,
   //   ArrowRight,
 } from "lucide-react";
-import { toExternalUrl } from "@/utils/externalUrl";
-import { toast } from "sonner";
 import { getProjectProgress } from "@/utils/projectProgress";
 import {
   isLumpSum,
@@ -519,80 +515,20 @@ export default function ClientProjectInfoTab({
                       </div>
                     </div>
 
-                    {/* Drive Link & Payment Logic */}
-                    <div className="pt-4 border-t border-gray-100/60 flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        {stage.driveLink ? (
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                isStagePaid
-                                  ? "bg-blue-500 animate-pulse"
-                                  : "bg-red-400"
-                              }`}
-                            />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                              {isStagePaid
-                                ? "Deliverables Available"
-                                : "Pay to Access Files"}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-gray-300" />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                              Awaiting Upload
-                            </span>
-                          </div>
-                        )}
+                    {/* Payment. Deliverables are no longer published per phase
+                        — the architect posts them to the shared project folder
+                        on the Documents tab, so there is one place to look. */}
+                    {!lumpSum && !isStagePaid && canPayStage && (
+                      <div className="pt-4 border-t border-gray-100/60 flex items-center justify-end gap-4">
+                        <button
+                          onClick={onGoToPayments}
+                          className="inline-flex items-center gap-2 text-[10px] font-black text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all px-4 py-2 rounded-xl border border-blue-100 shadow-sm active:scale-95"
+                        >
+                          <DollarSign className="w-3 h-3" />$
+                          {stageAmount?.toLocaleString()} DUE
+                        </button>
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        {!lumpSum && !isStagePaid && canPayStage && (
-                          <button
-                            onClick={onGoToPayments}
-                            className="inline-flex items-center gap-2 text-[10px] font-black text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all px-4 py-2 rounded-xl border border-blue-100 shadow-sm active:scale-95"
-                          >
-                            <DollarSign className="w-3 h-3" />$
-                            {stageAmount?.toLocaleString()} DUE
-                          </button>
-                        )}
-
-                        {stage.driveLink && (
-                          <a
-                            href={
-                              isStagePaid
-                                ? (toExternalUrl(stage.driveLink) ?? undefined)
-                                : undefined
-                            }
-                            target={isStagePaid ? "_blank" : undefined}
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                              if (!isStagePaid) {
-                                e.preventDefault();
-                                toast.error(
-                                  lumpSum
-                                    ? "Please complete full payment to access files"
-                                    : "Please pay for this phase to access files",
-                                );
-                              }
-                            }}
-                            className={`inline-flex items-center gap-2 text-xs font-black transition-all px-4 py-2 rounded-xl border shadow-sm active:scale-95 ${
-                              isStagePaid
-                                ? "text-blue-600 hover:text-blue-800 bg-blue-50 border-blue-100 hover:gap-3"
-                                : "text-gray-400 bg-gray-50 border-gray-100 cursor-not-allowed"
-                            }`}
-                          >
-                            {isStagePaid ? (
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            ) : (
-                              <CreditCard className="w-3.5 h-3.5" />
-                            )}
-                            VIEW FILES
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}

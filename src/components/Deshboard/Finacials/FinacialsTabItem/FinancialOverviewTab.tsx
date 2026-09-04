@@ -7,18 +7,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  BarChart, DollarSign, TrendingUp, Users, //Archive, Loader2
-  // 
+  BarChart,
+  DollarSign,
+  TrendingUp,
+  Users, //Archive, Loader2
+  //
 } from "lucide-react";
 import {
   useGetFinancialOverviewQuery,
-  // useArchiveCompletedProjectsMutation, 
+  // useArchiveCompletedProjectsMutation,
   // useGetArchivedSummaryQuery
 } from "@/redux/api/financialApi";
 import { useState } from "react";
 // import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
 import ScopeSelect from "@/components/Deshboard/Finacials/ScopeSelect";
+import {
+  formatCount,
+  formatCurrency,
+  formatPercent,
+  formatSignedCurrency,
+} from "@/utils/money";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -38,10 +47,35 @@ export default function FinancialOverviewTab() {
 
   if (isLoading) return <Loader />;
 
-  const labor = overview?.labor || { total: 0, totalSalaries: 0, totalTaxes: 0, totalNetPay: 0, employeeCount: 0, employees: [], utilization: 0 };
-  const overhead = overview?.overhead || { total: 0, monthlyExpenses: 0, annualExpenses: 0, projectOverhead: 0, categoryBreakdown: {}, expenseCount: 0 };
-  const revenue = overview?.revenue || { total: 0, activeProjectCount: 0, completedProjectCount: 0 };
-  const projectFinancials = overview?.projectFinancials || { totalBurned: 0, totalLabor: 0, totalProjectOverhead: 0, totalStudioOverhead: 0, firmBillingRate: 0 };
+  const labor = overview?.labor || {
+    total: 0,
+    totalSalaries: 0,
+    totalTaxes: 0,
+    totalNetPay: 0,
+    employeeCount: 0,
+    employees: [],
+    utilization: 0,
+  };
+  const overhead = overview?.overhead || {
+    total: 0,
+    monthlyExpenses: 0,
+    annualExpenses: 0,
+    projectOverhead: 0,
+    categoryBreakdown: {},
+    expenseCount: 0,
+  };
+  const revenue = overview?.revenue || {
+    total: 0,
+    activeProjectCount: 0,
+    completedProjectCount: 0,
+  };
+  const projectFinancials = overview?.projectFinancials || {
+    totalBurned: 0,
+    totalLabor: 0,
+    totalProjectOverhead: 0,
+    totalStudioOverhead: 0,
+    firmBillingRate: 0,
+  };
   const profit = overview?.profit || { total: 0, margin: 0 };
 
   const totalCosts = labor.total + overhead.total;
@@ -61,6 +95,7 @@ export default function FinancialOverviewTab() {
               <ScopeSelect
                 scope={scope}
                 year={scopeYear}
+                startYear={overview?.scope?.firmStartYear}
                 onChange={(nextScope, nextYear) => {
                   setScope(nextScope);
                   setScopeYear(nextYear);
@@ -77,50 +112,70 @@ export default function FinancialOverviewTab() {
                     <DollarSign className="h-5 w-5 mr-2 text-green-600" />
                     Profit
                   </h3>
-                  <span className={`text-sm font-bold ${profit.total >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    ${profit.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  <span
+                    className={`text-sm font-bold ${profit.total >= 0 ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {formatSignedCurrency(profit.total)}
                   </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Gross Revenue</span>
-                    <span className="font-medium">${(revenue.grossRevenue || revenue.total).toLocaleString()}</span>
+                    <span className="font-medium">
+                      {formatCurrency(revenue.grossRevenue || revenue.total)}
+                    </span>
                   </div>
                   {(revenue.amendmentRevenue || 0) > 0 && (
                     <>
                       <div className="flex justify-between text-sm text-gray-500 pl-3 border-l-2 border-gray-200">
                         <span>Original Contracts</span>
-                        <span className="font-medium">${(revenue.originalRevenue || 0).toLocaleString()}</span>
+                        <span className="font-medium">
+                          {formatCurrency(revenue.originalRevenue)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm text-amber-600 pl-3 border-l-2 border-amber-200">
                         <span>Amendments ({revenue.amendmentCount || 0})</span>
-                        <span className="font-medium">+${(revenue.amendmentRevenue || 0).toLocaleString()}</span>
+                        <span className="font-medium">
+                          +{formatCurrency(revenue.amendmentRevenue)}
+                        </span>
                       </div>
                     </>
                   )}
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Approved Refunds</span>
-                    <span className="font-medium">-${(revenue.totalRefunds || 0).toLocaleString()}</span>
+                    <span className="font-medium">
+                      -{formatCurrency(revenue.totalRefunds)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm font-bold pt-1 border-t border-gray-100">
                     <span>Net Revenue</span>
-                    <span className="font-bold">${revenue.total.toLocaleString()}</span>
+                    <span className="font-bold">
+                      {formatCurrency(revenue.total)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm pt-1">
                     <span>Profit Margin</span>
-                    <span className="font-medium">{profit.margin.toFixed(1)}%</span>
+                    <span className="font-medium">
+                      {formatPercent(profit.margin)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Active Projects</span>
-                    <span className="font-medium">{revenue.activeProjectCount}</span>
+                    <span className="font-medium">
+                      {formatCount(revenue.activeProjectCount)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Completed Projects</span>
-                    <span className="font-medium">{revenue.completedProjectCount ?? 0}</span>
+                    <span className="font-medium">
+                      {formatCount(revenue.completedProjectCount ?? 0)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Costs</span>
-                    <span className="font-medium">${totalCosts.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span className="font-medium">
+                      {formatCurrency(totalCosts)}
+                    </span>
                   </div>
                 </div>
                 <div className="pt-2">
@@ -128,22 +183,32 @@ export default function FinancialOverviewTab() {
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
                       <span>Overhead</span>
-                      <span>${(overhead?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span>{formatCurrency(overhead?.total)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-orange-500 h-1.5 rounded-full"
-                        style={{ width: (totalCosts || 0) > 0 ? `${((overhead?.total || 0) / (totalCosts || 1)) * 100}%` : "0%" }}
+                        style={{
+                          width:
+                            (totalCosts || 0) > 0
+                              ? `${((overhead?.total || 0) / (totalCosts || 1)) * 100}%`
+                              : "0%",
+                        }}
                       ></div>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span>Labor</span>
-                      <span>${(labor?.total || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span>{formatCurrency(labor?.total)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-blue-500 h-1.5 rounded-full"
-                        style={{ width: (totalCosts || 0) > 0 ? `${((labor?.total || 0) / (totalCosts || 1)) * 100}%` : "0%" }}
+                        style={{
+                          width:
+                            (totalCosts || 0) > 0
+                              ? `${((labor?.total || 0) / (totalCosts || 1)) * 100}%`
+                              : "0%",
+                        }}
                       ></div>
                     </div>
                   </div>
@@ -158,60 +223,80 @@ export default function FinancialOverviewTab() {
                     Overhead
                   </h3>
                   <span className="text-sm font-bold text-orange-600">
-                    ${overhead.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {formatCurrency(overhead.total)}
                   </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Monthly Overhead</span>
                     <span className="font-medium">
-                      ${(overhead?.total / 12 || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCurrency((overhead?.total || 0) / 12)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Monthly Expenses</span>
                     <span className="font-medium">
-                      ${(overhead?.monthlyExpenses || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCurrency(overhead?.monthlyExpenses)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Annual Expenses</span>
                     <span className="font-medium">
-                      ${(overhead?.annualExpenses || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCurrency(overhead?.annualExpenses)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Labor Overhead</span>
                     <span className="font-medium">
-                      ${(projectFinancials?.totalProjectOverhead || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCurrency(
+                        overhead?.laborOverhead ??
+                          projectFinancials?.totalProjectOverhead,
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500 italic text-[10px] mt-1">
-                    <span>* Wage cost of non-billable hours on approved timecards, at each employee's own rate</span>
+                    <span>
+                      * Every project's own overhead cost added together — the
+                      wage cost of non-billable hours booked to a project on
+                      approved timecards, at each employee's locked rate
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Expense Items</span>
-                    <span className="font-medium">{overhead?.expenseCount || 0}</span>
+                    <span className="font-medium">
+                      {formatCount(overhead?.expenseCount)}
+                    </span>
                   </div>
                 </div>
                 <div className="pt-2">
-                  <div className="text-sm font-medium mb-1">Overhead Breakdown</div>
+                  <div className="text-sm font-medium mb-1">
+                    Overhead Breakdown
+                  </div>
                   <div className="space-y-2">
-                    {Object.entries(overhead.categoryBreakdown || {}).map(([category, monthly]: [string, any]) => {
-                      const pct = overhead.monthlyExpenses > 0 ? (monthly / overhead.monthlyExpenses) * 100 : 0;
-                      return (
-                        <div key={category} className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span>{category}</span>
-                            <span>{pct.toFixed(0)}%</span>
+                    {Object.entries(overhead.categoryBreakdown || {}).map(
+                      ([category, monthly]: [string, any]) => {
+                        const pct =
+                          overhead.monthlyExpenses > 0
+                            ? (monthly / overhead.monthlyExpenses) * 100
+                            : 0;
+                        return (
+                          <div key={category} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span>{category}</span>
+                              <span>{formatPercent(pct)}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div
+                                className="bg-orange-500 h-1.5 rounded-full"
+                                style={{ width: `${pct}%` }}
+                              ></div>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {Object.keys(overhead.categoryBreakdown || {}).length === 0 && (
+                        );
+                      },
+                    )}
+                    {Object.keys(overhead.categoryBreakdown || {}).length ===
+                      0 && (
                       <p className="text-xs text-gray-400">No expenses yet</p>
                     )}
                   </div>
@@ -226,55 +311,78 @@ export default function FinancialOverviewTab() {
                     Labor
                   </h3>
                   <span className="text-sm font-bold text-blue-600">
-                    ${(labor?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(labor?.total)}
                   </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Total Salaries (Gross)</span>
-                    <span className="font-medium">${(labor?.totalSalaries || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="font-medium">
+                      {formatCurrency(labor?.totalSalaries)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Taxes</span>
-                    <span className="font-medium">${(labor?.totalTaxes || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <span className="font-medium">
+                      {formatCurrency(labor?.totalTaxes)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
+                    {/* Headcount is whoever was paid in this window, so a past
+                        year keeps its number after someone leaves. */}
                     <span>Employees</span>
-                    <span className="font-medium">{labor?.employeeCount || 0}</span>
+                    <span className="font-medium">
+                      {formatCount(labor?.employeeCount)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Avg Utilization</span>
-                    <span className="font-medium">{(labor?.utilization || 0).toFixed(1)}%</span>
+                    <span className="font-medium">
+                      {formatPercent(labor?.utilization)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>% of Revenue</span>
+                    <span>% of Net Revenue</span>
                     <span className="font-medium">
-                      {revenue.total > 0 ? ((labor.total / revenue.total) * 100).toFixed(1) : "0.0"}%
+                      {formatPercent(
+                        revenue.total > 0
+                          ? (labor.total / revenue.total) * 100
+                          : 0,
+                      )}
                     </span>
                   </div>
                 </div>
                 <div className="pt-2">
                   <div className="text-sm font-medium mb-1">
                     Employee Costs
-                    <span className="ml-1 text-[10px] font-normal text-gray-400">(net pay)</span>
+                    <span className="ml-1 text-[10px] font-normal text-gray-400">
+                      (Net Pay)
+                    </span>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {(labor.employees || []).map((emp: any) => (
                       <div key={emp.id} className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span>{emp.name}</span>
-                          <span>${(emp.totalCost || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                          <span>{formatCurrency(emp.totalCost)}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5">
                           <div
                             className="bg-blue-500 h-1.5 rounded-full"
-                            style={{ width: labor.total > 0 ? `${(emp.totalCost / labor.total) * 100}%` : "0%" }}
+                            style={{
+                              width:
+                                labor.total > 0
+                                  ? `${(emp.totalCost / labor.total) * 100}%`
+                                  : "0%",
+                            }}
                           ></div>
                         </div>
                       </div>
                     ))}
                     {(labor.employees || []).length === 0 && (
-                      <p className="text-xs text-gray-400">No approved timecards in this period</p>
+                      <p className="text-xs text-gray-400">
+                        No approved timecards in this period
+                      </p>
                     )}
                   </div>
                 </div>
@@ -288,23 +396,29 @@ export default function FinancialOverviewTab() {
                     Financial Health
                   </h3>
                   <span className="text-sm font-bold text-purple-600">
-                    {profit.total > 0 ? "Good" : profit.total === 0 ? "Neutral" : "Attention"}
+                    {profit.total > 0
+                      ? "Good"
+                      : profit.total === 0
+                        ? "Neutral"
+                        : "Attention"}
                   </span>
                 </div>
 
                 {/* Project Financials Summary */}
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-2">
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Project Financials (Active)</div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Project Financials (Active)
+                  </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Burned</span>
                     <span className="font-bold text-amber-600">
-                      ${(projectFinancials?.totalBurned || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCurrency(projectFinancials?.totalBurned)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Project Labor</span>
                     <span className="font-bold text-blue-600">
-                      ${(projectFinancials?.totalLabor || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCurrency(projectFinancials?.totalLabor)}
                     </span>
                   </div>
                 </div>
@@ -314,51 +428,69 @@ export default function FinancialOverviewTab() {
                     <div className="flex justify-between text-sm">
                       <span>Revenue vs Costs</span>
                       <span className="font-medium">
-                        {totalCosts > 0 ? (revenue.total / totalCosts).toFixed(1) : "0.0"}x
+                        {(totalCosts > 0
+                          ? revenue.total / totalCosts
+                          : 0
+                        ).toFixed(2)}
+                        x
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className={`${profit.total > 0 ? "bg-green-500" : "bg-yellow-500"} h-1.5 rounded-full`}
-                        style={{ width: `${Math.min(totalCosts > 0 ? (revenue.total / totalCosts / 3) * 100 : 0, 100)}%` }}
+                        style={{
+                          width: `${Math.min(totalCosts > 0 ? (revenue.total / totalCosts / 3) * 100 : 0, 100)}%`,
+                        }}
                       ></div>
                     </div>
-                    <p className="text-xs text-muted-foreground">Revenue to costs ratio</p>
+                    <p className="text-xs text-muted-foreground">
+                      Revenue to costs ratio
+                    </p>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span>Profit per Project</span>
                       <span className="font-medium">
-                        ${revenue.activeProjectCount > 0 ? Math.round(profit.total / revenue.activeProjectCount).toLocaleString() : "0"}
+                        {formatSignedCurrency(
+                          revenue.activeProjectCount > 0
+                            ? profit.total / revenue.activeProjectCount
+                            : 0,
+                        )}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className={`${profit.total > 0 ? "bg-green-500" : "bg-yellow-500"} h-1.5 rounded-full`}
-                        style={{ width: `${Math.min(revenue.total > 0 ? (profit.total / revenue.total) * 100 : 0, 100)}%` }}
+                        style={{
+                          width: `${Math.min(revenue.total > 0 ? (profit.total / revenue.total) * 100 : 0, 100)}%`,
+                        }}
                       ></div>
                     </div>
-                    <p className="text-xs text-muted-foreground">Average profit per active project</p>
+                    <p className="text-xs text-muted-foreground">
+                      Average profit per active project
+                    </p>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span>Cash Reserves</span>
                       <span className="font-medium">
-                        ${profit.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {formatSignedCurrency(profit.total)}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className={`${profit.total > 0 ? "bg-green-500" : "bg-red-500"} h-1.5 rounded-full`}
-                        style={{ width: `${Math.min(profit.total > 0 ? 85 : 20, 100)}%` }}
+                        style={{
+                          width: `${Math.min(profit.total > 0 ? 85 : 20, 100)}%`,
+                        }}
                       ></div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {/* Months of Expenses = (Gross Profit / Total Cost) × 12 */}
                       {totalCosts > 0
-                        ? `${((profit.total / totalCosts) * 12).toFixed(1)} months of expenses`
+                        ? `${((profit.total / totalCosts) * 12).toFixed(2)} months of expenses`
                         : "Insufficient reserves"}
                     </p>
                   </div>
@@ -375,11 +507,14 @@ export default function FinancialOverviewTab() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle>Financial Performance</CardTitle>
-                <CardDescription>Monthly breakdown of key financial metrics</CardDescription>
+                <CardDescription>
+                  Monthly breakdown of key financial metrics
+                </CardDescription>
               </div>
               <ScopeSelect
                 scope={scope}
                 year={scopeYear}
+                startYear={overview?.scope?.firmStartYear}
                 onChange={(nextScope, nextYear) => {
                   setScope(nextScope);
                   setScopeYear(nextYear);

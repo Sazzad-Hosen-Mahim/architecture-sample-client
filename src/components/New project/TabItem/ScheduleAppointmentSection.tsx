@@ -16,6 +16,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils"; // Assuming you have a cn utility from shadcn for class merging
 import FieldError from "../FieldError";
 import {
+  CountrySelect,
+  StateSelect,
+  CitySelect,
+} from "@/components/Common/LocationSelects";
+import {
   validateAppointment,
   hasErrors,
   type ValidationErrors,
@@ -36,9 +41,7 @@ export default function ScheduleAppointmentSection({
     [formData.appointmentDate],
   );
   const selectedTime: string | null = formData.appointmentTime || null;
-  const [meetingLocation, setMeetingLocation] = useState(
-    formData.meetingLocation || "",
-  );
+  const isInPerson = formData.appointmentType === "in-person";
 
   // 🆕 Owner unavailable dates (greyed out)
   const [unavailableDates] = useState<Date[]>(formData.unavailableDates || []);
@@ -94,33 +97,53 @@ export default function ScheduleAppointmentSection({
     updateFormData({ [e.target.name]: e.target.value });
   };
 
-  const handleMeetingLocationChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setMeetingLocation(e.target.value);
-    clearError("meetingLocation");
-    updateFormData({ meetingLocation: e.target.value });
+  /** Every address control writes straight through to the parent's form data. */
+  const handleMeetingField = (name: string, value: string) => {
+    clearError(name);
+    updateFormData({ [name]: value });
+  };
+
+  const handleMeetingCountryChange = (value: string) => {
+    // A new country invalidates whichever state/city was picked under the old
+    // one, the same way the client and project address blocks behave.
+    clearError("meetingCountry");
+    updateFormData({
+      meetingCountry: value,
+      meetingState: "",
+      meetingCity: "",
+    });
+  };
+
+  const EMPTY_MEETING_ADDRESS = {
+    meetingStreetAddress: "",
+    meetingAptSuiteUnit: "",
+    meetingCity: "",
+    meetingState: "",
+    meetingZipCode: "",
   };
 
   const handleAppointmentTypeChange = (value: string) => {
-    clearError("appointmentType");
-    // Location only applies to in-person meetings, so drop it otherwise
-    if (value !== "in-person") {
-      clearError("meetingLocation");
-      setMeetingLocation("");
-      updateFormData({ appointmentType: value, meetingLocation: "" });
+    setErrors({});
+
+    // The two types ask for different things, so switching clears whatever the
+    // other one had collected — no stale address on a video call, and no slot
+    // held against an in-person visit the studio still has to arrange.
+    if (value === "in-person") {
+      updateFormData({
+        appointmentType: value,
+        appointmentDate: null,
+        appointmentTime: "",
+      });
       return;
     }
-    updateFormData({ appointmentType: value });
+
+    updateFormData({ appointmentType: value, ...EMPTY_MEETING_ADDRESS });
   };
 
   const handleNext = () => {
     // formData is the source of truth here — every field on this step writes
     // straight through to the parent rather than into a local draft.
-    const validationErrors = validateAppointment({
-      ...formData,
-      meetingLocation,
-    });
+    const validationErrors = validateAppointment(formData);
     setErrors(validationErrors);
 
     if (hasErrors(validationErrors)) {
@@ -134,7 +157,151 @@ export default function ScheduleAppointmentSection({
   return (
     <div>
       <div className="space-y-6">
-        <div className="space-y-6">
+        {/* Appointment type leads the step: it decides whether the rest of it
+            asks for a calendar slot or an address, so asking anything else
+            first would mean showing fields that may not apply. */}
+        <div>
+          <Label htmlFor="appointmentType" className="text-md font-semibold">
+            Appointment Type <span className="text-red-500 font-semibold">*</span>
+          </Label>
+          <Select
+            name="appointmentType"
+            value={formData.appointmentType}
+            onValueChange={handleAppointmentTypeChange}
+          >
+            <SelectTrigger id="appointmentType" className="mt-2 w-full">
+              <SelectValue placeholder="Select appointment type" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-300">
+              <SelectItem
+                value="video-call"
+                className="cursor-pointer hover:bg-gray-800 hover:text-white"
+              >
+                Video Call
+              </SelectItem>
+              <SelectItem
+                value="in-person"
+                className="cursor-pointer hover:bg-gray-800 hover:text-white"
+              >
+                In-person Meeting
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <FieldError message={errors.appointmentType} />
+        </div>
+
+        {/* In-person visits are arranged by the studio once it knows where it
+            is going, so they pick an address instead of a slot. */}
+        {isInPerson ? (
+          <div className="space-y-4">
+            <h2 className="text-md font-semibold">Meeting Address</h2>
+
+            <div>
+              <Label htmlFor="meetingStreetAddress" className="text-xs">
+                Street Address{" "}
+                <span className="text-red-500 font-semibold">*</span>
+              </Label>
+              <Input
+                id="meetingStreetAddress"
+                name="meetingStreetAddress"
+                value={formData.meetingStreetAddress || ""}
+                onChange={(e) =>
+                  handleMeetingField("meetingStreetAddress", e.target.value)
+                }
+                className="mt-1"
+                placeholder="Street address where we should meet"
+              />
+              <FieldError message={errors.meetingStreetAddress} />
+            </div>
+
+            <div>
+              <Label htmlFor="meetingAptSuiteUnit" className="text-xs">
+                Apt / Suite / Unit
+              </Label>
+              <Input
+                id="meetingAptSuiteUnit"
+                name="meetingAptSuiteUnit"
+                value={formData.meetingAptSuiteUnit || ""}
+                onChange={(e) =>
+                  handleMeetingField("meetingAptSuiteUnit", e.target.value)
+                }
+                className="mt-1"
+                placeholder="Optional"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="meetingCountry" className="text-xs">
+                Country <span className="text-red-500 font-semibold">*</span>
+              </Label>
+              <div className="mt-1">
+                <CountrySelect
+                  id="meetingCountry"
+                  value={formData.meetingCountry || ""}
+                  onChange={handleMeetingCountryChange}
+                />
+              </div>
+              <FieldError message={errors.meetingCountry} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="meetingState" className="text-xs">
+                  State / Province{" "}
+                  <span className="text-red-500 font-semibold">*</span>
+                </Label>
+                <div className="mt-1">
+                  <StateSelect
+                    id="meetingState"
+                    country={formData.meetingCountry}
+                    value={formData.meetingState || ""}
+                    onChange={(value) =>
+                      handleMeetingField("meetingState", value)
+                    }
+                  />
+                </div>
+                <FieldError message={errors.meetingState} />
+              </div>
+
+              <div>
+                <Label htmlFor="meetingCity" className="text-xs">
+                  City <span className="text-red-500 font-semibold">*</span>
+                </Label>
+                <div className="mt-1">
+                  <CitySelect
+                    id="meetingCity"
+                    value={formData.meetingCity || ""}
+                    onChange={(value) => handleMeetingField("meetingCity", value)}
+                  />
+                </div>
+                <FieldError message={errors.meetingCity} />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="meetingZipCode" className="text-xs">
+                Zip / Postal Code{" "}
+                <span className="text-red-500 font-semibold">*</span>
+              </Label>
+              <Input
+                id="meetingZipCode"
+                name="meetingZipCode"
+                value={formData.meetingZipCode || ""}
+                onChange={(e) =>
+                  handleMeetingField("meetingZipCode", e.target.value)
+                }
+                className="mt-1"
+              />
+              <FieldError message={errors.meetingZipCode} />
+            </div>
+
+            <p className="text-xs text-gray-500">
+              We'll confirm a day and time with you by email once we've reviewed
+              your project.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
           <div>
             <Label htmlFor="appointmentDate" className="text-md font-semibold">
               Select Date
@@ -186,70 +353,21 @@ export default function ScheduleAppointmentSection({
             )}
             <FieldError message={errors.appointmentTime} />
           </div>
-        </div>
 
-        {selectedDate && selectedTime && (
-          <div>
-            <h2 className="text-base font-medium mb-6">Selected Appointment</h2>
-            <p className="text-sm">
-              Date: {selectedDate.toDateString()} at {selectedTime}
-            </p>
+            {selectedDate && selectedTime && (
+              <div>
+                <h2 className="text-base font-medium mb-6">
+                  Selected Appointment
+                </h2>
+                <p className="text-sm">
+                  Date: {selectedDate.toDateString()} at {selectedTime}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="appointmentType" className="text-xs">
-              Appointment Type{" "}
-              <span className="text-red-500 font-semibold">*</span>
-            </Label>
-            <Select
-              name="appointmentType"
-              value={formData.appointmentType}
-              onValueChange={handleAppointmentTypeChange}
-            >
-              <SelectTrigger id="appointmentType" className="mt-1 w-full">
-                <SelectValue placeholder="Select appointment type" />
-              </SelectTrigger>
-              <SelectContent className="bg-white border border-gray-300">
-                <SelectItem
-                  value="in-person"
-                  className="cursor-pointer hover:bg-gray-800 hover:text-white"
-                >
-                  In-person Meeting
-                </SelectItem>
-                <SelectItem
-                  value="video-call"
-                  className="cursor-pointer hover:bg-gray-800 hover:text-white"
-                >
-                  Video Call
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError message={errors.appointmentType} />
-          </div>
-
-          {formData.appointmentType === "in-person" && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="meetingLocation" className="text-xs">
-                  Meeting Location{" "}
-                  <span className="text-red-500 font-semibold">*</span>
-                </Label>
-                <Input
-                  id="meetingLocation"
-                  name="meetingLocation"
-                  value={meetingLocation}
-                  onChange={handleMeetingLocationChange}
-                  className="mt-1"
-                  placeholder="Enter the address for the meeting"
-                  required
-                />
-                <FieldError message={errors.meetingLocation} />
-              </div>
-            </div>
-          )}
-
           <div>
             <Label htmlFor="appointmentNotes" className="text-xs">
               Additional Notes for the Appointment

@@ -5,6 +5,24 @@ import { useGetAllMediaQuery } from "@/redux/features/Media/mediaApi";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
+import ProjectPhoto from "@/components/Common/ProjectPhoto";
+import { toProjectImages, type ProjectImage } from "@/utils/projectImage";
+
+/**
+ * The hero takes exactly the height the layout has left below the navbar —
+ * no viewport arithmetic, so it stays flush whatever the navbar does and
+ * leaves no band of background under the photo.
+ *
+ * Which part of the frame survives that shape is not decided here: it is
+ * `object-position` per photo (see DEFAULT_FOCAL_POINT), which is the lever
+ * that actually controls how much of a building's base gets cropped.
+ */
+const HERO_FILL = "flex-1 w-full";
+
+/** Shown only until the first featured project is published. */
+const FALLBACK_IMAGE: ProjectImage = {
+  url: "https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2400&q=80",
+};
 
 const detailPathFor = (media: any): string | null => {
   if (!media?.id) return null;
@@ -38,8 +56,7 @@ function Hero() {
     : null;
 
   // Carousel state for multi-image projects
-  const images: string[] =
-    latestMedia?.assets?.map((a: any) => a.cdnUrl).filter(Boolean) || [];
+  const images: ProjectImage[] = toProjectImages(latestMedia?.assets);
   const hasMultipleImages = images.length > 1;
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -82,58 +99,45 @@ function Hero() {
     };
   }, [isMenuOpen]);
 
-  useEffect(() => {
-    // when Hero mounts — disable scroll
-    const originalStyle = window.getComputedStyle(document.body).overflow;
-    document.body.style.overflow = "hidden";
-
-    // cleanup when leaving the page — restore scroll
-    return () => {
-      document.body.style.overflow = originalStyle;
-    };
-  }, []);
+  // The hero used to lock body scroll on mount. The layout now sizes the page
+  // to the viewport on its own, so the lock earned nothing and only risked
+  // stranding content out of reach — e.g. on a short landscape phone.
 
   if (isLoading) {
     return (
       // <div className="flex items-center justify-center min-h-screen">
       //   <HashLoader size={50} color="#000" />
       // </div>
-      <div className="flex justify-center items-center h-screen">
+      <div className={`flex justify-center items-center ${HERO_FILL}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
 
-  const currentImage =
-    images.length > 0
-      ? images[currentSlide]
-      : "https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80";
+  const slides: ProjectImage[] = images.length > 0 ? images : [FALLBACK_IMAGE];
 
   const detailPath = detailPathFor(latestMedia);
 
   return (
-    <div className="relative h-screen overflow-hidden">
-      {/* Background Images with transition */}
-      {images.length > 0 ? (
-        images.map((img, index) => (
-          <div
-            key={index}
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out"
-            style={{
-              backgroundImage: `url(${img})`,
-              opacity: index === currentSlide ? 1 : 0,
-              zIndex: index === currentSlide ? 1 : 0,
-            }}
-          />
-        ))
-      ) : (
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+    <div className={`relative overflow-hidden ${HERO_FILL}`}>
+      {/* Background photos with transition. Real <img> elements rather than
+          CSS `background-image` so each one carries a `srcset` — a background
+          can only ever name a single file, which is what left the hero
+          upscaling one mid-size render on large displays. */}
+      {slides.map((image, index) => (
+        <ProjectPhoto
+          key={image.url}
+          image={image}
+          alt={latestMedia?.title || "Featured project"}
+          sizes="100vw"
+          priority={index === 0}
+          className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
           style={{
-            backgroundImage: `url(${currentImage})`,
+            opacity: index === currentSlide ? 1 : 0,
+            zIndex: index === currentSlide ? 1 : 0,
           }}
         />
-      )}
+      ))}
 
       {/* Carousel Controls */}
       {hasMultipleImages && (
@@ -156,7 +160,7 @@ function Hero() {
       {/* Hero content. The wrapper spans the screen, so it is made
           click-through — only the title line below re-enables pointer events,
           leaving the rest of the image to open the project. */}
-      <div className="relative z-10 flex min-h-screen justify-center md:justify-start px-4 md:px-6 pointer-events-none">
+      <div className="relative z-10 flex h-full justify-center md:justify-start px-4 md:px-6 pointer-events-none">
         <div className="text-left text-white max-w-4xl w-full">
           <div
             className="absolute top-0 left-0 right-0 h-48
@@ -189,18 +193,6 @@ function Hero() {
           )}
         </div>
       </div>
-
-      {/* Photographer credit. On mobile it sits in its own gradient bar at the
-          foot of the hero, mirroring the darkened strip at the top. */}
-      {latestMedia?.photographer && (
-        <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none md:hidden">
-          <div className="bg-gradient-to-t from-black/70 to-transparent pt-10 pb-3 px-4">
-            <p className="text-center text-xs uppercase tracking-wide text-white">
-              Photographer: {latestMedia.photographer}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

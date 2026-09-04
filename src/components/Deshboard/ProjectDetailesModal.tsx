@@ -14,7 +14,6 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  LinkIcon,
   Check,
   Ban,
   RefreshCw,
@@ -27,7 +26,6 @@ const ProjectInformationTab = lazy(
 const ContractsTab = lazy(() => import("./tabs/ContractsTab"));
 const ProjectMgmtTab = lazy(() => import("./tabs/ProjectMgmtTab"));
 const MeetingRequestTab = lazy(() => import("./tabs/MeetingRequestTab"));
-const AttachmentsTab = lazy(() => import("./tabs/AttachmentsTab"));
 
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
@@ -51,12 +49,7 @@ type ProjectModalProps = {
   initialTab?: ModalTab | null;
 };
 
-type ModalTab =
-  | "information"
-  | "contracts"
-  | "management"
-  | "meeting"
-  | "attachments";
+type ModalTab = "information" | "contracts" | "management" | "meeting";
 
 const STATUS_OPTIONS = [
   { value: "PENDING", label: "PENDING" },
@@ -217,11 +210,8 @@ export default function ProjectDetailsModal({
       label: "Project Management",
       icon: <FolderKanban className="w-4 h-4" />,
     },
-    {
-      key: "attachments" as ModalTab,
-      label: "Documents",
-      icon: <LinkIcon className="w-4 h-4" />,
-    },
+    // The Documents tab is gone: both folders — the internal one and the
+    // shared Architect + Client one — now live on Project Information.
   ];
 
   const isStaff = user?.role === "DRAFTER" || user?.role === "EMPLOYEE";
@@ -483,9 +473,6 @@ export default function ProjectDetailsModal({
                   project={{ ...project, meetingLinks }}
                   readOnly={readOnly}
                 />
-              )}
-              {activeTab === "attachments" && (
-                <AttachmentsTab project={{ ...project, meetingLinks }} />
               )}
             </Suspense>
           )}

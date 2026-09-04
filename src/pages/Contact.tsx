@@ -142,13 +142,10 @@ const Contact = () => {
                       necessary.
                     </p>
                     <p className="text-gray-800 mt-4">
-                      <span className="font-bold">
-                        Special Note from the CEO:
-                      </span>{" "}
-                      I will appreciate notes, tips, or pointers on how to
-                      improve this website application. Please also use this
-                      form to let me know how we can improve your experience
-                      using this site. Thank you.
+                      We appreciate notes, tips, or pointers on how to improve
+                      our website application. Please also use this form to let
+                      us know how we can improve your experience using this
+                      site. Thank you.
                     </p>
                   </div>
                 </div>

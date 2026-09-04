@@ -64,10 +64,20 @@ function NewProject() {
     // Appointment Details
     appointmentDate: null,
     appointmentTime: "",
-    appointmentType: "",
+    // Video call is the default — it needs no address and is what most
+    // consultations are, so the calendar is the first thing on the step.
+    appointmentType: "video-call",
     appointmentLocation: "",
     appointmentNotes: "",
-    meetingLocation: "", // Added meetingLocation field
+
+    // In-person meeting address. Same shape as the client and project
+    // addresses; only filled in when the appointment type is in-person.
+    meetingStreetAddress: "",
+    meetingAptSuiteUnit: "",
+    meetingCity: "",
+    meetingState: "",
+    meetingZipCode: "",
+    meetingCountry: "United States",
 
     // Documents
     propertyBoundarySurveyMap: null,

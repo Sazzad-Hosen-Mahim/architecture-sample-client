@@ -81,6 +81,31 @@ export const siteSettingsApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ["SiteSettings"],
         }),
+
+        // The firm's YouTube channel, linked from the Media Center. An empty
+        // string means none is saved yet.
+        getYoutubeChannel: builder.query<
+            { success: boolean; data: { url: string } },
+            void
+        >({
+            query: () => ({
+                url: "/site-settings/youtube-channel",
+                method: "GET",
+            }),
+            providesTags: ["SiteSettings"],
+        }),
+
+        updateYoutubeChannel: builder.mutation<
+            { success: boolean; data: { url: string } },
+            { url: string }
+        >({
+            query: (body) => ({
+                url: "/site-settings/youtube-channel",
+                method: "PATCH",
+                body,
+            }),
+            invalidatesTags: ["SiteSettings"],
+        }),
     }),
 });
 
@@ -91,4 +116,6 @@ export const {
     useUpdateOfficeHoursMutation,
     useGetMediaQuickTagsQuery,
     useUpdateMediaQuickTagsMutation,
+    useGetYoutubeChannelQuery,
+    useUpdateYoutubeChannelMutation,
 } = siteSettingsApi;

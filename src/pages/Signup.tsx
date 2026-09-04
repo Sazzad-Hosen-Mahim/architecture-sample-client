@@ -9,7 +9,7 @@ import {
   useResendClaimMutation,
 } from "@/redux/api/authApi";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import {
   CountrySelect,
   StateSelect,
@@ -59,6 +59,8 @@ const SignUp = () => {
 
   const [resendClaim, { isLoading: isResending }] = useResendClaimMutation();
   const [resendEmail, setResendEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -327,7 +329,7 @@ const SignUp = () => {
 
           {/* Password */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className="relative">
               <label
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-900 mb-2"
@@ -335,12 +337,24 @@ const SignUp = () => {
                 Password <span className="text-red-500">*</span>
               </label>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 id="password"
                 placeholder="Enter your password"
                 {...register("password")}
-                className={inputClass}
+                className={`${inputClass} pr-10`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeOff size={18} strokeWidth={1.8} />
+                ) : (
+                  <Eye size={18} strokeWidth={1.8} />
+                )}
+              </button>
               {errors.password && (
                 <p className="text-sm text-red-600 mt-1">
                   {errors.password.message}
@@ -349,7 +363,7 @@ const SignUp = () => {
             </div>
 
             {/* Confirm Password */}
-            <div>
+            <div className="relative">
               <label
                 htmlFor="confirmPassword"
                 className="block text-sm font-medium text-gray-900 mb-2"
@@ -357,12 +371,26 @@ const SignUp = () => {
                 Confirm Password <span className="text-red-500">*</span>
               </label>
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 id="confirmPassword"
                 placeholder="Confirm your password"
                 {...register("confirmPassword")}
-                className={inputClass}
+                className={`${inputClass} pr-10`}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={
+                  showConfirmPassword ? "Hide password" : "Show password"
+                }
+                className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={18} strokeWidth={1.8} />
+                ) : (
+                  <Eye size={18} strokeWidth={1.8} />
+                )}
+              </button>
               {errors.confirmPassword && (
                 <p className="text-sm text-red-600 mt-1">
                   {errors.confirmPassword.message}

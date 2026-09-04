@@ -7,12 +7,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGetProjectFinancialDetailsQuery } from "@/redux/api/financialApi";
-import { Loader2, Clock, Users, BarChart3, Info, Download } from "lucide-react";
-import { Fragment, useState } from "react";
+import {
+  Loader2,
+  Clock,
+  Users,
+  BarChart3,
+  Info,
+  Download,
+  CalendarRange,
+  AlertCircle,
+} from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
-import { Loader } from "@/components/ui/loader";
+import { formatCurrency, formatHours, formatPercent } from "@/utils/money";
 
 interface ProjectFinancialDetailsModalProps {
   open: boolean;
@@ -20,20 +29,27 @@ interface ProjectFinancialDetailsModalProps {
   projectId: string;
 }
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
-
 const formatDuration = (seconds: number) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   return `${hrs}h ${mins}m`;
 };
 
-const formatHrs = (hours: number) => `${(Number(hours) || 0).toFixed(1)} hrs`;
+const formatHrs = formatHours;
+
+const formatDate = (value?: string | null) =>
+  value
+    ? new Date(value).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
+
+/** "Totals" reports every year at once; a year narrows the time-based figures. */
+const ALL_YEARS = "all";
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 import { FinancialChart } from "../FinancialChart";
 
@@ -42,9 +58,29 @@ export default function ProjectFinancialDetailsModal({
   onOpenChange,
   projectId,
 }: ProjectFinancialDetailsModalProps) {
-  const { data: details, isLoading } = useGetProjectFinancialDetailsQuery(
-    projectId,
-    { skip: !open },
+  // Which year the burn, cost and labor breakdown are scoped to. Overhead is
+  // booked to the year of the timecard it arrived on, so this is what keeps a
+  // project that runs across New Year readable one year at a time.
+  const [yearFilter, setYearFilter] = useState<string>(ALL_YEARS);
+
+  // A different project starts on its running totals rather than inheriting
+  // the year the last one was left on.
+  useEffect(() => {
+    setYearFilter(ALL_YEARS);
+  }, [projectId]);
+
+  // `currentData` — not `data` — is the card for the project currently asked
+  // for. `data` deliberately holds the last successful result for the whole
+  // endpoint, so reading it flashed the previous project's money for a second
+  // after opening a different one.
+  const {
+    currentData: details,
+    isFetching,
+    isError,
+    error,
+  } = useGetProjectFinancialDetailsQuery(
+    { id: projectId, year: yearFilter === ALL_YEARS ? undefined : Number(yearFilter) },
+    { skip: !open || !projectId },
   );
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
@@ -144,17 +180,51 @@ export default function ProjectFinancialDetailsModal({
     }
   };
 
-  if (isLoading) {
+  // Show the ring while a request is in flight, and whenever there is no card
+  // for this exact project/year yet — never the last project's figures.
+  if (isFetching || (!details && !isError)) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[800px] p-20 flex justify-center bg-white">
-          <Loader fullScreen={false} size={8} />
+        <DialogContent className="sm:max-w-[800px] p-20 bg-white">
+          <div className="flex justify-center items-center py-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+          </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  if (!details) return null;
+  // A failed fetch used to render nothing at all, which made View Detail look
+  // like a dead button. Say what went wrong instead.
+  if (isError || !details) {
+    const message =
+      (error as any)?.data?.message ||
+      "This project's financial details could not be loaded.";
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[520px] bg-white text-black">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-black">
+              <AlertCircle size={18} className="text-red-500" />
+              Financial details unavailable
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 font-medium">{message}</p>
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={() => onOpenChange(false)}
+              className="bg-black cursor-pointer text-white px-8 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-95"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const yearOptions: number[] = details.availableYears || [];
+  const runYears = (details.yearlyBreakdown || []) as any[];
 
   //   const profitMargin =
   //     details.projectCost > 0 ? (details.profit / details.projectCost) * 100 : 0;
@@ -235,7 +305,7 @@ export default function ProjectFinancialDetailsModal({
                       details.projectOverheadAllocation ||
                       0,
                   )}{" "}
-                  · ${details.firmBillingRate}/hr
+                  · {formatCurrency(details.firmBillingRate)}/hr
                 </p>
               </div>
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
@@ -302,6 +372,113 @@ export default function ProjectFinancialDetailsModal({
               )}
             </div>
 
+            {/* Contract split across the years the project runs.
+                The contract is earned over the days the project is actually
+                running, so one that rolls into the next year is shared between
+                them by day count — which is what keeps each year's total on
+                the Financial Dashboard right. */}
+            {runYears.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-emerald-500 pl-3">
+                  Contract Split By Year
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      Start Date
+                    </div>
+                    <div className="text-sm font-black mt-1">
+                      {formatDate(details.projectStartedAt)}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      End Date
+                    </div>
+                    <div className="text-sm font-black mt-1">
+                      {details.projectCompletedAt
+                        ? formatDate(details.projectCompletedAt)
+                        : "In progress"}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      Total Days
+                    </div>
+                    <div className="text-sm font-black mt-1">
+                      {runYears.map((r) => r.days).join("/")}
+                      {runYears.length > 1 && (
+                        <span className="text-gray-400 font-bold">
+                          {" "}
+                          = {details.totalRunDays}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+                  <table className="w-full text-[11px] text-left min-w-[520px]">
+                    <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[9px]">
+                      <tr>
+                        <th className="px-4 py-4">Year</th>
+                        <th className="px-4 py-4">Days</th>
+                        <th className="px-4 py-4">Share</th>
+                        <th className="px-4 py-4">Original Contract</th>
+                        <th className="px-4 py-4">Amendment Contract</th>
+                        <th className="px-4 py-4 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {runYears.map((row) => (
+                        <tr key={row.year} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-4 font-black text-gray-900">
+                            {row.year}
+                          </td>
+                          <td className="px-4 py-4 font-bold text-gray-700">
+                            {row.days}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600 font-bold">
+                            {formatPercent((row.share || 0) * 100)}
+                          </td>
+                          <td className="px-4 py-4 text-blue-600 font-black">
+                            {formatCurrency(row.originalAmount)}
+                          </td>
+                          <td className="px-4 py-4 text-amber-600 font-black">
+                            {formatCurrency(row.amendmentAmount)}
+                          </td>
+                          <td className="px-4 py-4 text-right font-black text-gray-900">
+                            {formatCurrency(row.totalAmount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-900 text-white">
+                      <tr>
+                        <td className="px-4 py-4 font-black uppercase tracking-wider">
+                          Total
+                        </td>
+                        <td className="px-4 py-4 font-black text-gray-100">
+                          {details.totalRunDays}
+                        </td>
+                        <td className="px-4 py-4 font-black text-gray-300">
+                          {formatPercent(100)}
+                        </td>
+                        <td className="px-4 py-4 font-black text-blue-300">
+                          {formatCurrency(details.grossOriginalCost)}
+                        </td>
+                        <td className="px-4 py-4 font-black text-amber-300">
+                          {formatCurrency(details.totalAmendmentAmount)}
+                        </td>
+                        <td className="px-4 py-4 text-right font-black text-gray-100">
+                          {formatCurrency(details.grossProjectCost)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Phases Section */}
             <div className="space-y-4">
               <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
@@ -314,8 +491,8 @@ export default function ProjectFinancialDetailsModal({
                       <th className="px-4 py-4">Phase Name</th>
                       <th className="px-4 py-4">Contract Fee</th>
                       <th className="px-4 py-4">Billable Hrs</th>
-                      <th className="px-4 py-4">Non-Billable Hrs</th>
                       <th className="px-4 py-4">Labor Burned</th>
+                      <th className="px-4 py-4">Non-Billable Hrs</th>
                       <th className="px-4 py-4">Overhead Burned</th>
                       <th className="px-4 py-4 text-right">Profit / Margin</th>
                     </tr>
@@ -364,11 +541,11 @@ export default function ProjectFinancialDetailsModal({
                               <td className="px-4 py-4 font-bold text-gray-900">
                                 {formatHrs(phase.billableHours)}
                               </td>
-                              <td className="px-4 py-4 text-gray-600">
-                                {formatHrs(phase.nonBillableHours)}
-                              </td>
                               <td className="px-4 py-4 font-bold text-gray-700">
                                 {formatCurrency(phase.laborBurned)}
+                              </td>
+                              <td className="px-4 py-4 text-gray-600">
+                                {formatHrs(phase.nonBillableHours)}
                               </td>
                               <td className="px-4 py-4 text-gray-600">
                                 {formatCurrency(phase.overheadBurned)}
@@ -380,7 +557,7 @@ export default function ProjectFinancialDetailsModal({
                                   {formatCurrency(phase.profit)}
                                 </div>
                                 <div className="text-[9px] font-bold text-gray-400 uppercase">
-                                  {(phase.profitMargin || 0).toFixed(1)}% Margin
+                                  {formatPercent(phase.profitMargin)} Margin
                                 </div>
                               </td>
                             </tr>
@@ -399,26 +576,27 @@ export default function ProjectFinancialDetailsModal({
                           <div className="text-[9px] text-gray-400 font-bold mt-0.5">
                             {(details.grandTotals.amendmentBillableHours || 0) >
                               0 ||
-                            (details.grandTotals.amendmentNonBillableHours || 0) >
-                              0 ? (
+                            (details.grandTotals.amendmentNonBillableHours ||
+                              0) > 0 ? (
                               <>
                                 {(
                                   details.grandTotals.originalBillableHours || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 orig +{" "}
                                 {(
-                                  details.grandTotals.amendmentBillableHours || 0
-                                ).toFixed(1)}{" "}
+                                  details.grandTotals.amendmentBillableHours ||
+                                  0
+                                ).toFixed(2)}{" "}
                                 amend. billable ·{" "}
                                 {(
-                                  details.grandTotals.originalNonBillableHours ||
-                                  0
-                                ).toFixed(1)}{" "}
+                                  details.grandTotals
+                                    .originalNonBillableHours || 0
+                                ).toFixed(2)}{" "}
                                 orig +{" "}
                                 {(
                                   details.grandTotals
                                     .amendmentNonBillableHours || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 amend. non-billable
                               </>
                             ) : (
@@ -427,11 +605,11 @@ export default function ProjectFinancialDetailsModal({
                                   details.grandTotals.billableHours ||
                                   details.grandTotals.actualHours ||
                                   0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 billable hrs /{" "}
                                 {(
                                   details.grandTotals.nonBillableHours || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 non-billable hrs
                               </>
                             )}
@@ -468,8 +646,7 @@ export default function ProjectFinancialDetailsModal({
                             {formatCurrency(details.grandTotals.profit)}
                           </div>
                           <div className="text-[9px] font-bold text-gray-400 uppercase">
-                            {(details.grandTotals.profitMargin || 0).toFixed(1)}
-                            % Margin
+                            {formatPercent(details.grandTotals.profitMargin)} Margin
                           </div>
                         </td>
                       </tr>
@@ -481,9 +658,43 @@ export default function ProjectFinancialDetailsModal({
 
             {/* Employee Labor Breakdown */}
             <div className="space-y-4">
-              <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-black pl-3">
-                Direct Labor Breakdown
-              </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-black pl-3">
+                  Direct Labor Breakdown
+                </h4>
+                {/* Overhead is booked to the year of the timecard it arrived
+                    on, so this keeps a project that runs across New Year
+                    readable one year at a time. */}
+                <div
+                  className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-2 rounded-xl no-pdf"
+                  data-html2canvas-ignore="true"
+                >
+                  <CalendarRange size={14} className="text-gray-400" />
+                  <select
+                    className="text-xs bg-transparent outline-none font-bold text-gray-700 cursor-pointer"
+                    value={yearFilter}
+                    onChange={(e) => setYearFilter(e.target.value)}
+                  >
+                    <option value={ALL_YEARS}>Total(s)</option>
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                        {y === CURRENT_YEAR
+                          ? " (Current Year)"
+                          : y === CURRENT_YEAR - 1
+                            ? " (Previous Year)"
+                            : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {yearFilter !== ALL_YEARS && (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                  Showing hours and cost from timecards submitted in {yearFilter}
+                  . Contract figures above cover the whole project.
+                </p>
+              )}
               <div className="border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
                 <table className="w-full text-xs text-left min-w-[720px]">
                   <thead className="bg-gray-50 text-gray-400 uppercase tracking-wider font-black text-[10px]">
@@ -573,22 +784,22 @@ export default function ProjectFinancialDetailsModal({
                                 {(
                                   details.laborBreakdownTotals
                                     .billableHoursOriginal || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 orig +{" "}
                                 {(
                                   details.laborBreakdownTotals
                                     .billableHoursAmendment || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 amend. billable ·{" "}
                                 {(
                                   details.laborBreakdownTotals
                                     .nonBillableHoursOriginal || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 orig +{" "}
                                 {(
                                   details.laborBreakdownTotals
                                     .nonBillableHoursAmendment || 0
-                                ).toFixed(1)}{" "}
+                                ).toFixed(2)}{" "}
                                 amend. non-billable
                               </div>
                             ) : null}
@@ -750,11 +961,12 @@ export default function ProjectFinancialDetailsModal({
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-900">
               <Info size={16} className="text-blue-500" />
-              <p className="text-[10px] font-black uppercase tracking-wider leading-none">
-                Overhead is calculated as Firm Billing Rate ($
-                {details.firmBillingRate}/hr) × Non-Billable Hours (
-                {details.totalProjectNonBillableHours?.toFixed(1) || 0} hrs)
-                from timecards.
+              <p className="text-[10px] font-black uppercase tracking-wider leading-relaxed">
+                Overhead burned is each timecard's locked billing rate (currently{" "}
+                {formatCurrency(details.firmBillingRate)}/hr) × its non-billable
+                hours ({formatHours(details.totalProjectNonBillableHours)} in
+                total). A rate change only applies to timecards approved after
+                it.
               </p>
             </div>
           </div>

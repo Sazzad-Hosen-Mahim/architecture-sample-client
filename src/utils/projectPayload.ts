@@ -56,6 +56,8 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
   const projectCategoryKey = (formData.projectType ||
     "residential") as ProjectCategoryKey;
 
+  const isInPerson = formData.appointmentType === "in-person";
+
   // Use the maps with type safety
   const serviceType = serviceTypeMap[serviceTypeKey] || "NEW_CONSTRUCTION";
   const projectCategory =
@@ -111,17 +113,30 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
     sustainabilityGoals: formData.sustainabilityGoals || undefined,
     specialRequirements: formData.specialRequirements || undefined,
 
-    appointmentDate: formData.appointmentDate || "",
-    appointmentTime: formData.appointmentTime || "",
+    // The two appointment types carry different things: a video call books a
+    // slot, an in-person visit sends the address for the studio to arrange
+    // around. Sending the other one's fields would only write data the user
+    // never confirmed.
+    appointmentDate: isInPerson
+      ? undefined
+      : formData.appointmentDate || undefined,
+    appointmentTime: isInPerson
+      ? undefined
+      : formData.appointmentTime || undefined,
     appointmentType:
       appointmentTypeMap[formData.appointmentType] ||
       formData.appointmentType ||
       "",
-    // Only in-person appointments have a location to send
-    meetingLocation:
-      formData.appointmentType === "in-person"
-        ? formData.meetingLocation || undefined
-        : undefined,
+    ...(isInPerson
+      ? {
+          meetingStreetAddress: formData.meetingStreetAddress || undefined,
+          meetingAptSuiteUnit: formData.meetingAptSuiteUnit || undefined,
+          meetingCity: formData.meetingCity || undefined,
+          meetingState: formData.meetingState || undefined,
+          meetingZipCode: formData.meetingZipCode || undefined,
+          meetingCountry: formData.meetingCountry || undefined,
+        }
+      : {}),
     additionalNotes: formData.appointmentNotes || undefined,
 
     files: [

@@ -53,6 +53,8 @@ export default function ProjectTabForm({
   handleBack,
   id,
 }: ProjectFormProps) {
+  const sameAsMailing = projectInfo.sameAsMailingAddress;
+
   const [submitNewProposal, { isLoading: isCreating }] =
     useSubmitNewProposalMutation();
   const [updateProposalDetails, { isLoading: isUpdating }] =
@@ -274,6 +276,9 @@ export default function ProjectTabForm({
           </div>
         </div>
 
+        {/* While "same as mailing address" is ticked the project address is
+            mirrored from the client's, so these are read-only — editing them
+            would be overwritten on the next sync. */}
         <div className="mt-4">
           <Label htmlFor="streetAddress" className="mb-3">
             Street Address
@@ -281,6 +286,7 @@ export default function ProjectTabForm({
           <Input
             id="streetAddress"
             value={projectInfo.streetAddress}
+            disabled={sameAsMailing}
             onChange={(e) =>
               handleProjectInfoChange("streetAddress", e.target.value)
             }
@@ -294,6 +300,7 @@ export default function ProjectTabForm({
             <CountrySelect
               id="projectCountry"
               value={projectInfo.country}
+              disabled={sameAsMailing}
               onChange={(value) => {
                 handleProjectInfoChange("country", value);
                 handleProjectInfoChange("state", "");
@@ -308,6 +315,7 @@ export default function ProjectTabForm({
               id="projectState"
               country={projectInfo.country}
               value={projectInfo.state}
+              disabled={sameAsMailing}
               onChange={(value) => {
                 handleProjectInfoChange("state", value);
                 handleProjectInfoChange("city", "");
@@ -322,6 +330,7 @@ export default function ProjectTabForm({
               country={projectInfo.country}
               state={projectInfo.state}
               value={projectInfo.city}
+              disabled={sameAsMailing}
               onChange={(value) => handleProjectInfoChange("city", value)}
             />
           </div>
@@ -331,6 +340,7 @@ export default function ProjectTabForm({
             <Input
               id="projectZip"
               value={projectInfo.zip}
+              disabled={sameAsMailing}
               onChange={(e) => handleProjectInfoChange("zip", e.target.value)}
               placeholder="Enter zip / postal code"
             />

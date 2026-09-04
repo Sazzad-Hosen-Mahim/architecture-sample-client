@@ -14,6 +14,24 @@ import AvatarMenu, {
 // import { logout } from "@/redux/Slices/AuthSlice/authSlice";
 import { LayoutDashboard, Settings, LogOut } from "lucide-react";
 
+/**
+ * Top-level destinations. Every one of these is one tap away in the floating
+ * menu, so "Back" has nothing useful to offer on them — it would only ever
+ * bounce the visitor out of the section they just chose. Sub-pages beneath
+ * them (`/world-project/:id`, `/newsFeed/:id`, …) still get the button, and so
+ * does the client dashboard, which is reached from the avatar menu rather than
+ * the floating one.
+ */
+const MAIN_PAGES = new Set([
+  "/",
+  "/world-project",
+  "/portfolio",
+  "/new-project",
+  "/newsFeed",
+  "/about",
+  "/contact",
+]);
+
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -21,9 +39,11 @@ const Navbar: React.FC = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);
 
-  // never showing back button in home page
+  // Back is for sub-pages only — see MAIN_PAGES. Trailing slashes are trimmed
+  // so "/portfolio/" is recognised as the same top-level page as "/portfolio".
   const location = useLocation();
-  const isHomePage = location.pathname === "/";
+  const currentPath = location.pathname.replace(/\/+$/, "") || "/";
+  const isMainPage = MAIN_PAGES.has(currentPath);
 
   // const toggleMenu = () => {
   //   setIsOpen(!isOpen);
@@ -71,11 +91,11 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-[#ffffff]  sticky top-0 z-50 border-b border-gray-200">
+    <nav className="bg-white sticky top-0 z-50 border-b border-gray-200">
       <div className=" mx-auto px-4 lg:px-16">
         <div className="grid grid-cols-3 items-center h-16">
           {/* Logo */}
-          <div className="">{!isHomePage && <Backbutton />}</div>
+          <div className="">{!isMainPage && <Backbutton />}</div>
           <div className="flex justify-center">
             <Link to="/" className="text-black text-2xl">
               <div className="flex items-center gap-2">
@@ -97,7 +117,7 @@ const Navbar: React.FC = () => {
               <>
                 <Button
                   onClick={() => navigate("/login")}
-                  className="bg-black text-white hover:bg-gray-800 w-fit cursor-pointer rounded-lg text-xs"
+                  className=" text-black border-2 hover:bg-black transition-all hover:text-white w-fit cursor-pointer rounded-lg text-xs"
                 >
                   Login
                 </Button>
@@ -108,12 +128,14 @@ const Navbar: React.FC = () => {
           {/* Mobile Menu Button & Avatar */}
           <div className="md:hidden flex items-center gap-3 justify-end">
             {user && <NotificationPopover />}
-            {user && <AvatarMenu actions={avatarActions} avatarClassName="h-8 w-8" />}
+            {user && (
+              <AvatarMenu actions={avatarActions} avatarClassName="h-8 w-8" />
+            )}
 
             {!user && (
               <Button
                 onClick={() => navigate("/login")}
-                className="bg-black text-white hover:bg-gray-800 w-fit cursor-pointer rounded-lg text-xs"
+                className=" text-black border-2 hover:bg-black transition-all hover:text-white w-fit cursor-pointer rounded-lg text-xs"
               >
                 Login
               </Button>

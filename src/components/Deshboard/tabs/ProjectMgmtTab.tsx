@@ -1,5 +1,4 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { toExternalUrl } from "@/utils/externalUrl";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import {
@@ -17,8 +16,6 @@ import {
   Loader2,
   CheckCircle2,
   Circle,
-  ExternalLink,
-  LinkIcon,
   ChevronDown,
   ChevronRight,
   FolderOpen,
@@ -225,15 +222,6 @@ function ProposalStages({
   const [addStageNote, { isLoading: isAddingNote }] = useAddStageNoteMutation();
 
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
-  const [driveLinkInputs, setDriveLinkInputs] = useState<
-    Record<string, string>
-  >({});
-  const [showDriveLinkInput, setShowDriveLinkInput] = useState<
-    Record<string, boolean>
-  >({});
-  const [editingDriveLink, setEditingDriveLink] = useState<
-    Record<string, boolean>
-  >({});
   const [showNotesInput, setShowNotesInput] = useState<Record<string, boolean>>(
     {},
   );
@@ -294,39 +282,6 @@ function ProposalStages({
       setSelectedStages(new Set());
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to complete some stages");
-    }
-  };
-
-  const handleSaveDriveLink = async (stageId: string) => {
-    const link = driveLinkInputs[stageId]?.trim();
-    if (!link) {
-      toast.error("Please enter a Google Drive link");
-      return;
-    }
-
-    try {
-      await updateStage({ id: stageId, driveLink: link }).unwrap();
-      toast.success("Google Drive link saved!");
-      setShowDriveLinkInput((prev) => ({ ...prev, [stageId]: false }));
-      setEditingDriveLink((prev) => ({ ...prev, [stageId]: false }));
-      setDriveLinkInputs((prev) => ({ ...prev, [stageId]: "" }));
-    } catch (error: any) {
-      toast.error(error?.data?.message || "Failed to save Google Drive link");
-    }
-  };
-
-  const handleEditDriveLink = (stageId: string, currentLink: string) => {
-    setDriveLinkInputs((prev) => ({ ...prev, [stageId]: currentLink }));
-    setEditingDriveLink((prev) => ({ ...prev, [stageId]: true }));
-    setShowDriveLinkInput((prev) => ({ ...prev, [stageId]: true }));
-  };
-
-  const handleDeleteDriveLink = async (stageId: string) => {
-    try {
-      await updateStage({ id: stageId, driveLink: "" }).unwrap();
-      toast.success("Google Drive link removed!");
-    } catch (error: any) {
-      toast.error(error?.data?.message || "Failed to remove Google Drive link");
     }
   };
 
@@ -401,8 +356,6 @@ function ProposalStages({
         stages.map((stage: any) => {
           const isCompleted = stage.status === "COMPLETED";
           const isSelected = selectedStages.has(stage.id);
-          const showLink = showDriveLinkInput[stage.id];
-          const isEditing = editingDriveLink[stage.id];
           const activeDeadlineInput = showDeadlineInput[stage.id];
 
           return (
@@ -771,99 +724,6 @@ function ProposalStages({
                     </span>
                   </div>
 
-                  {/* Drive Link - display with edit/delete */}
-                  {stage.driveLink && !isEditing && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <a
-                        href={toExternalUrl(stage.driveLink) ?? undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium truncate"
-                      >
-                        <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                        View Deliverables on Google Drive
-                      </a>
-                      {!readOnly && (
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() =>
-                              handleEditDriveLink(stage.id, stage.driveLink)
-                            }
-                            className="inline-flex cursor-pointer items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                          >
-                            <Pencil className="w-2.5 h-2.5" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDriveLink(stage.id)}
-                            disabled={isUpdating}
-                            className="inline-flex cursor-pointer items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Drive Link Input - Add new */}
-                  {!stage.driveLink && !showLink && !readOnly && (
-                    <button
-                      onClick={() =>
-                        setShowDriveLinkInput((prev) => ({
-                          ...prev,
-                          [stage.id]: true,
-                        }))
-                      }
-                      className="inline-flex cursor-pointer items-center gap-1 mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <LinkIcon className="w-3 h-3" />
-                      Add Project Drive Link
-                    </button>
-                  )}
-
-                  {showLink && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="url"
-                        value={driveLinkInputs[stage.id] || ""}
-                        onChange={(e) =>
-                          setDriveLinkInputs((prev) => ({
-                            ...prev,
-                            [stage.id]: e.target.value,
-                          }))
-                        }
-                        placeholder="https://drive.google.com/..."
-                        className="flex-1 px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                      <button
-                        onClick={() => handleSaveDriveLink(stage.id)}
-                        disabled={isUpdating}
-                        className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {isUpdating ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          "Save"
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowDriveLinkInput((prev) => ({
-                            ...prev,
-                            [stage.id]: false,
-                          }));
-                          setEditingDriveLink((prev) => ({
-                            ...prev,
-                            [stage.id]: false,
-                          }));
-                        }}
-                        className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

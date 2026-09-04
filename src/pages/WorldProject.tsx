@@ -423,7 +423,9 @@ function WorldProject() {
                 </label>
 
                 <label className="block">
-                  <span className="text-xs font-medium text-gray-500">Year</span>
+                  <span className="text-xs font-medium text-gray-500">
+                    Year
+                  </span>
                   <select
                     className="mt-1 w-full border border-gray-400 rounded-lg px-2 py-1.5 text-sm bg-white"
                     onChange={(e) => setYearFilter(e.target.value)}
@@ -475,7 +477,9 @@ function WorldProject() {
                 </label>
 
                 <div>
-                  <span className="text-xs font-medium text-gray-500">Tags</span>
+                  <span className="text-xs font-medium text-gray-500">
+                    Tags
+                  </span>
                   <div className="mt-1 max-h-40 overflow-y-auto space-y-1.5 border border-gray-200 rounded-lg p-2">
                     {availableTags.length === 0 ? (
                       <p className="text-xs text-gray-400">No tags available</p>
@@ -626,7 +630,7 @@ function WorldProject() {
                     <span className="font-semibold">Description:</span>{" "}
                     {project.description}
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  {/* <div className="flex flex-wrap gap-2 mt-2">
                     {project.tags?.map((tag: string) => (
                       <button
                         key={tag}
@@ -635,7 +639,7 @@ function WorldProject() {
                         {tag}
                       </button>
                     ))}
-                  </div>
+                  </div> */}
 
                   {/* <div className="mt-4">
                     <button

@@ -969,11 +969,19 @@ export default function CreateNewMedia() {
         <div className="space-y-4">
           {/* Common Fields */}
           <div>
+            {/* A portfolio or world-project entry is a project, so this is its
+                project name — which is what the placeholder has always said.
+                Only a newsfeed item has a "Title". */}
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Title <span className="text-red-500">*</span>
+              {activeTab === "newsfeed" ? "Title" : "Project Name"}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <Input
-              placeholder="Enter Project Name"
+              placeholder={
+                activeTab === "newsfeed"
+                  ? "Enter the headline"
+                  : "Enter Project Name"
+              }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="border-gray-300"

@@ -74,7 +74,7 @@ export interface ProjectRequest {
     projectStartedAt?: string | null;
     projectCompletedAt?: string | null;
     totalDurationMonths?: number | null;
-    stages?: { id: string; name: string; status: string; progress: number; driveLink: string | null; completedAt: string | null }[];
+    stages?: { id: string; name: string; status: string; progress: number; completedAt: string | null }[];
 }
 
 export interface Team {
@@ -406,7 +406,7 @@ export const proposalApi = baseApi.injectEndpoints({
             invalidatesTags: ["Project"],
         }),
 
-        updateStage: builder.mutation<any, { id: string; driveLink?: string; notes?: string; internalDeadline?: string | null; externalDeadline?: string | null }>({
+        updateStage: builder.mutation<any, { id: string; notes?: string; internalDeadline?: string | null; externalDeadline?: string | null }>({
             query: ({ id, ...body }) => ({
                 url: `/project-stages/${id}`,
                 method: "PATCH",

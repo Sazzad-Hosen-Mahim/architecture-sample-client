@@ -92,13 +92,25 @@ export default function ReviewConfirmSection({
   const { data: consultationFeeData } = useGetConsultationFeeQuery();
   const [, setError] = useState<string | null>(null);
   console.log("formData in ReviewConfirmSection:", formData);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  // "none" is the resting state, not an empty placeholder — it selects nothing
+  // to pay with and is what the form submits unless the client picks Stripe.
+  const [paymentMethod, setPaymentMethod] = useState(
+    formData.paymentMethod || "none",
+  );
   const [clientSecret, setClientSecret] = useState("");
   const [paymentIntentId, setPaymentIntentId] = useState("");
   const [paymentDetails, setPaymentDetails] = useState<any>({
-    paymentMethod: "",
+    paymentMethod: formData.paymentMethod || "none",
     amount: consultationFeeData?.data?.feeUsd ?? 0,
   });
+
+  // Carry that default up to the wizard so the parent's form state matches
+  // what the dropdown is showing from the first render.
+  useEffect(() => {
+    if (!formData.paymentMethod) updateFormData({ paymentMethod: "none" });
+    // Mount only — a later clear is the user's doing, not ours to undo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (consultationFeeData?.data?.feeUsd !== undefined) {
@@ -319,26 +331,46 @@ export default function ReviewConfirmSection({
           <h2 className="text-xl font-bold mb-6">Appointment Details</h2>
           <div className="space-y-4">
             <p className="text-base">
-              <span className="font-medium">Date:</span>{" "}
-              {formData.appointmentDate
-                ? new Date(formData.appointmentDate).toDateString()
-                : "Not set"}
-            </p>
-            <p className="text-base">
-              <span className="font-medium">Time:</span>{" "}
-              {formData.appointmentTime}
-            </p>
-            <p className="text-base">
               <span className="font-medium">Appointment Type:</span>{" "}
               {appointmentTypeLabels[formData.appointmentType] ||
                 formData.appointmentType ||
                 "Not set"}
             </p>
-            {formData.appointmentType === "in-person" && (
-              <p className="text-base">
-                <span className="font-medium">Location:</span>{" "}
-                {formData.meetingLocation || "N/A"}
-              </p>
+            {/* Only one of these applies: a video call has a booked slot, an
+                in-person visit has an address and gets its time confirmed by
+                email afterwards. */}
+            {formData.appointmentType === "in-person" ? (
+              <>
+                <p className="text-base">
+                  <span className="font-medium">Location:</span>{" "}
+                  {[
+                    formData.meetingStreetAddress,
+                    formData.meetingAptSuiteUnit,
+                    formData.meetingCity,
+                    formData.meetingState,
+                    formData.meetingZipCode,
+                    formData.meetingCountry,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "N/A"}
+                </p>
+                <p className="text-base text-gray-500">
+                  We'll confirm a day and time with you by email.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base">
+                  <span className="font-medium">Date:</span>{" "}
+                  {formData.appointmentDate
+                    ? new Date(formData.appointmentDate).toDateString()
+                    : "Not set"}
+                </p>
+                <p className="text-base">
+                  <span className="font-medium">Time:</span>{" "}
+                  {formData.appointmentTime || "Not set"}
+                </p>
+              </>
             )}
             <p className="text-base">
               <span className="font-medium">Additional Notes:</span>{" "}
@@ -391,6 +423,12 @@ export default function ReviewConfirmSection({
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
+                  <SelectItem
+                    value="none"
+                    className="hover:bg-gray-700 hover:text-white cursor-pointer"
+                  >
+                    None
+                  </SelectItem>
                   <SelectItem
                     value="stripe"
                     className="hover:bg-gray-700 hover:text-white cursor-pointer"

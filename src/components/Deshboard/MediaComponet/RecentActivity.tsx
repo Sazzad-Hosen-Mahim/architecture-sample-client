@@ -2,8 +2,14 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Play, MoreVertical, Globe, Pencil, Trash2, Archive, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, MoreVertical, Globe, Pencil, Trash2, Archive, RotateCcw, ChevronLeft, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
 import { useGetAllMediaAdminQuery, useUpdateMediaMutation, useDeleteMediaMutation } from "@/redux/features/Media/mediaApi";
+import {
+  useGetYoutubeChannelQuery,
+  useUpdateYoutubeChannelMutation,
+} from "@/redux/api/adminDashboard/siteSettingsApi";
+import { Input } from "@/components/ui/input";
+import { toExternalUrl } from "@/utils/externalUrl";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -37,6 +43,26 @@ export default function RecentActivity() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // ─── YouTube channel link ───
+  const { data: channelData } = useGetYoutubeChannelQuery();
+  const [updateYoutubeChannel, { isLoading: isSavingChannel }] =
+    useUpdateYoutubeChannelMutation();
+  const savedChannelUrl = channelData?.data?.url || "";
+  const [isEditingChannel, setIsEditingChannel] = useState(false);
+  const [channelInput, setChannelInput] = useState("");
+
+  /** Passing "" clears the saved channel and puts the Connect button back. */
+  const handleSaveChannel = async (override?: string) => {
+    const url = (override ?? channelInput).trim();
+    try {
+      await updateYoutubeChannel({ url }).unwrap();
+      toast.success(url ? "Channel link saved" : "Channel link removed");
+      setIsEditingChannel(false);
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Could not save the channel link");
+    }
+  };
 
   // The list grows without bound, so it is paged and the page itself scrolls
   // inside the card rather than stretching the column down the screen.
@@ -229,24 +255,104 @@ export default function RecentActivity() {
         )}
 
         <div className="space-y-4">
-          {/* YouTube Channel Section (Placeholder for now) */}
+          {/* YouTube Channel. Save a link and the Connect button becomes a
+              "Go to Channel" button that opens it. */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-600 text-sm">
                 YouTube Channel
               </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs border-gray-300 text-gray-700 bg-transparent cursor-pointer"
-              >
-                Connect
-              </Button>
+              {savedChannelUrl && !isEditingChannel ? (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={toExternalUrl(savedChannelUrl) ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Go to Channel
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChannelInput(savedChannelUrl);
+                      setIsEditingChannel(true);
+                    }}
+                    title="Change channel link"
+                    className="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setChannelInput(savedChannelUrl);
+                    setIsEditingChannel(true);
+                  }}
+                  className="text-xs border-gray-300 text-gray-700 bg-transparent cursor-pointer"
+                >
+                  Connect
+                </Button>
+              )}
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <p className="text-xs text-gray-500">YouTube integration coming soon</p>
-            </div>
+            {isEditingChannel ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={channelInput}
+                    onChange={(e) => setChannelInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSaveChannel();
+                      }
+                    }}
+                    placeholder="https://youtube.com/@yourchannel"
+                    className="flex-1 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveChannel()}
+                    disabled={isSavingChannel}
+                    className="text-xs bg-gray-900 text-white hover:bg-black cursor-pointer"
+                  >
+                    {isSavingChannel ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingChannel(false)}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-2 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {savedChannelUrl && (
+                  <button
+                    type="button"
+                    onClick={() => handleSaveChannel("")}
+                    disabled={isSavingChannel}
+                    className="text-xs text-red-500 hover:text-red-700 cursor-pointer"
+                  >
+                    Remove saved channel
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-xs text-gray-500 break-all">
+                  {savedChannelUrl || "No channel linked yet."}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

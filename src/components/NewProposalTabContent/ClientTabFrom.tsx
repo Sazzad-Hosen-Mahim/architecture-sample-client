@@ -37,15 +37,18 @@ export default function ClientTabFrom({
 }: ClientFormProps) {
   return (
     <div className="bg-white  ">
-      <h2 className="text-sm font-semibold mb-6 border-l-4 border-gray-800 pl-3">
-        Client Information
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-base font-semibold mb-6 border-l-4 border-gray-800 pl-3">
+          Client Information
+        </h2>
+        <p className="text-sm text-red-500 mb-3">* indicates required field</p>
+      </div>
 
       {/* Name */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-3">
         <div>
           <Label htmlFor="firstName" className="mb-3">
-            First Name
+            First Name <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Input
             id="firstName"
@@ -57,7 +60,7 @@ export default function ClientTabFrom({
         </div>
         <div>
           <Label htmlFor="lastName" className="mb-3">
-            Last Name
+            Last Name <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Input
             id="lastName"
@@ -85,7 +88,7 @@ export default function ClientTabFrom({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-3">
         <div>
           <Label htmlFor="email" className="mb-3">
-            Email
+            Email <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Input
             id="email"
@@ -96,7 +99,7 @@ export default function ClientTabFrom({
         </div>
         <div>
           <Label htmlFor="phone" className="mb-3">
-            Phone
+            Phone <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Input
             id="phone"
@@ -110,7 +113,7 @@ export default function ClientTabFrom({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div>
           <Label htmlFor="address" className="mb-3">
-            Street Address
+            Street Address <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Input
             id="address"
@@ -133,7 +136,9 @@ export default function ClientTabFrom({
       {/* Location */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="country">Country</Label>
+          <Label htmlFor="country">
+            Country <span className="text-red-500 font-semibold">*</span>
+          </Label>
           <CountrySelect
             id="country"
             value={clientInfo.country}
@@ -147,7 +152,9 @@ export default function ClientTabFrom({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="state">State</Label>
+          <Label htmlFor="state">
+            State <span className="text-red-500 font-semibold">*</span>
+          </Label>
           <StateSelect
             id="state"
             country={clientInfo.country}
@@ -160,7 +167,9 @@ export default function ClientTabFrom({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="city">City</Label>
+          <Label htmlFor="city">
+            City <span className="text-red-500 font-semibold">*</span>
+          </Label>
           <CitySelect
             id="city"
             country={clientInfo.country}
@@ -171,7 +180,9 @@ export default function ClientTabFrom({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="zip">Zip Code</Label>
+          <Label htmlFor="zip">
+            Zip Code <span className="text-red-500 font-semibold">*</span>
+          </Label>
           <Input
             id="zip"
             value={clientInfo.zip}

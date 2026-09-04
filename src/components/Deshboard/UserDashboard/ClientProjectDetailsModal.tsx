@@ -18,7 +18,6 @@ import RefundPhaseSelectModal, {
   RefundablePhase,
 } from "./RefundPhaseSelectModal";
 import { useSearchParams } from "react-router-dom";
-import { useGetAttachmentsQuery } from "@/redux/api/adminDashboard/attachmentApi";
 import ContractReviewModal from "@/components/Deshboard/ContractReviewModal";
 
 import ClientProjectInfoTab from "./tabs/ClientProjectInfoTab";
@@ -107,9 +106,7 @@ export default function ClientProjectDetailsModal({
     return ids;
   }, [myRefunds, initialProject?.id]);
 
-  const { data: attachments } = useGetAttachmentsQuery(initialProject?.id, {
-    skip: !isOpen || !initialProject?.id,
-  });
+  // The Documents tab fetches the shared folder itself now.
 
   const [createCheckout, { isLoading: isCreatingCheckout }] =
     useCreateCheckoutSessionMutation();
@@ -289,7 +286,14 @@ export default function ClientProjectDetailsModal({
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200">
-        <div className="bg-white md:rounded-2xl w-full max-w-full md:max-w-6xl max-h-[100vh] md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        {/* `max-h-full`, not `100vh`: on iOS `vh` is the *toolbar-hidden*
+            height, so a full-bleed 100vh panel is taller than what's actually
+            visible. Centred inside the overlay it then hung off both ends —
+            the header's top padding scrolled out of view and "Close View" sat
+            under the Safari toolbar. The overlay is `fixed`, so it already
+            tracks the visible viewport; sizing against it keeps both ends in
+            frame. */}
+        <div className="bg-white md:rounded-2xl w-full max-w-full max-h-full md:max-w-6xl md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
           {/* Header */}
           <div className="px-6 pt-5 border-b border-gray-100 bg-white">
             <div className="flex items-start justify-between">
@@ -387,7 +391,6 @@ export default function ClientProjectDetailsModal({
             {activeTab === "attachments" && (
               <ClientAttachmentsTab
                 project={project}
-                attachments={attachments}
                 paymentInfo={paymentInfo}
                 onGoToPayments={() => setActiveTab("contracts")}
               />

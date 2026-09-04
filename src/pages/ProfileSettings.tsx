@@ -451,8 +451,11 @@ export function ProfileSettings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Name row: First / MI / Last */}
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_1fr] gap-4">
+                    {/* Name row. The middle column is narrower than the other
+                        two but still has to fit its own label — at 80px
+                        "Middle Name" wrapped onto a second line, which pushed
+                        its input below the ones either side of it. */}
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_1fr] gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
                         <Input
@@ -464,13 +467,15 @@ export function ProfileSettings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="middleInitial">Middle Name</Label>
+                        <Label htmlFor="middleInitial" className="whitespace-nowrap">
+                          Middle Name
+                        </Label>
                         <Input
                           id="middleInitial"
                           name="middleInitial"
                           value={profileData.middleInitial}
                           onChange={handleProfileChange}
-                          maxLength={4}
+                          placeholder="Middle name"
                         />
                       </div>
                       <div className="space-y-2">

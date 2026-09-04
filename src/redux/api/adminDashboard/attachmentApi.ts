@@ -1,10 +1,18 @@
 import { baseApi } from "../baseApi";
 
+/**
+ * Which half of the shared project folder a link sits in. Both sides see every
+ * link; each side may only edit and delete its own. The server sets this from
+ * the creator's role, so it is never sent on create.
+ */
+export type AttachmentSide = "ARCHITECT" | "CLIENT";
+
 export interface ProjectAttachment {
     id: string;
     projectRequestId: string;
     title: string;
     url: string;
+    ownerSide: AttachmentSide;
     createdById: string;
     createdBy?: { id: string; name: string | null; email: string };
     createdAt: string;

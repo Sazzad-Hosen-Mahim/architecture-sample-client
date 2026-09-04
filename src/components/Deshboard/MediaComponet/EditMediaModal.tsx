@@ -353,7 +353,14 @@ export default function EditMediaModal({
 
               {/* ===== Form Fields ===== */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                {/* A portfolio or world-project entry is a project, so its
+                    title is its project name. News keeps "Title". */}
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {media?.contentType === "PORTFOLIO" ||
+                  media?.contentType === "WORLD_PROJECT"
+                    ? "Project Name"
+                    : "Title"}
+                </label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
 

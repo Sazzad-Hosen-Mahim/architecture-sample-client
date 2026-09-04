@@ -183,7 +183,10 @@ export function ProjectManagementTab() {
   }, [deepLink]);
 
   // Helper functions
-  const formatDate = useCallback((dateString: string) => {
+  // In-person requests carry no appointment date — the studio arranges those
+  // after review — so an absent value is normal, not an error.
+  const formatDate = useCallback((dateString?: string | null) => {
+    if (!dateString) return "—";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",

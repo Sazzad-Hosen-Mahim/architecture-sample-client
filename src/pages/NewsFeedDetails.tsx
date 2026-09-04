@@ -9,10 +9,15 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
+import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 
 const NewsFeedDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const { data: response, isLoading, error } = useGetMediaByIdOrSlugQuery(id || "");
+  const {
+    data: response,
+    isLoading,
+    error,
+  } = useGetMediaByIdOrSlugQuery(id || "");
 
   const article = response?.data;
 
@@ -35,16 +40,18 @@ const NewsFeedDetails = () => {
           Back to News Feed
         </Link> */}
         <p className="text-gray-500">
-          {error ? (error as any)?.data?.message || "Error loading article." : "Article not found."}
+          {error
+            ? (error as any)?.data?.message || "Error loading article."
+            : "Article not found."}
         </p>
       </div>
     );
   }
 
   // All uploaded images, in order; fall back to the cover image / placeholder.
-  const images: string[] = (
-    article.assets?.map((a: any) => a.cdnUrl).filter(Boolean) ?? []
-  ) as string[];
+  const images: string[] = (article.assets
+    ?.map((a: any) => a.cdnUrl)
+    .filter(Boolean) ?? []) as string[];
   if (images.length === 0) {
     images.push(article.coverImage || article1);
   }
@@ -102,7 +109,9 @@ const NewsFeedDetails = () => {
         {publishedDate ? `Published ${publishedDate}` : ""}
         {uploadDate ? ` · Uploaded ${uploadDate}` : ""}
         {article.source ? ` · Source: ${article.source}` : ""}
-        {article.photographer ? ` · Photo credits: ${article.photographer}` : ""}
+        {article.photographer
+          ? ` · Photo Credits: ${article.photographer}`
+          : ""}
       </p>
       {article.excerpt ? (
         <p className="text-gray-700 leading-relaxed mb-4 whitespace-pre-wrap">
@@ -112,6 +121,9 @@ const NewsFeedDetails = () => {
       <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
         {article.content}
       </p>
+      <div>
+        <HeroSocialMedia />
+      </div>
     </div>
   );
 };

@@ -34,6 +34,14 @@ import {
   CitySelect,
 } from "@/components/Common/LocationSelects";
 
+/**
+ * The stored budget is a display string — "$250,000 USD" — matching what the
+ * client-facing New Project wizard submits, so an inquiry raised here and one
+ * raised by a client land in the same shape.
+ */
+const formatBudget = (digits: string, currency: string) =>
+  digits ? `$${Number(digits).toLocaleString("en-US")} ${currency}` : "";
+
 export interface NewInquiryPageProps {
   projectData?: any;
   onProposalCreated?: (proposalData: any) => void;
@@ -88,6 +96,9 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
     squareFootage: "",
     projectSizeUnit: "sqf",
     budgetRange: "",
+    // Held alongside the amount so the formatted `budgetRange` string can be
+    // rebuilt when either half changes. Only `budgetRange` is submitted.
+    budgetCurrency: "USD",
     googleDriveLink: "",
   });
 
@@ -543,16 +554,42 @@ function ProjectTabFormForInquiry({
 }) {
   const sameAsMailing = projectInfo.sameAsMailingAddress;
 
+  // The field holds a formatted string; the input works in bare digits and is
+  // re-grouped on the way back out, so typing never fights the formatting.
+  const budgetDigits = String(projectInfo.budgetRange || "").replace(
+    /[^\d]/g,
+    "",
+  );
+
+  const handleBudgetAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/[^\d]/g, "");
+    handleProjectInfoChange(
+      "budgetRange",
+      formatBudget(digits, projectInfo.budgetCurrency || "USD"),
+    );
+  };
+
+  const handleBudgetCurrencyChange = (currency: string) => {
+    handleProjectInfoChange("budgetCurrency", currency);
+    handleProjectInfoChange(
+      "budgetRange",
+      formatBudget(budgetDigits, currency),
+    );
+  };
+
   return (
     <div className="bg-white">
-      <h2 className="text-sm font-semibold mb-6 border-l-4 border-blue-600 pl-3">
-        Project Information
-      </h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-base font-semibold border-l-4 border-blue-600 pl-3">
+          Project Information
+        </h2>
+        <p className="text-sm text-red-500 mb-3">* indicates required field</p>
+      </div>
 
       {/* Project Name */}
       <div className="mb-6">
         <Label htmlFor="projectName" className="mb-3">
-          Project Name
+          Project Name <span className="text-red-500">*</span>
         </Label>
         <Input
           id="projectName"
@@ -567,7 +604,7 @@ function ProjectTabFormForInquiry({
       {/* Project Description */}
       <div className="mb-4">
         <Label htmlFor="projectDescription" className="mb-3">
-          Project Description
+          Project Description <span className="text-red-500">*</span>
         </Label>
         <Textarea
           id="projectDescription"
@@ -599,7 +636,9 @@ function ProjectTabFormForInquiry({
       {/* Project Location */}
       <div className="mb-4">
         <div className="flex items-center justify-between">
-          <Label htmlFor="projectLocation">Project Location</Label>
+          <Label htmlFor="projectLocation">
+            Project Location <span className="text-red-500">*</span>
+          </Label>
           <div className="flex items-center space-x-2">
             <Checkbox
               id="sameAsMailingAddress"
@@ -619,7 +658,9 @@ function ProjectTabFormForInquiry({
 
         <div className="flex flex-col md:flex-row items-center gap-4 mt-4">
           <div className="w-full space-y-2">
-            <Label htmlFor="streetAddress">Street Address</Label>
+            <Label htmlFor="streetAddress">
+              Street Address <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="streetAddress"
               value={projectInfo.streetAddress}
@@ -645,7 +686,9 @@ function ProjectTabFormForInquiry({
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="projectCountry">Country</Label>
+            <Label htmlFor="projectCountry">
+              Country <span className="text-red-500">*</span>
+            </Label>
             <CountrySelect
               id="projectCountry"
               value={projectInfo.country}
@@ -658,7 +701,9 @@ function ProjectTabFormForInquiry({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="projectState">State</Label>
+            <Label htmlFor="projectState">
+              State <span className="text-red-500">*</span>
+            </Label>
             <StateSelect
               id="projectState"
               country={projectInfo.country}
@@ -671,7 +716,9 @@ function ProjectTabFormForInquiry({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="projectCity">City</Label>
+            <Label htmlFor="projectCity">
+              City <span className="text-red-500">*</span>
+            </Label>
             <CitySelect
               id="projectCity"
               country={projectInfo.country}
@@ -682,7 +729,9 @@ function ProjectTabFormForInquiry({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="projectZip">Zip Code</Label>
+            <Label htmlFor="projectZip">
+              Zip Code <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="projectZip"
               value={projectInfo.zip}
@@ -701,7 +750,9 @@ function ProjectTabFormForInquiry({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="serviceType">Service Type</Label>
+          <Label htmlFor="serviceType">
+            Service Type <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={projectInfo.serviceType}
             onValueChange={(value: any) =>
@@ -761,7 +812,9 @@ function ProjectTabFormForInquiry({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="projectType">Project Type</Label>
+          <Label htmlFor="projectType">
+            Project Type <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={projectInfo.projectType}
             onValueChange={(value: any) =>
@@ -812,7 +865,9 @@ function ProjectTabFormForInquiry({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="squareFootage">Project Size (Estimate)</Label>
+          <Label htmlFor="squareFootage">
+            Project Size (Estimate) <span className="text-red-500">*</span>
+          </Label>
           <div className="flex justify-center items-center w-full">
             <Input
               id="squareFootage"
@@ -852,17 +907,52 @@ function ProjectTabFormForInquiry({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="budgetRange">Budget Range</Label>
-          <Input
-            id="budgetRange"
-            value={projectInfo.budgetRange}
-            onChange={(e) =>
-              handleProjectInfoChange("budgetRange", e.target.value)
-            }
-            placeholder="e.g. $250,000"
-            className="w-full"
-          />
+        {/* Budget range  */}
+        <div>
+          <Label className="mb-2" htmlFor="budgetRange">
+            Budget Range <span className="text-red-500 font-semibold">*</span>
+          </Label>
+          <div className="mt-1 flex">
+            <Select
+              value={projectInfo.budgetCurrency || "USD"}
+              onValueChange={handleBudgetCurrencyChange}
+            >
+              <SelectTrigger className="w-20 shrink-0 rounded-r-none border-r-0 bg-gray-100">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-gray-300">
+                <SelectItem
+                  value="USD"
+                  className="hover:bg-gray-800 hover:text-white cursor-pointer"
+                >
+                  USD
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                $
+              </span>
+              <Input
+                id="budgetRange"
+                name="budgetRange"
+                inputMode="numeric"
+                value={
+                  budgetDigits
+                    ? Number(budgetDigits).toLocaleString("en-US")
+                    : ""
+                }
+                onChange={handleBudgetAmountChange}
+                placeholder="250,000"
+                className="w-full rounded-l-none pl-7"
+              />
+            </div>
+          </div>
+          <FieldError message={errors.budgetRange} />
+          <p className="text-xs text-red-500 mt-1">
+            Note: This is a budget estimate for the entire project, not just the
+            design package.
+          </p>
         </div>
       </div>
 

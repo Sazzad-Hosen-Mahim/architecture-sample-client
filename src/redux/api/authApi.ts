@@ -91,6 +91,19 @@ export const authApi = baseApi.injectEndpoints({
       }),
     }),
 
+    // Change your own password while signed in. The account comes from the
+    // session, so this can only ever change the caller's own password.
+    changePassword: builder.mutation<
+      { success: boolean; message: string },
+      { currentPassword: string; newPassword: string }
+    >({
+      query: (body) => ({
+        url: "/auth/change-password",
+        method: "POST",
+        body,
+      }),
+    }),
+
     // Prefill + validity for a signup opened from an "Inquiry Accepted" link.
     getClaimInfo: builder.query<{ success: boolean; data: ClaimInfo }, string>({
       query: (token) => ({
@@ -120,6 +133,7 @@ export const {
   useVerifyEmailMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useChangePasswordMutation,
   useGetClaimInfoQuery,
   useResendClaimMutation,
 } = authApi;

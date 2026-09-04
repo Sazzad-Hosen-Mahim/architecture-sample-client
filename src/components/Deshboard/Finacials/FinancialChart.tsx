@@ -11,7 +11,7 @@ import {
   type ChartOptions,
 } from "chart.js";
 import { useGetFinancialHistoryQuery } from "@/redux/api/financialApi";
-import { Loader2 } from "lucide-react";
+import { formatCurrency, formatPercent } from "@/utils/money";
 
 ChartJS.register(
   CategoryScale,
@@ -61,17 +61,21 @@ interface FinancialChartProps {
 }
 
 export function FinancialChart({ projectId, scope, year, totals }: FinancialChartProps) {
-  const { data, isLoading } = useGetFinancialHistoryQuery(
+  // `currentData` is the history for the project/scope being asked for right
+  // now; `data` keeps the previous one alive across an arg change, which drew
+  // the last project's chart for a moment after switching.
+  const { currentData: data, isFetching, isError } = useGetFinancialHistoryQuery(
     projectId ? { projectId } : { scope, year }
   );
   const history = data?.history;
   const summary = data?.summary ?? null;
 
-  if (isLoading) {
+  // A failed request falls through to the empty state below rather than
+  // spinning forever on data that is never going to arrive.
+  if (isFetching || (!data && !isError)) {
     return (
       <div className="flex flex-col items-center justify-center p-12 h-[400px] bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-2" />
-        <p className="text-sm text-gray-500 font-medium">Loading financial history...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -198,9 +202,9 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
             }
             if (context.parsed.y !== null) {
               if (label.includes("Utilization")) {
-                label += context.parsed.y + "%";
+                label += formatPercent(context.parsed.y);
               } else {
-                label += "$" + context.parsed.y.toLocaleString();
+                label += formatCurrency(context.parsed.y);
               }
             }
             return label;
@@ -398,7 +402,7 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
           <div key={i} className={`bg-${stat.color}-50/50 p-4 sm:p-5 rounded-xl border border-${stat.color}-100 transition-all hover:shadow-md hover:shadow-${stat.color}-100/20`}>
             <p className={`text-[10px] font-black uppercase tracking-widest text-${stat.color}-600 mb-1`}>{stat.label}</p>
             <p className="text-2xl font-black text-gray-900 leading-none">
-              {stat.isPct ? `${stat.value.toFixed(1)}%` : `$${Math.round(stat.value).toLocaleString()}`}
+              {stat.isPct ? formatPercent(stat.value) : formatCurrency(stat.value)}
             </p>
             <p className="text-[10px] text-gray-400 mt-2 font-medium italic">{stat.sub}</p>
           </div>

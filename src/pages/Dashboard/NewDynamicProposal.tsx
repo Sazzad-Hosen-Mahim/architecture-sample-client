@@ -195,9 +195,17 @@ export default function NewDynamicProposalPage({
         skip: !id,
     });
 
+    // The auto-fill below seeds the form once per project; it is not a live
+    // binding to the query. `getProposalInfo` carries the "Project" tag, and
+    // this wizard's own mutations — saving the project step, adding a service,
+    // saving client details — all invalidate it. Re-running the seed on those
+    // refetches overwrote `clientInfo` and `projectInfo` with the server copy,
+    // which is why edits made after resuming a draft appeared not to save.
+    const autoFilledFor = useRef<string | null>(null);
+
     useEffect(() => {
-        if (projectRequest) {
-            console.log("AUTO-FILLING FROM PARENT:", projectRequest);
+        if (projectRequest && autoFilledFor.current !== (id ?? null)) {
+            autoFilledFor.current = id ?? null;
 
             // Helper function to convert API enum values to display values
             const formatServiceType = (type: string) => {
@@ -290,7 +298,7 @@ export default function NewDynamicProposalPage({
                 googleDriveLink: projectRequest.driveLink || "",
             });
         }
-    }, [projectRequest]);
+    }, [projectRequest, id]);
 
     // Resume an in-progress DRAFT proposal: reload its previously-added
     // services/credits/payment method into this wizard's local state.
@@ -409,6 +417,29 @@ export default function NewDynamicProposalPage({
     const handleProjectInfoChange = (field: string, value: string | boolean) => {
         setProjectInfo((prev) => ({ ...prev, [field]: value }));
     };
+
+    // "Same as mailing address" only flipped a flag before — nothing copied the
+    // client's address across, so ticking it did nothing visible. Mirror it
+    // here, and keep mirroring while it stays ticked so editing the client
+    // address on the previous step carries through.
+    useEffect(() => {
+        if (!projectInfo.sameAsMailingAddress) return;
+        setProjectInfo((prev) => ({
+            ...prev,
+            streetAddress: clientInfo.address,
+            city: clientInfo.city,
+            state: clientInfo.state,
+            zip: clientInfo.zip,
+            country: clientInfo.country,
+        }));
+    }, [
+        projectInfo.sameAsMailingAddress,
+        clientInfo.address,
+        clientInfo.city,
+        clientInfo.state,
+        clientInfo.zip,
+        clientInfo.country,
+    ]);
 
     const toggleObjective = (objectiveId: string) => {
         setSelectedObjectives((prev) => {

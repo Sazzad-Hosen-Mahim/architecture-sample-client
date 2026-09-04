@@ -7,7 +7,7 @@ function LatestNews({ filteredNews = [] }: { filteredNews?: any[] }) {
 
   return (
     <div>
-      <h2 className="text-2xl font-light mb-6">Latest News</h2>
+      <h2 className="text-xl font-light mb-6">Latest News</h2>
       <div className="space-y-6">
         {filteredNews.map((news) => (
           <div

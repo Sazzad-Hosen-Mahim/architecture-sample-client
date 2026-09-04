@@ -54,6 +54,21 @@ const toTimeInputValue = (date: Date) =>
 const SLOT_INDEXES = Array.from({ length: SLOTS_PER_DAY }, (_, i) => i);
 
 /**
+ * Every half-hour of the day, as "HH:MM" values with readable labels — the
+ * exact grid clients book on, so office hours can only ever be set to a
+ * boundary a real slot starts at.
+ */
+const SLOT_TIME_OPTIONS = SLOT_INDEXES.map((index) => {
+  const minutes = index * SLOT_MINUTES;
+  return {
+    value: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(
+      minutes % 60,
+    ).padStart(2, "0")}`,
+    label: formatSlotLabel(minutes),
+  };
+});
+
+/**
  * Stable per-manager colour. Meetings on unassigned projects fall back to slate
  * so they still read as "not yet someone's".
  */
@@ -407,11 +422,13 @@ export default function MasterScheduleTab() {
               >
                 Office Hours
               </label>
+              {/* A select of the same half-hour slots clients book on, rather
+                  than <input type="time">: the native picker lists every
+                  minute regardless of `step`, which invited office hours that
+                  no bookable slot could ever line up with. */}
               <div className="flex items-center gap-1">
-                <input
+                <select
                   id="officeHoursStart"
-                  type="time"
-                  step={SLOT_MINUTES * 60}
                   value={officeHours.start}
                   onChange={(e) =>
                     setOfficeHours((prev) => ({
@@ -419,13 +436,17 @@ export default function MasterScheduleTab() {
                       start: e.target.value,
                     }))
                   }
-                  className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-800"
-                />
+                  className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-800 cursor-pointer"
+                >
+                  {SLOT_TIME_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
                 <span className="text-xs text-gray-400">to</span>
-                <input
+                <select
                   aria-label="Office hours end"
-                  type="time"
-                  step={SLOT_MINUTES * 60}
                   value={officeHours.end}
                   onChange={(e) =>
                     setOfficeHours((prev) => ({
@@ -433,8 +454,14 @@ export default function MasterScheduleTab() {
                       end: e.target.value,
                     }))
                   }
-                  className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-800"
-                />
+                  className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-gray-800 cursor-pointer"
+                >
+                  {SLOT_TIME_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <button

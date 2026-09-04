@@ -87,6 +87,14 @@ export default function ClientMeetingPaymentTab({
     const [bypassPhaseMeeting, { isLoading: isBypassing }] = useBypassPhaseMeetingMutation();
 
     const meetings = project.meetingLinks || [];
+
+    // The consultation happens once. Once it's on the books, anything the
+    // client requests afterwards is a follow-up — free, and labelled as such.
+    // The server decides this the same way; this is only for the wording.
+    const hasHadConsultation = meetings.some(
+        (m: any) =>
+            m.meetingType === "INITIAL_CONSULTATION" && m.status !== "DECLINED",
+    );
     // Memoised so the contract grouping below is not recomputed every render.
     // A phase with an approved refund is no longer the client's, so it is
     // excluded before anything downstream sees it.
@@ -237,7 +245,9 @@ export default function ClientMeetingPaymentTab({
                 endsAt: form.endsAt || undefined,
                 notes: form.notes,
                 stageId: phaseForMeeting?.id,
-                meetingType: phaseForMeeting ? "PHASE_PROGRESS" : "INITIAL_CONSULTATION",
+                // The server decides whether this is the initial consultation
+                // or a follow-up, from what the project already has — a client
+                // shouldn't be able to label their own meeting.
             }).unwrap();
             toast.success("Meeting request sent! The project manager will get back to you.");
             setIsMeetingModalOpen(false);
@@ -950,7 +960,12 @@ export default function ClientMeetingPaymentTab({
                 projectName={project.projectName}
                 projectRequestId={project.id}
                 phaseName={phaseForMeeting?.name}
-                consultationFee={phaseForMeeting ? undefined : consultationFee}
+                isFollowUp={hasHadConsultation}
+                // The fee is only ever charged for the initial consultation, so
+                // it isn't quoted on a phase or follow-up request.
+                consultationFee={
+                    phaseForMeeting || hasHadConsultation ? undefined : consultationFee
+                }
                 consultationFeePaid={consultationPaid}
                 allowBypass={!!phaseForMeeting}
                 onClose={() => {

@@ -6,8 +6,14 @@ interface ScopeSelectProps {
   scope: FinancialScope;
   year: number;
   onChange: (scope: FinancialScope, year: number) => void;
-  /** How many past years to offer alongside the current one. */
-  yearsBack?: number;
+  /**
+   * The year the firm's account was created. The filter offers that year
+   * through the current one and nothing earlier — there are no financials from
+   * before the firm existed — and picks up each new year on its own as the
+   * account stays open. Falls back to the current year until the dashboard has
+   * loaded and can say.
+   */
+  startYear?: number;
 }
 
 const ALL_TIME_VALUE = "all";
@@ -21,10 +27,14 @@ export default function ScopeSelect({
   scope,
   year,
   onChange,
-  yearsBack = 5,
+  startYear,
 }: ScopeSelectProps) {
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: yearsBack + 1 }, (_, i) => currentYear - i);
+  const firstYear = Math.min(startYear || currentYear, currentYear);
+  const years = Array.from(
+    { length: currentYear - firstYear + 1 },
+    (_, i) => currentYear - i,
+  );
 
   const value = scope === "all" ? ALL_TIME_VALUE : String(year);
 

@@ -85,24 +85,53 @@ export function computePayrollBreakdown(
   };
 }
 
-/** Gross pay for a timecard = total hours logged x the employee's hourly rate. */
-export function timecardGross(timecard: any): number {
-  const hourlyRate = Number(timecard?.user?.employeeProfile?.hourlyRate || 0);
-  return Number(timecard?.totalHours || 0) * hourlyRate;
+/**
+ * The hourly rate a timecard is paid at.
+ *
+ * Approving a timecard freezes the rate it was approved under onto the card
+ * (`lockedHourlyRate`). Reading that back — rather than the employee's current
+ * profile — is what stops a later pay change from restating money that has
+ * already been approved. A card that has never been approved has no snapshot
+ * and is quoted at the live rate.
+ */
+export function timecardHourlyRate(timecard: any): number {
+  return timecard?.lockedHourlyRate != null
+    ? Number(timecard.lockedHourlyRate)
+    : Number(timecard?.user?.employeeProfile?.hourlyRate || 0);
 }
 
-/** Convenience: full gross/tax/net breakdown straight from a timecard record. */
+/** Gross pay for a timecard = total hours logged x its locked hourly rate. */
+export function timecardGross(timecard: any): number {
+  return Number(timecard?.totalHours || 0) * timecardHourlyRate(timecard);
+}
+
+/**
+ * Convenience: full gross/tax/net breakdown straight from a timecard record.
+ * Tax follows the same rule as the rate — an approved card keeps the
+ * withholding percentage it was approved under.
+ */
 export function timecardBreakdown(timecard: any): PayrollBreakdown {
   const profile = timecard?.user?.employeeProfile;
-  return computePayrollBreakdown(
-    timecardGross(timecard),
-    profile?.taxes,
-    profile?.taxPercentage
-  );
+  const gross = timecardGross(timecard);
+
+  if (timecard?.lockedTaxPercentage != null) {
+    const locked = Number(timecard.lockedTaxPercentage);
+    // Keep the itemised lines for display when they still add up to the locked
+    // total; otherwise the taxes have been re-cut since approval and only the
+    // frozen total is trustworthy.
+    const liveTotal = (profile?.taxes || []).reduce(
+      (sum: number, t: any) => sum + (Number(t.percentage) || 0),
+      0,
+    );
+    if (profile?.taxes?.length && Math.abs(liveTotal - locked) < 0.005) {
+      return computePayrollBreakdown(gross, profile.taxes, locked);
+    }
+    return computePayrollBreakdown(gross, null, locked);
+  }
+
+  return computePayrollBreakdown(gross, profile?.taxes, profile?.taxPercentage);
 }
 
-export const formatCurrency = (value: number) =>
-  `$${(Number.isFinite(value) ? value : 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+// Re-exported so the existing payroll imports keep working; `utils/money` is
+// the single definition of how the app writes an amount.
+export { formatCurrency } from "./money";

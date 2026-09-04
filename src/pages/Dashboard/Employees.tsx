@@ -1,5 +1,8 @@
 import AddEmployeeModal from "@/components/Modal/AddEmployeeModal";
-import { useGetAllUsersQuery, useDeleteUserMutation } from "@/redux/api/userApi";
+import {
+  useGetAllUsersQuery,
+  useDeleteUserMutation,
+} from "@/redux/api/userApi";
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpDown, Edit, Trash2, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -23,9 +26,7 @@ const STAFF_ROLES = [
 
 /** The Super Admin is the firm's owner — that's how the roster labels them. */
 const roleLabel = (role?: string) =>
-  role === "SUPER_ADMIN"
-    ? "Owner"
-    : (role || "").replace(/_/g, " ");
+  role === "SUPER_ADMIN" ? "OWNER" : (role || "").replace(/_/g, " ");
 
 const SORT_OPTIONS = [
   { value: "name", label: "Name (A–Z)" },
@@ -45,7 +46,10 @@ const formatTimeWorked = (startingDate?: string | null) => {
   if (!startingDate) return null;
   const start = new Date(startingDate);
   if (Number.isNaN(start.getTime())) return null;
-  const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / MS_PER_DAY));
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - start.getTime()) / MS_PER_DAY),
+  );
   const years = Math.floor(days / 365);
   const months = Math.floor((days % 365) / 30.44);
   if (years === 0 && months === 0) return `${days}d`;
@@ -74,7 +78,8 @@ const Employees = () => {
     const rows = (data || []).filter((u: any) => STAFF_ROLES.includes(u.role));
 
     const compensation = (u: any) => Number(u.employeeProfile?.salary || 0);
-    const utilization = (u: any) => Number(u.employeeProfile?.utilizationRate || 0);
+    const utilization = (u: any) =>
+      Number(u.employeeProfile?.utilizationRate || 0);
 
     return [...rows].sort((a: any, b: any) => {
       switch (sortBy) {
@@ -85,11 +90,19 @@ const Employees = () => {
         case "compensation":
           return compensation(b) - compensation(a);
         case "timeWorked":
-          return daysWorked(b.employeeProfile?.startingDate) - daysWorked(a.employeeProfile?.startingDate);
+          return (
+            daysWorked(b.employeeProfile?.startingDate) -
+            daysWorked(a.employeeProfile?.startingDate)
+          );
         case "startDate":
-          return daysWorked(a.employeeProfile?.startingDate) - daysWorked(b.employeeProfile?.startingDate);
+          return (
+            daysWorked(a.employeeProfile?.startingDate) -
+            daysWorked(b.employeeProfile?.startingDate)
+          );
         default:
-          return (a.firstName || a.name || "").localeCompare(b.firstName || b.name || "");
+          return (a.firstName || a.name || "").localeCompare(
+            b.firstName || b.name || "",
+          );
       }
     });
   }, [data, sortBy]);
@@ -97,7 +110,10 @@ const Employees = () => {
   const handleDelete = async () => {
     if (!deleteTarget || !deletePassword.trim()) return;
     try {
-      const result = await deleteUser({ id: deleteTarget.id, password: deletePassword }).unwrap();
+      const result = await deleteUser({
+        id: deleteTarget.id,
+        password: deletePassword,
+      }).unwrap();
       toast.success(result?.message || "Team member deleted");
       setDeleteTarget(null);
       setDeletePassword("");
@@ -121,7 +137,9 @@ const Employees = () => {
       <div className="flex flex-col gap-4 lg:flex-row justify-between items-start lg:items-center mb-6">
         <div>
           <h2 className="text-xl font-bold">Employees &amp; Staff</h2>
-          <p className="text-sm text-gray-500 font-medium">{staff.length} registered team members</p>
+          <p className="text-sm text-gray-500 font-medium">
+            {staff.length} registered team members
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -174,7 +192,10 @@ const Employees = () => {
               const timeWorked = formatTimeWorked(profile?.startingDate);
 
               return (
-                <tr key={user.id} className="hover:bg-gray-50/50 transition-colors align-top">
+                <tr
+                  key={user.id}
+                  className="hover:bg-gray-50/50 transition-colors align-top"
+                >
                   <td className="p-4">
                     <div className="font-bold text-gray-900">
                       {user.firstName || user.name?.split(" ")[0] || "—"}
@@ -184,10 +205,14 @@ const Employees = () => {
                     </div>
                   </td>
                   <td className="p-4 font-bold text-gray-900">
-                    {user.lastName || user.name?.split(" ").slice(1).join(" ") || "—"}
+                    {user.lastName ||
+                      user.name?.split(" ").slice(1).join(" ") ||
+                      "—"}
                   </td>
                   <td className="p-4">
-                    <div className="text-gray-700 font-medium">{user.email}</div>
+                    <div className="text-gray-700 font-medium">
+                      {user.email}
+                    </div>
                     <div className="text-xs text-gray-400 font-bold">
                       {user.phoneNumber || profile?.phone || "No phone"}
                     </div>
@@ -201,7 +226,12 @@ const Employees = () => {
                     {user.streetAddress ? (
                       <>
                         <div>{user.streetAddress}</div>
-                        {user.city && <div className="text-xs text-gray-400">{user.city}{user.zipCode ? ` ${user.zipCode}` : ""}</div>}
+                        {user.city && (
+                          <div className="text-xs text-gray-400">
+                            {user.city}
+                            {user.zipCode ? ` ${user.zipCode}` : ""}
+                          </div>
+                        )}
                       </>
                     ) : (
                       "—"
@@ -210,21 +240,29 @@ const Employees = () => {
                   <td className="p-4 text-gray-600 font-medium">
                     {user.stateRegion || profile?.state || "—"}
                   </td>
-                  <td className="p-4 text-gray-600 font-medium">{user.country || "—"}</td>
+                  <td className="p-4 text-gray-600 font-medium">
+                    {user.country || "—"}
+                  </td>
                   <td className="p-4 whitespace-nowrap">
                     <div className="font-bold text-gray-900">
                       {profile?.startingDate
                         ? new Date(profile.startingDate).toLocaleDateString()
                         : "—"}
                     </div>
-                    <div className="text-xs text-blue-600 font-bold">{timeWorked || "—"}</div>
+                    <div className="text-xs text-blue-600 font-bold">
+                      {timeWorked || "—"}
+                    </div>
                   </td>
                   <td className="p-4 whitespace-nowrap">
                     <div className="font-bold text-gray-900">
-                      {profile?.salary ? `$${(Number(profile.salary) / 1000).toFixed(1)}k/yr` : "—"}
+                      {profile?.salary
+                        ? `$${(Number(profile.salary) / 1000).toFixed(1)}k/yr`
+                        : "—"}
                     </div>
                     <div className="text-xs text-green-600 font-bold">
-                      {profile?.hourlyRate ? `$${Number(profile.hourlyRate).toFixed(2)}/hr` : "—"}
+                      {profile?.hourlyRate
+                        ? `$${Number(profile.hourlyRate).toFixed(2)}/hr`
+                        : "—"}
                     </div>
                   </td>
                   <td className="p-4">
@@ -263,7 +301,10 @@ const Employees = () => {
             })}
             {staff.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-12 text-center text-gray-500 font-medium italic">
+                <td
+                  colSpan={11}
+                  className="p-12 text-center text-gray-500 font-medium italic"
+                >
                   No employees found in the directory.
                 </td>
               </tr>
@@ -274,10 +315,17 @@ const Employees = () => {
 
       {open && <AddEmployeeModal onClose={() => setOpen(false)} />}
       {editingMember && (
-        <AddEmployeeModal member={editingMember} onClose={() => setEditingMember(null)} />
+        <AddEmployeeModal
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+        />
       )}
       {viewingMember && (
-        <AddEmployeeModal member={viewingMember} readOnly onClose={() => setViewingMember(null)} />
+        <AddEmployeeModal
+          member={viewingMember}
+          readOnly
+          onClose={() => setViewingMember(null)}
+        />
       )}
 
       {/* Deleting a team member requires the acting admin's own password */}
@@ -288,9 +336,9 @@ const Employees = () => {
               Delete {deleteTarget.name || "this team member"}?
             </h3>
             <p className="text-xs text-gray-500 font-medium">
-              This cannot be undone. Enter <strong>your own</strong> password to confirm. If this
-              member has project history their account is deactivated instead, so the records stay
-              intact.
+              This cannot be undone. Enter <strong>your own</strong> password to
+              confirm. If this member has project history their account is
+              deactivated instead, so the records stay intact.
             </p>
             <input
               type="password"

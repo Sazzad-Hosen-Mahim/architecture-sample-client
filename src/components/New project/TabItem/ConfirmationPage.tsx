@@ -97,18 +97,27 @@ export default function ConfirmationPage({
                 {clientEmail || "jondoe@email.com"}
               </p>
               <p>
-                <strong>Date:</strong>{" "}
-                {/* {new Date(appointmentDate).toLocaleDateString()} */}
-                {appointmentDate
-                  ? new Date(appointmentDate).toLocaleDateString()
-                  : "Not set"}
-              </p>
-              <p>
-                <strong>Time:</strong> {appointmentTime || "10:00 AM"}
-              </p>
-              <p>
                 <strong>Type:</strong> {appointmentType || "Consultation"}
               </p>
+              {/* An in-person visit has no slot yet — the studio arranges it
+                  after reviewing the request — so promise the follow-up
+                  instead of printing a date that was never picked. */}
+              {appointmentDate ? (
+                <>
+                  <p>
+                    <strong>Date:</strong>{" "}
+                    {new Date(appointmentDate).toLocaleDateString()}
+                  </p>
+                  <p>
+                    <strong>Time:</strong> {appointmentTime || "10:00 AM"}
+                  </p>
+                </>
+              ) : (
+                <p>
+                  <strong>Date &amp; Time:</strong> We'll confirm these with you
+                  by email.
+                </p>
+              )}
             </div>
             <p className="text-sm text-gray-600">
               We've sent a confirmation email with these details to your

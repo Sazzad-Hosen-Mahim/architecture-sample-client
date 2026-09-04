@@ -19,11 +19,16 @@ import {
   Archive,
   ChevronDown,
   ArrowDownAZ,
+  FilterX,
 } from "lucide-react";
 import TimecardReviewDialog from "@/components/Deshboard/TimeCardDialog/TimecardReviewDialog";
 import { generatePayrollPDF } from "@/utils/payrollPDFGenerator";
 import { generatePayPeriods } from "@/utils/payPeriods";
-import { timecardBreakdown, formatCurrency } from "@/utils/payrollTax";
+import {
+  timecardBreakdown,
+  timecardHourlyRate,
+  formatCurrency,
+} from "@/utils/payrollTax";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
@@ -31,12 +36,16 @@ import { Loader } from "@/components/ui/loader";
 const STATUS_FILTERS = ["ALL", "SUBMITTED", "APPROVED", "REJECTED", "DRAFT"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
+/** Every employee filter, i.e. no employee filter. */
+const ALL_EMPLOYEES = "ALL";
+
 const TimecardsListTab = () => {
   const currentYear = new Date().getFullYear();
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedPeriod, setSelectedPeriod] = useState(-1); // -1 means "All Periods"
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [employeeFilter, setEmployeeFilter] = useState<string>(ALL_EMPLOYEES);
   const [search, setSearch] = useState("");
   const [sortByEmployee, setSortByEmployee] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -66,6 +75,33 @@ const TimecardsListTab = () => {
   const { data: billingRateData } = useGetBillingRateQuery();
   const [archiveTimecards, { isLoading: isArchiving }] = useArchiveTimecardsMutation();
 
+  /**
+   * The years the table can be filtered to: every year the firm has timecards
+   * in, plus the current one. Nothing before the first timecard and nothing
+   * after this year, so the dropdown never offers an empty view.
+   */
+  const yearOptions = useMemo(() => {
+    const years = new Set<number>([currentYear]);
+    (allTimecards as any[]).forEach((tc) => {
+      if (tc?.payYear) years.add(Number(tc.payYear));
+    });
+    (periodTimecards as any[]).forEach((tc) => {
+      if (tc?.payYear) years.add(Number(tc.payYear));
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [allTimecards, periodTimecards, currentYear]);
+
+  /** One entry per person who has a timecard, for the employee filter. */
+  const employeeOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+    (timecards as any[]).forEach((tc) => {
+      if (tc?.user?.id) byId.set(tc.user.id, tc.user.name || tc.user.email || "Unknown");
+    });
+    return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [timecards]);
+
   /** One row per timecard, with all payroll figures resolved up front. */
   const payrollItems = useMemo(() => {
     const query = search.toLowerCase();
@@ -75,7 +111,13 @@ const TimecardsListTab = () => {
           (tc.user?.name || "").toLowerCase().includes(query) ||
           (tc.user?.email || "").toLowerCase().includes(query);
         const matchesStatus = statusFilter === "ALL" || tc.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesEmployee =
+          employeeFilter === ALL_EMPLOYEES || tc.user?.id === employeeFilter;
+        // The year picker only reached the server on a specific pay period;
+        // on "All Periods" it read every year at once and changing it did
+        // nothing. Filtering here makes it apply in both modes.
+        const matchesYear = Number(tc.payYear) === selectedYear;
+        return matchesSearch && matchesStatus && matchesEmployee && matchesYear;
       })
       .map((tc: any) => {
         const profile = tc.user?.employeeProfile;
@@ -91,7 +133,8 @@ const TimecardsListTab = () => {
           billableHours: billable,
           overheadHours: total - billable,
           utilization: total > 0 ? (billable / total) * 100 : 0,
-          hourlyRate: Number(profile?.hourlyRate || 0),
+          // An approved card is quoted at the rate it was approved under.
+          hourlyRate: timecardHourlyRate(tc),
           salary: Number(profile?.salary || 0),
           location: profile?.state || null,
           breakdown,
@@ -103,7 +146,32 @@ const TimecardsListTab = () => {
         if (!sortByEmployee) return 0;
         return (a.employee?.name || "").localeCompare(b.employee?.name || "");
       });
-  }, [timecards, search, statusFilter, sortByEmployee]);
+  }, [timecards, search, statusFilter, employeeFilter, selectedYear, sortByEmployee]);
+
+  /** The status tallies follow the year in view, not the whole history. */
+  const yearTimecards = useMemo(
+    () => (timecards as any[]).filter((tc) => Number(tc.payYear) === selectedYear),
+    [timecards, selectedYear],
+  );
+
+  /** Whether anything is narrowing the table right now. */
+  const hasActiveFilters =
+    selectedYear !== currentYear ||
+    selectedPeriod !== -1 ||
+    statusFilter !== "ALL" ||
+    employeeFilter !== ALL_EMPLOYEES ||
+    search.trim() !== "" ||
+    sortByEmployee;
+
+  const clearFilters = () => {
+    setSelectedYear(currentYear);
+    setSelectedPeriod(-1);
+    setStatusFilter("ALL");
+    setEmployeeFilter(ALL_EMPLOYEES);
+    setSearch("");
+    setSortByEmployee(false);
+    setSelectedIds(new Set());
+  };
 
   /** Grand totals across every visible row. */
   const grandTotals = useMemo(
@@ -218,6 +286,23 @@ const TimecardsListTab = () => {
               Sort By Employee
             </button>
 
+            {/* Narrows the run to one person, rather than only grouping them. */}
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 sm:px-4 py-2 rounded-xl">
+              <Users size={14} className="text-gray-400" />
+              <select
+                className="text-sm bg-transparent outline-none font-bold text-gray-700 max-w-[160px]"
+                value={employeeFilter}
+                onChange={(e) => setEmployeeFilter(e.target.value)}
+              >
+                <option value={ALL_EMPLOYEES}>All Employees</option>
+                {employeeOptions.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl">
               <Calendar size={14} className="text-gray-400" />
               <select
@@ -225,9 +310,10 @@ const TimecardsListTab = () => {
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
               >
-                {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+                {yearOptions.map((y) => (
                   <option key={y} value={y}>
                     {y}
+                    {y === currentYear ? " (Current Year)" : ""}
                   </option>
                 ))}
               </select>
@@ -263,6 +349,21 @@ const TimecardsListTab = () => {
                 ))}
               </select>
             </div>
+
+            {/* Puts every filter back to its default in one click. */}
+            <Button
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+              variant="outline"
+              className={`font-black uppercase tracking-widest px-5 transition-all active:scale-95 ${
+                hasActiveFilters
+                  ? "border-gray-300 text-gray-700 hover:bg-gray-900 hover:text-white"
+                  : "text-gray-300"
+              }`}
+            >
+              <FilterX size={16} className="mr-2" />
+              Clear Filters
+            </Button>
 
             <Button
               onClick={handleArchive}
@@ -311,19 +412,19 @@ const TimecardsListTab = () => {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500" />
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                Approved: {timecards.filter((t: any) => t.status === "APPROVED").length}
+                Approved: {yearTimecards.filter((t: any) => t.status === "APPROVED").length}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500" />
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                Pending: {timecards.filter((t: any) => t.status === "SUBMITTED").length}
+                Pending: {yearTimecards.filter((t: any) => t.status === "SUBMITTED").length}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-400" />
               <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                Rejected: {timecards.filter((t: any) => t.status === "REJECTED").length}
+                Rejected: {yearTimecards.filter((t: any) => t.status === "REJECTED").length}
               </span>
             </div>
           </div>

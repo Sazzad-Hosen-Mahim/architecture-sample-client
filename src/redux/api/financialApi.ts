@@ -111,8 +111,15 @@ export const financialApi = baseApi.injectEndpoints({
       transformResponse: (response: any) => response.data,
     }),
 
-    getProjectFinancialDetails: builder.query<any, string>({
-      query: (id) => ({ url: `/financial/active-projects/${id}/details`, method: "GET" }),
+    // `year` scopes the time-based half of the card (burn, cost incurred, the
+    // labor breakdown) to the timecards submitted for that pay year. Omitted,
+    // the card reports the project's running totals.
+    getProjectFinancialDetails: builder.query<any, { id: string; year?: number }>({
+      query: ({ id, year }) => ({
+        url: `/financial/active-projects/${id}/details`,
+        method: "GET",
+        params: year ? { year } : undefined,
+      }),
       transformResponse: (response: any) => response.data,
       providesTags: ["FinancialOverview"],
     }),

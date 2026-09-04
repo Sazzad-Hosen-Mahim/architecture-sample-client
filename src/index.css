@@ -9,6 +9,41 @@
 }
 
 
+/* iOS Safari zooms the whole page in when a text field whose font is smaller
+   than 16px takes focus, and it never zooms back out afterwards. Logging in
+   through the `text-sm` login form therefore left the client portal rendered
+   at that zoom level, with its right edge cut off. 16px on touch devices is
+   the only reliable way to suppress that auto-zoom — pointer-based so mouse
+   users keep the smaller type. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="color"]
+    ),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Nothing may push the document sideways: one over-wide table or badge would
+   otherwise make every page scroll horizontally and read as "cropped" on a
+   phone. `clip` rather than `hidden` because `hidden` turns the element into a
+   scroll container and breaks the sticky navbar.
+
+   Declared on `body` only, never on `html`. The viewport takes its overflow
+   from `body` — but only while `html` is `visible` on both axes; any value on
+   `html` cancels that and makes `body` a clipping container in its own right.
+   That matters because Radix locks the page by setting `overflow: hidden` on
+   `body` whenever a dropdown or dialog is open. With the root left alone that
+   lock propagates to the viewport and `body` still lays out as `visible`, so
+   the sticky navbar keeps its scrollport and stays pinned. With `overflow-x`
+   also on `html`, the same lock instead turned `body` into a dead scrollport —
+   sticky stopped resolving and the navbar dropped back to the top of the
+   document, vanishing off-screen for as long as a select was open. */
+body {
+  overflow-x: clip;
+}
+
 .fixed-search-container {
   position: fixed !important;
   transform: translate3d(0, 0, 0) !important;

@@ -29,6 +29,8 @@ interface RequestMeetingModalProps {
     consultationFeePaid?: boolean;
     /** Phase meetings may be waived by the client; the initial one may not. */
     allowBypass?: boolean;
+    /** The consultation already happened, so this request is a free follow-up. */
+    isFollowUp?: boolean;
     onClose: () => void;
     onSubmit: (form: RequestMeetingForm) => Promise<void> | void;
 }
@@ -42,6 +44,7 @@ export default function RequestMeetingModal({
     consultationFee,
     consultationFeePaid,
     allowBypass,
+    isFollowUp,
     onClose,
     onSubmit,
 }: RequestMeetingModalProps) {
@@ -72,7 +75,14 @@ export default function RequestMeetingModal({
         });
     };
 
-    const heading = phaseName ? `${phaseName} Meeting` : "Initial Consultation Meeting";
+    // Only the very first meeting is the consultation the fee covered. After
+    // that the client is booking a follow-up, so calling it a consultation
+    // would imply another charge.
+    const heading = phaseName
+        ? `${phaseName} Meeting`
+        : isFollowUp
+          ? "Follow-up Meeting"
+          : "Initial Consultation Meeting";
 
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">

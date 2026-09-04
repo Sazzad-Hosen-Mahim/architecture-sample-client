@@ -823,7 +823,10 @@ export default function ContractReviewModal({
       {/* DialogContent's base class carries `sm:max-w-lg`, so an
                 unprefixed max-w never applies above the sm breakpoint — the
                 width has to be set at sm and up to actually win. */}
-      <DialogContent className="w-[95vw] sm:max-w-5xl lg:max-w-7xl max-h-[95vh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden">
+      {/* `svh`, not `vh`: on iOS `vh` measures the toolbar-hidden height, so a
+                95vh dialog is taller than the visible area and its top and
+                bottom edges get centred out of frame. */}
+      <DialogContent className="w-[95vw] sm:max-w-5xl lg:max-w-7xl max-h-[95svh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center gap-3">

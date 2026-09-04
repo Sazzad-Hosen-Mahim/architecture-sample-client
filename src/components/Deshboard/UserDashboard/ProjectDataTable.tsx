@@ -163,28 +163,6 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                     </span>
                   )}
                 </td>
-                {/* <td className="px-6 py-4 text-center">
-                                    {stages.some((s: any) => s.driveLink) ? (
-                                        <div className="flex flex-col items-center gap-1">
-                                            <a
-                                                href={stages.find((s: any) => s.driveLink)?.driveLink}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm active:scale-95"
-                                            >
-                                                <ExternalLink className="w-3 h-3" />
-                                                DRIVE FOLDER
-                                            </a>
-                                            {stages.filter((s: any) => s.driveLink).length > 1 && (
-                                                <span className="text-[9px] text-gray-400 font-medium">
-                                                    +{stages.filter((s: any) => s.driveLink).length - 1} more links in details
-                                                </span>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <span className="text-[10px] text-gray-400 italic">No files yet</span>
-                                    )}
-                                </td> */}
                 <td className="px-3 sm:px-4 py-4 text-center align-middle">
                   <StatusBadge status={project.status} />
                 </td>

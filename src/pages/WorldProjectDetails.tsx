@@ -13,6 +13,17 @@ import {
 } from "lucide-react";
 import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
+import ProjectPhoto from "@/components/Common/ProjectPhoto";
+import {
+  projectImageUrl,
+  toProjectImages,
+  type ProjectImage,
+} from "@/utils/projectImage";
+
+/** The gallery sits in a max-w-5xl column, not the full window. */
+const GALLERY_SIZES = "(min-width: 1088px) 1024px, calc(100vw - 2rem)";
+
+const PLACEHOLDER: ProjectImage = { url: "/placeholder.svg" };
 
 // "NORTH_AMERICA" -> "North America", "TROPICAL" -> "Tropical"
 const toTitleCase = (value: string) =>
@@ -60,26 +71,27 @@ function WorldProjectDetails() {
       projectType: item.category ? toTitleCase(item.category) : "TBA",
       year: item.projectYear || 2024,
       tags: item.projectTags || [],
-      images: (item.assets?.map((a: any) => a.cdnUrl) || []) as string[],
+      images: toProjectImages(item.assets),
     };
   }, [item]);
 
-  const images = useMemo(
+  const images = useMemo<ProjectImage[]>(
     () =>
-      project && project.images.length > 0
-        ? project.images
-        : ["/placeholder.svg"],
+      project && project.images.length > 0 ? project.images : [PLACEHOLDER],
     [project],
   );
   const activeIndex = Math.min(selectedImage, images.length - 1);
 
   // Sample the current image's left/right edges to pick a contrasting arrow colour.
   useEffect(() => {
-    const src = images[activeIndex];
-    if (!src || src === "/placeholder.svg") {
+    const image = images[activeIndex];
+    if (!image?.url || image.url === PLACEHOLDER.url) {
       setArrowTone("dark");
       return;
     }
+    // A 64px render is plenty to average the edge brightness, and it keeps
+    // this probe off the critical path of the full-size photo.
+    const src = projectImageUrl(image.url, 64);
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -147,22 +159,28 @@ function WorldProjectDetails() {
 
   return (
     <div className="max-w-5xl mx-auto mt-4 px-4 pb-20">
-      {/* Top bar: content type (left) · title (center) · published date (right) */}
+      {/* Top bar: content type (left) · title (center) · published date (right).
+          On a phone the title takes its own line and the type + date share the
+          one below it, justified to the edges. From md the wrapper collapses to
+          `contents` so all three are direct flex children again, with explicit
+          orders restoring the original left/centre/right row. */}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
-        <div className="md:w-1/4 shrink-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-            {isPortfolio ? "Portfolio" : "World Project"}
-          </p>
-        </div>
-
-        <h1 className="flex-1 text-base md:text-lg font-semibold text-center order-first md:order-none">
+        <h1 className="flex-1 text-base md:text-lg font-semibold text-center order-first md:order-2">
           {project.name}
         </h1>
 
-        <div className="md:w-1/4 shrink-0 md:text-right">
-          <span className="text-sm text-gray-500">
-            Published: {project.PublishedDate}
-          </span>
+        <div className="flex items-center justify-between gap-3 md:contents">
+          <div className="md:w-1/4 shrink-0 md:order-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              {isPortfolio ? "Portfolio" : "World Project"}
+            </p>
+          </div>
+
+          <div className="md:w-1/4 shrink-0 md:text-right md:order-3">
+            <span className="text-sm text-gray-500">
+              Published: {project.PublishedDate}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -171,12 +189,14 @@ function WorldProjectDetails() {
           {/* Image gallery */}
           <div className="mb-6">
             <div className="relative w-full h-[300px] md:h-[430px] rounded-xl overflow-hidden mb-4 bg-gray-100">
-              <img
-                src={images[activeIndex]}
+              <ProjectPhoto
+                image={images[activeIndex]}
                 alt={project.name}
-                className="w-full h-full object-cover"
+                sizes={GALLERY_SIZES}
+                priority
                 onError={(e) => {
-                  e.currentTarget.src = "/placeholder.svg";
+                  e.currentTarget.srcset = "";
+                  e.currentTarget.src = PLACEHOLDER.url;
                 }}
               />
 
@@ -205,9 +225,9 @@ function WorldProjectDetails() {
             {/* Thumbnails */}
             {images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {images.map((img: string, idx: number) => (
+                {images.map((img: ProjectImage, idx: number) => (
                   <button
-                    key={idx}
+                    key={img.url}
                     onClick={() => setSelectedImage(idx)}
                     className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                       activeIndex === idx
@@ -215,10 +235,15 @@ function WorldProjectDetails() {
                         : "border-transparent opacity-70 hover:opacity-100"
                     }`}
                   >
+                    {/* 160px covers the 80px box at 2x — no reason to pull the
+                        full-size photo down for a thumbnail strip. */}
                     <img
-                      src={img}
+                      src={projectImageUrl(img.url, 160)}
                       alt={`thumb-${idx}`}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
+                      style={{ objectPosition: img.focalPoint || undefined }}
                     />
                   </button>
                 ))}
@@ -227,12 +252,12 @@ function WorldProjectDetails() {
           </div>
 
           {/* Project Details + Tags */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className=" gap-2">
             <div className="md:col-span-2">
               <div className="bg-gray-50 rounded-xl p-3 mb-6">
                 <h2 className="text-lg font-semibold mb-4">Project Details</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {/* Portfolio has no architect — it shows Project Type in that slot. */}
                   {isPortfolio ? (
                     <div className="flex items-center gap-3">
@@ -288,7 +313,9 @@ function WorldProjectDetails() {
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Location</p>
-                      <p className="text-sm font-medium">{project.locationName}</p>
+                      <p className="text-sm font-medium">
+                        {project.locationName}
+                      </p>
                     </div>
                   </div>
 
@@ -330,7 +357,7 @@ function WorldProjectDetails() {
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-3 mb-6">
+            {/* <div className="bg-gray-50 rounded-xl p-3 mb-6">
               <h2 className="text-lg font-semibold mb-3">Tags</h2>
               <div className="flex flex-wrap gap-2">
                 {project.tags?.map((tag: string) => (
@@ -342,7 +369,7 @@ function WorldProjectDetails() {
                   </span>
                 ))}
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Description */}

@@ -23,18 +23,24 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowUpDown,
+  CalendarRange,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import SignatureCanvas from "react-signature-canvas";
 import { useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
+import { formatCurrency } from "@/utils/money";
+import { projectRun, runDaysLabel, shareOfYear } from "@/utils/contractYears";
 
-type SortOption = "newest" | "oldest" | "manager" | "status";
+type SortOption = "active" | "newest" | "oldest" | "manager" | "status";
 import { Loader } from "@/components/ui/loader";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 25;
+
+/** The year filter's "no year" option — every year's amounts in full. */
+const ALL_TIME = "all";
 
 /** "LUMP_SUM" -> "Lump Sum", "RESIDENTIAL" -> "Residential" */
 const toTitleCase = (value?: string | null) =>
@@ -55,7 +61,13 @@ const Proposals = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  // Opens on the work in flight rather than the whole archive.
+  const [sortBy, setSortBy] = useState<SortOption>("active");
+  const [amendmentsOnly, setAmendmentsOnly] = useState(false);
+  // "All Time" shows each contract in full; a year shows only the slice of it
+  // that belongs to that year, so the column totals reconcile with the
+  // Financial Dashboard's yearly figures.
+  const [yearFilter, setYearFilter] = useState<string>(ALL_TIME);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -120,17 +132,50 @@ const Proposals = () => {
       managerNameOf(p).toLowerCase().includes(query) ||
       locationOf(p).toLowerCase().includes(query);
 
+    const selectedYear = yearFilter === ALL_TIME ? null : Number(yearFilter);
+
     return (
       originals
-        .map((p: any) => ({
-          ...p,
-          amendments: (amendmentsByParent.get(p.id) || []).sort(
+        .map((p: any) => {
+          const amendments = (amendmentsByParent.get(p.id) || []).sort(
             (a: any, b: any) =>
               (a.proposalNumber || "").localeCompare(b.proposalNumber || ""),
-          ),
-        }))
+          );
+
+          // The project's run drives both the date columns and the year split.
+          const pr = p.projectRequest;
+          const run = projectRun(pr?.projectStartedAt, pr?.projectCompletedAt);
+
+          const originalTotal = Number(p.totalAmount || 0);
+          const amendmentTotal = amendments.reduce(
+            (sum: number, a: any) => sum + Number(a.totalAmount || 0),
+            0,
+          );
+
+          // On a year, a contract contributes only the portion earned in that
+          // year. A project with no run yet has no year to attribute to.
+          const share =
+            selectedYear === null ? 1 : shareOfYear(run, selectedYear);
+
+          return {
+            ...p,
+            amendments,
+            run,
+            share,
+            originalTotal: originalTotal * share,
+            amendmentTotal: amendmentTotal * share,
+            rowTotal: (originalTotal + amendmentTotal) * share,
+          };
+        })
         // Keep a contract when it matches, or when any of its amendments do.
         .filter((p: any) => matches(p) || p.amendments.some(matches))
+        // Only projects that were actually running in the selected year.
+        .filter((p: any) => selectedYear === null || p.share > 0)
+        .filter((p: any) => !amendmentsOnly || p.amendments.length > 0)
+        .filter(
+          (p: any) =>
+            sortBy !== "active" || p.projectRequest?.status === "ACTIVE",
+        )
         .sort((a: any, b: any) => {
           switch (sortBy) {
             case "manager":
@@ -142,6 +187,7 @@ const Proposals = () => {
                 new Date(a.createdAt).getTime() -
                 new Date(b.createdAt).getTime()
               );
+            case "active":
             case "newest":
             default:
               return (
@@ -151,7 +197,36 @@ const Proposals = () => {
           }
         })
     );
-  }, [proposals, search, sortBy]);
+  }, [proposals, search, sortBy, amendmentsOnly, yearFilter]);
+
+  /**
+   * The years the filter offers: every year any project has run through, plus
+   * the current one. Nothing before the firm's first project.
+   */
+  const yearOptions = React.useMemo(() => {
+    const years = new Set<number>([new Date().getFullYear()]);
+    (proposals as any[]).forEach((p) => {
+      const pr = p.projectRequest;
+      projectRun(pr?.projectStartedAt, pr?.projectCompletedAt).slices.forEach(
+        (s) => years.add(s.year),
+      );
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [proposals]);
+
+  /** Column sums for the two contract columns, over every filtered row. */
+  const columnTotals = React.useMemo(
+    () =>
+      groupedProposals.reduce(
+        (acc: any, p: any) => ({
+          original: acc.original + p.originalTotal,
+          amendment: acc.amendment + p.amendmentTotal,
+          total: acc.total + p.rowTotal,
+        }),
+        { original: 0, amendment: 0, total: 0 },
+      ),
+    [groupedProposals],
+  );
 
   // Pagination — rows per page is user-selectable (default 25).
   const totalPages = Math.max(
@@ -166,7 +241,7 @@ const Proposals = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sortBy, pageSize]);
+  }, [search, sortBy, pageSize, amendmentsOnly, yearFilter]);
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -263,12 +338,44 @@ const Proposals = () => {
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             className="text-sm bg-transparent outline-none font-bold text-gray-700 cursor-pointer"
           >
+            <option value="active">Active Projects</option>
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="manager">Project Manager</option>
             <option value="status">Status</option>
           </select>
         </div>
+
+        {/* On a year, each contract shows only the portion earned in that
+            year, so the column totals match the Financial Dashboard. */}
+        <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-xl">
+          <CalendarRange size={14} className="text-gray-400" />
+          <select
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            className="text-sm bg-transparent outline-none font-bold text-gray-700 cursor-pointer"
+          >
+            <option value={ALL_TIME}>All Time (All Years)</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+                {y === new Date().getFullYear() ? " (Current Year)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <label className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2.5 rounded-xl cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={amendmentsOnly}
+            onChange={(e) => setAmendmentsOnly(e.target.checked)}
+            className="w-4 h-4 accent-black cursor-pointer"
+          />
+          <span className="text-sm font-bold text-gray-700">
+            Projects with Amendments
+          </span>
+        </label>
       </div>
 
       {proposals.length === 0 ? (
@@ -302,7 +409,19 @@ const Proposals = () => {
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Total
+                  Start Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  End Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Total Days
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Original Contract Total
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Amendment Contract Total
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Created
@@ -313,6 +432,16 @@ const Proposals = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+              {pageProposals.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={14}
+                    className="px-4 py-12 text-center text-sm text-gray-500"
+                  >
+                    No proposals match these filters.
+                  </td>
+                </tr>
+              )}
               {pageProposals.map((proposal: any) => {
                 const hasAmendments = proposal.amendments.length > 0;
                 const isExpanded = expandedIds.has(proposal.id);
@@ -377,7 +506,44 @@ const Proposals = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        ${proposal.totalAmount || "0"}
+                        {proposal.run.start
+                          ? formatDate(proposal.run.start.toISOString())
+                          : <span className="text-gray-400 italic">Not started</span>}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {!proposal.run.start ? (
+                          <span className="text-gray-400 italic">—</span>
+                        ) : proposal.run.ongoing ? (
+                          <span className="text-gray-400 italic">In progress</span>
+                        ) : (
+                          formatDate(proposal.run.end.toISOString())
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-3 whitespace-nowrap text-sm text-gray-600"
+                        title={
+                          proposal.run.slices.length > 1
+                            ? proposal.run.slices
+                                .map((s: any) => `${s.year}: ${s.days} days`)
+                                .join(" · ")
+                            : undefined
+                        }
+                      >
+                        {/* "50/365/23 = 438" once a project spans more than
+                            one year, so the split is readable at a glance. */}
+                        {runDaysLabel(proposal.run)}
+                        {proposal.run.slices.length > 1 && (
+                          <span className="text-gray-400">
+                            {" "}
+                            = {proposal.run.totalDays}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-700">
+                        {formatCurrency(proposal.originalTotal)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-purple-700">
+                        {formatCurrency(proposal.amendmentTotal)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                         {formatDate(proposal.createdAt)}
@@ -433,8 +599,17 @@ const Proposals = () => {
                               {amendment.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            ${amendment.totalAmount || "0"}
+                          {/* An amendment inherits its project's run, so the
+                              date columns belong to the parent row only. */}
+                          <td className="px-4 py-3" colSpan={3} />
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-400">
+                            —
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-purple-700">
+                            {formatCurrency(
+                              Number(amendment.totalAmount || 0) *
+                                proposal.share,
+                            )}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                             {formatDate(amendment.createdAt)}
@@ -453,6 +628,29 @@ const Proposals = () => {
                 );
               })}
             </tbody>
+            {/* Column sums over every filtered row — not just this page — so
+                the figures line up with the Financial Dashboard's year. */}
+            <tfoot className="bg-gray-900 text-white">
+              <tr>
+                <td
+                  colSpan={10}
+                  className="px-4 py-3 text-xs font-bold uppercase tracking-wider"
+                >
+                  Total · {groupedProposals.length} project
+                  {groupedProposals.length === 1 ? "" : "s"}
+                  {yearFilter !== ALL_TIME && ` · ${yearFilter} portion`}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold">
+                  {formatCurrency(columnTotals.original)}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-purple-300">
+                  {formatCurrency(columnTotals.amendment)}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold" colSpan={2}>
+                  {formatCurrency(columnTotals.total)}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}

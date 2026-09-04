@@ -24,6 +24,20 @@ export const userApi = baseApi.injectEndpoints({
       invalidatesTags: ["User"],
     }),
 
+    // A client closing their own account. No id — the server takes the account
+    // from the session, so this can only ever close the caller's own.
+    deleteOwnAccount: builder.mutation<
+      { success: boolean; message: string; deactivated?: boolean },
+      { password: string }
+    >({
+      query: (body) => ({
+        url: "/users/me",
+        method: "DELETE",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
     // DELETE user - requires the acting admin's own password to confirm
     deleteUser: builder.mutation<any, { id: string; password: string }>({
       query: ({ id, password }) => ({
@@ -49,6 +63,7 @@ export const userApi = baseApi.injectEndpoints({
 export const { 
   useGetAllUsersQuery, 
   useCreateStaffMutation, 
-  useDeleteUserMutation, 
-  useUpdateUserMutation 
+  useDeleteUserMutation,
+  useDeleteOwnAccountMutation,
+  useUpdateUserMutation
 } = userApi;
