@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { downloadTimesheetPDF, timesheetFileName } from "@/utils/timesheetPdf";
 import { timecardBreakdown, formatCurrency } from "@/utils/payrollTax";
+import { timecardHours } from "@/utils/timecardHours";
 
 interface TimecardReviewDialogProps {
   open: boolean;
@@ -47,6 +48,18 @@ const DAY_FIELDS: Record<(typeof DAYS)[number], string> = {
 
 const rowTotal = (row: any) =>
   DAYS.reduce((sum, day) => sum + (Number(row?.[DAY_FIELDS[day]]) || 0), 0);
+
+/**
+ * The payroll figures sit on one centred flex row, so a column carrying a
+ * sub-caption ("53.0h billable · 16.0h overhead") is a line taller than the rest
+ * and its number rides above them. Columns without a caption reserve the same
+ * line, which puts every figure back on one baseline.
+ */
+const CaptionSpacer = () => (
+  <div className="text-[10px] text-gray-500" aria-hidden="true">
+    &nbsp;
+  </div>
+);
 
 /**
  * Read-only view of a timecard exactly as the employee submitted it, with
@@ -111,10 +124,12 @@ export default function TimecardReviewDialog({
     [overheadRows]
   );
 
-  const totalBillable = Number(timecard?.billableHours || 0);
-  const totalHours = Number(timecard?.totalHours || 0);
-  const totalOverhead = totalHours - totalBillable;
-  const utilization = totalHours > 0 ? (totalBillable / totalHours) * 100 : 0;
+  const {
+    billable: totalBillable,
+    overhead: totalOverhead,
+    total: totalHours,
+    utilization,
+  } = useMemo(() => timecardHours(timecard), [timecard]);
 
   const hourlyRate = Number(timecard?.user?.employeeProfile?.hourlyRate || 0);
   const breakdown = useMemo(() => timecardBreakdown(timecard), [timecard]);
@@ -386,6 +401,7 @@ export default function TimecardReviewDialog({
                       Utilization Rate
                     </div>
                     <div className="text-2xl font-black text-blue-400">{utilization.toFixed(0)}%</div>
+                    <CaptionSpacer />
                   </div>
                   <div className="w-px self-stretch bg-gray-800" />
                   <div className="space-y-1">
@@ -405,6 +421,7 @@ export default function TimecardReviewDialog({
                       Employee's Hourly Rate
                     </div>
                     <div className="text-2xl font-black">{formatCurrency(hourlyRate)}</div>
+                    <CaptionSpacer />
                   </div>
                   <div className="text-gray-600 font-black">&minus;</div>
                   <div className="space-y-1">
@@ -421,6 +438,7 @@ export default function TimecardReviewDialog({
                         className={`transition-transform ${showTaxBreakdown ? "rotate-180" : ""}`}
                       />
                     </button>
+                    <CaptionSpacer />
                   </div>
                   <div className="text-gray-600 font-black">=</div>
                   <div className="space-y-1 ml-auto text-right">

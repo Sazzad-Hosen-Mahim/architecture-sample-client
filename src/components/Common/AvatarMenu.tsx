@@ -73,7 +73,7 @@ export default function AvatarMenu({
       <PopoverContent
         align={align}
         sideOffset={10}
-        className="w-60 mr-3 p-2 rounded-2xl border border-white/10 bg-website-color-darkGray/60 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,2,0.35)] text-white z-[60]"
+        className="w-60 mr-3 p-2 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,2,0.35)] text-white z-[60]"
       >
         {actions.map((action) => {
           const Icon = action.icon;

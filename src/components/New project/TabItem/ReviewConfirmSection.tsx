@@ -1,4 +1,5 @@
 // import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -72,6 +73,7 @@ export default function ReviewConfirmSection({
   formData,
   updateFormData,
   onPaymentSuccess,
+  goToPreviousSection,
 }: any) {
   // A signed-in client's project links straight to their account; a visitor
   // with no account submits through the public endpoints and the studio
@@ -513,6 +515,18 @@ export default function ReviewConfirmSection({
             </ul>
           </div>
         )}
+
+        <div className="mt-8">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => goToPreviousSection?.()}
+            disabled={isSubmitting}
+            className="cursor-pointer border-2 border-black hover:bg-gray-600 hover:border-gray-600 hover:text-white"
+          >
+            Previous
+          </Button>
+        </div>
 
         <div className="flex justify-center items-center mt-12">
           <ThumbprintButton
