@@ -1,5 +1,6 @@
 import { useGetMyMeetingsQuery, UserMeeting } from "@/redux/api/meetingApi";
 import { toExternalUrl } from "@/utils/externalUrl";
+import { isMeetingJoinExpired } from "@/utils/meetingWindow";
 import { CalendarIcon, ClockIcon, VideoIcon, User, CheckCircle2, XCircle } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -143,7 +144,13 @@ const MeetingsTab = ({ searchQuery = "" }: MeetingsTabProps) => {
                         )}
 
                         {/* Action Button */}
-                        {meeting.status === "ACCEPTED" && meeting.meetingUrl ? (
+                        {meeting.status === "ACCEPTED" &&
+                        meeting.meetingUrl &&
+                        isMeetingJoinExpired(meeting.scheduledAt) ? (
+                            <div className="block w-full text-center bg-gray-100 text-gray-400 text-sm font-medium py-2 rounded-md">
+                                Meeting Completed
+                            </div>
+                        ) : meeting.status === "ACCEPTED" && meeting.meetingUrl ? (
                             <a
                                 href={toExternalUrl(meeting.meetingUrl) ?? undefined}
                                 target="_blank"

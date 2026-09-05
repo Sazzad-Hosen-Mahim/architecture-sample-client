@@ -103,8 +103,10 @@ export function buildProjectPayload(formData: any): ProjectRequestPayload {
         ? formData.projectTypeOther || undefined
         : undefined,
 
+    // Grouped on the way out so the studio reads "2,500 sq ft", matching how
+    // the field is displayed while typing.
     projectSize: formData.squareFootage
-      ? `${formData.squareFootage} ${formData.projectSizeUnit === 'sqm' ? 'sq m' : 'sq ft'}`
+      ? `${Number(String(formData.squareFootage).replace(/[^\d]/g, '')).toLocaleString('en-US')} ${formData.projectSizeUnit === 'sqm' ? 'sq m' : 'sq ft'}`
       : "",
     budgetRange: formData.budgetRange || "",
 

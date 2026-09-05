@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SharedFolderCard from "@/components/Deshboard/Common/SharedFolderCard";
+import ClientDocumentsCard from "@/components/Deshboard/Common/ClientDocumentsCard";
 import {
     Select,
     SelectContent,
@@ -436,6 +437,10 @@ export default function ProjectInformationTab({ project }: ProjectInformationTab
                     below the internal one so the two are read together: above
                     is architect-only, below is what the client can see. */}
                 <SharedFolderCard projectId={project.id} side="ARCHITECT" />
+
+                {/* What the client uploaded — survey maps, reports, photos.
+                    Read-only here; the client owns these. */}
+                <ClientDocumentsCard projectId={project.id} />
 
             </div>
 

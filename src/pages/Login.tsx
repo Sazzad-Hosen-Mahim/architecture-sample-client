@@ -68,7 +68,9 @@ const Login = () => {
         }),
       );
 
-      toast.success("Login successful!");
+      // Centred rather than the app-wide top-right: this one lands as the page
+      // swaps to a dashboard, where a corner toast is easy to miss.
+      toast.success("Login successful!", { position: "top-center" });
       if (safeRedirect) {
         navigate(safeRedirect, { replace: true });
       } else if (user.role === "USER") {
@@ -77,7 +79,9 @@ const Login = () => {
         navigate("/dashboard"); // fallback / admin / other roles
       }
     } catch (error: any) {
-      toast.error(error?.data?.message || "Login failed");
+      toast.error(error?.data?.message || "Login failed", {
+        position: "top-center",
+      });
     }
   };
 

@@ -1,5 +1,6 @@
 import { FolderOpen, Lock } from "lucide-react";
 import SharedFolderCard from "@/components/Deshboard/Common/SharedFolderCard";
+import ProjectDocumentsCard from "@/components/Deshboard/UserDashboard/ProjectDocumentsCard";
 
 interface StagePaymentInfo {
     stageId: string;
@@ -29,14 +30,13 @@ interface ClientAttachmentsTabProps {
 /**
  * The client's Documents tab.
  *
- * Their intake uploads are read-only here — they were submitted with the
- * original project request.
+ * Their intake documents are uploadable here at any time — a client who skipped
+ * one on the New Project form can add it later, and the studio reads the same
+ * files on the project's Information tab.
  *
- * Below that is the shared project folder: the architect's links on one side,
- * the client's on the other. The client adds and manages only their own; the
- * architect's are read-only to them, and the server enforces the same rule.
- * The whole card unlocks once the consultation fee is paid, the same gate the
- * meetings tab uses.
+ * Below that is the shared project folder, which the architect fills with links
+ * for the client to open. Both cards unlock once the consultation fee is paid,
+ * the same gate the meetings tab uses, and the server enforces it too.
  *
  * Deliverables used to be published as one Drive link per phase. They are
  * posted to the architect's half of the shared folder now, so there is one
@@ -54,36 +54,9 @@ export default function ClientAttachmentsTab({
         ? (paymentInfo.consultationPaid ?? !!project.consultationPaymentId)
         : true;
 
-    const intakeFiles: { label: string; value: string | null }[] = [
-        { label: "Property Boundary/Survey Map", value: null },
-        { label: "Geotechnical Report/Survey", value: null },
-    ];
-
     return (
         <>
-            {/* Files submitted with the original request */}
-            <div className="space-y-4 mb-8">
-                {intakeFiles.map((f) => (
-                    <div key={f.label}>
-                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                            {f.label}
-                        </label>
-                        <div className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-400 bg-gray-50">
-                            {f.value || "No file chosen"}
-                        </div>
-                    </div>
-                ))}
-                <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                        Additional Project Photos
-                    </label>
-                    <div className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-400 bg-gray-50">
-                        No files chosen
-                    </div>
-                </div>
-            </div>
-
-            {/* ─── The shared project folder, consultation-gated ─── */}
+            {/* ─── Intake documents and the shared folder, consultation-gated ─── */}
             {!consultationPaid ? (
                 <div className="text-center py-10 space-y-2 border border-dashed border-gray-200 rounded-xl mb-6">
                     <Lock className="w-8 h-8 text-gray-300 mx-auto" />
@@ -100,9 +73,12 @@ export default function ClientAttachmentsTab({
                     )}
                 </div>
             ) : project.id ? (
-                <div className="mb-6">
-                    <SharedFolderCard projectId={project.id} side="CLIENT" />
-                </div>
+                <>
+                    <ProjectDocumentsCard projectId={project.id} />
+                    <div className="mb-6">
+                        <SharedFolderCard projectId={project.id} side="CLIENT" />
+                    </div>
+                </>
             ) : (
                 <div className="text-center py-10 space-y-2 border border-dashed border-gray-200 rounded-xl mb-6">
                     <FolderOpen className="w-8 h-8 text-gray-300 mx-auto" />

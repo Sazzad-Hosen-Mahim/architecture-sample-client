@@ -1,5 +1,6 @@
 import { useGetMyNewInquiriesQuery, useAttachConsultationPaymentMutation, NewInquiry } from "@/redux/api/newInquiryApi";
 import { toExternalUrl } from "@/utils/externalUrl";
+import { isMeetingJoinExpired } from "@/utils/meetingWindow";
 import { useCreateConsultationIntentMutation } from "@/redux/api/paymentApi";
 import {
     Loader2,
@@ -265,15 +266,21 @@ const NewInquiriesClientTab = ({ searchQuery = "" }: NewInquiriesClientTabProps)
                                                 {inquiry.projectName} • {formatDate(meeting.scheduledAt)}
                                             </p>
                                         </div>
-                                        <a
-                                            href={toExternalUrl(meeting.meetingUrl) ?? undefined}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm active:scale-95"
-                                        >
-                                            <ExternalLink className="w-3 h-3" />
-                                            JOIN
-                                        </a>
+                                        {isMeetingJoinExpired(meeting.scheduledAt) ? (
+                                            <span className="px-3 py-1.5 bg-gray-100 text-gray-400 text-[10px] font-bold rounded-lg uppercase tracking-tight">
+                                                Completed
+                                            </span>
+                                        ) : (
+                                            <a
+                                                href={toExternalUrl(meeting.meetingUrl) ?? undefined}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm active:scale-95"
+                                            >
+                                                <ExternalLink className="w-3 h-3" />
+                                                JOIN
+                                            </a>
+                                        )}
                                     </div>
                                 ))
                             )}

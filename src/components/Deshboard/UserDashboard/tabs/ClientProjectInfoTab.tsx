@@ -73,6 +73,20 @@ export default function ClientProjectInfoTab({
     stages.length,
   );
 
+  // The description and context the studio wrote up on the inquiry/proposal
+  // form. They live on the proposal, not the request, so read them off the
+  // original contract — an amendment describes its own change, not the project.
+  // Before a proposal exists these are simply absent and the rows don't render.
+  const projectNarrative = useMemo(() => {
+    const proposals = (project.proposals || []) as any[];
+    const original =
+      proposals.find((p) => p.proposalType !== "AMENDMENT") ?? proposals[0];
+    return {
+      description: original?.projectDescription?.trim() || "",
+      context: original?.additionalContext?.trim() || "",
+    };
+  }, [project.proposals]);
+
   // Phases belong to a contract - the original proposal or an amendment.
   // Grouping keeps each contract's phases together instead of interleaving
   // them, matching the Meetings & Payment tab.
@@ -208,10 +222,10 @@ export default function ClientProjectInfoTab({
                 <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
                 <div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase block">
-                    Location
+                    Location:
                   </span>
                   <span className="text-sm text-gray-700">
-                    {projectAddress}
+                    {projectAddress}, {project.projectZipCode}
                   </span>
                 </div>
               </div>
@@ -263,6 +277,26 @@ export default function ClientProjectInfoTab({
                 </span>
                 <span className="text-sm text-gray-700">
                   {project.sustainabilityGoals}
+                </span>
+              </div>
+            )}
+            {projectNarrative.description && (
+              <div>
+                <span className="text-[10px] text-gray-400 font-bold uppercase block">
+                  Project Description
+                </span>
+                <span className="text-sm text-gray-700 whitespace-pre-line">
+                  {projectNarrative.description}
+                </span>
+              </div>
+            )}
+            {projectNarrative.context && (
+              <div>
+                <span className="text-[10px] text-gray-400 font-bold uppercase block">
+                  Additional Project Context
+                </span>
+                <span className="text-sm text-gray-700 whitespace-pre-line">
+                  {projectNarrative.context}
                 </span>
               </div>
             )}

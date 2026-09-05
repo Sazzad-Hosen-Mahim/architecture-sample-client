@@ -192,6 +192,20 @@ export default function ProjectDetailsSection({
     "",
   );
 
+  // Project size is stored as bare digits so validation can Number() it; the
+  // input only renders it grouped, the same way the budget field reads.
+  const squareFootageDigits = String(
+    localFormData.squareFootage || "",
+  ).replace(/[^\d]/g, "");
+
+  const handleSquareFootageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const digits = e.target.value.replace(/[^\d]/g, "");
+    setLocalFormData((prev) => ({ ...prev, squareFootage: digits }));
+    clearError("squareFootage");
+  };
+
   const handleBudgetAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/[^\d]/g, "");
     setLocalFormData((prev) => ({
@@ -576,9 +590,14 @@ export default function ProjectDetailsSection({
                 <Input
                   id="squareFootage"
                   name="squareFootage"
-                  type="number"
-                  value={localFormData.squareFootage}
-                  onChange={handleInputChange}
+                  inputMode="numeric"
+                  value={
+                    squareFootageDigits
+                      ? Number(squareFootageDigits).toLocaleString("en-US")
+                      : ""
+                  }
+                  onChange={handleSquareFootageChange}
+                  placeholder="2,500"
                   className=" flex-1 border-r-0 rounded-r-none"
                   required
                 />

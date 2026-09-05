@@ -8,7 +8,6 @@ import {
     Plus,
     FolderOpen,
     HardHat,
-    UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toExternalUrl } from "@/utils/externalUrl";
@@ -54,21 +53,14 @@ const SECTIONS: {
         icon: HardHat,
         accent: "text-blue-600 bg-blue-50",
     },
-    {
-        side: "CLIENT",
-        title: "Client",
-        blurb: "Folders and reference material shared by the client.",
-        icon: UserRound,
-        accent: "text-emerald-600 bg-emerald-50",
-    },
 ];
 
 /**
- * The project's shared folder: one card, an Architect half and a Client half.
+ * The project's shared folder: an Architect section only.
  *
- * Both sides read the whole card — that is the point of it — but each side only
- * has controls on its own half. The server enforces the same rule, so a client
- * cannot remove the architect's links even by calling the API directly.
+ * Both sides read the card, but only the architect adds, edits or deletes links
+ * — the client just opens them. The server enforces the same rule, so a client
+ * cannot touch the architect's links even by calling the API directly.
  */
 export default function SharedFolderCard({
     projectId,
@@ -145,7 +137,7 @@ export default function SharedFolderCard({
             </div>
             <p className="text-xs text-gray-500 mb-5">
                 External project folder, visible to both the architect and the client.
-                Each side manages its own links.
+                The architect manages the links; the client can open them.
             </p>
 
             {isLoading ? (

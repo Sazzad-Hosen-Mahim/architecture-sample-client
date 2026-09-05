@@ -267,6 +267,7 @@ function NewProject() {
                         setSubmittedAnonymously(Boolean(anon));
                         setPaymentSuccessful(true);
                       }}
+                      goToPreviousSection={goToPreviousSection}
                     />
                   )}
                 </div>

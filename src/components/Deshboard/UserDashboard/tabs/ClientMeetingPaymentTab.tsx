@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { isLumpSum, paymentPlanLabel, paymentPlanDescription } from "@/utils/paymentPlan";
 import { toExternalUrl } from "@/utils/externalUrl";
+import { isMeetingJoinExpired } from "@/utils/meetingWindow";
 import { toast } from "sonner";
 import {
     useRequestMeetingMutation,
@@ -264,6 +265,7 @@ export default function ClientMeetingPaymentTab({
         const isDeclined = meeting.status === "DECLINED";
         const isRespondingThis = isResponding && respondingMeetingId === meeting.id;
         const stage = stages.find((s: any) => s.id === meeting.stageId);
+        const isExpired = isMeetingJoinExpired(meeting.scheduledAt);
 
         return (
             <div className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all bg-white">
@@ -365,7 +367,14 @@ export default function ClientMeetingPaymentTab({
                             </button>
                         </div>
                     ) : isAccepted && meeting.meetingUrl ? (
-                        consultationPaid ? (
+                        isExpired ? (
+                            <div
+                                title="This meeting has already taken place"
+                                className="px-3 py-2 bg-gray-100 text-gray-400 text-[10px] font-bold rounded-lg uppercase tracking-tight flex-shrink-0"
+                            >
+                                Completed
+                            </div>
+                        ) : consultationPaid ? (
                             <a
                                 href={toExternalUrl(meeting.meetingUrl) ?? undefined}
                                 target="_blank"

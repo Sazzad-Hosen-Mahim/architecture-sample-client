@@ -79,7 +79,10 @@ export default function ProjectFinancialDetailsModal({
     isError,
     error,
   } = useGetProjectFinancialDetailsQuery(
-    { id: projectId, year: yearFilter === ALL_YEARS ? undefined : Number(yearFilter) },
+    {
+      id: projectId,
+      year: yearFilter === ALL_YEARS ? undefined : Number(yearFilter),
+    },
     { skip: !open || !projectId },
   );
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -571,7 +574,7 @@ export default function ProjectFinancialDetailsModal({
                       <tr>
                         <td className="px-4 py-4">
                           <div className="font-black text-sm uppercase tracking-wider">
-                            Grand Total
+                            Grand Totall
                           </div>
                           <div className="text-[9px] text-gray-400 font-bold mt-0.5">
                             {(details.grandTotals.amendmentBillableHours || 0) >
@@ -624,14 +627,15 @@ export default function ProjectFinancialDetailsModal({
                               details.grandTotals.actualHours,
                           )}
                         </td>
-                        <td className="px-4 py-4 font-black text-gray-300">
-                          {formatHrs(details.grandTotals.nonBillableHours)}
-                        </td>
+
                         <td className="px-4 py-4 font-black text-amber-300">
                           {formatCurrency(
                             details.grandTotals.laborBurned ??
                               details.grandTotals.burned,
                           )}
+                        </td>
+                        <td className="px-4 py-4 font-black text-gray-300">
+                          {formatHrs(details.grandTotals.nonBillableHours)}
                         </td>
                         <td className="px-4 py-4 font-black text-gray-300">
                           {formatCurrency(
@@ -646,7 +650,8 @@ export default function ProjectFinancialDetailsModal({
                             {formatCurrency(details.grandTotals.profit)}
                           </div>
                           <div className="text-[9px] font-bold text-gray-400 uppercase">
-                            {formatPercent(details.grandTotals.profitMargin)} Margin
+                            {formatPercent(details.grandTotals.profitMargin)}{" "}
+                            Margin
                           </div>
                         </td>
                       </tr>
@@ -691,8 +696,8 @@ export default function ProjectFinancialDetailsModal({
               </div>
               {yearFilter !== ALL_YEARS && (
                 <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                  Showing hours and cost from timecards submitted in {yearFilter}
-                  . Contract figures above cover the whole project.
+                  Showing hours and cost from timecards submitted in{" "}
+                  {yearFilter}. Contract figures above cover the whole project.
                 </p>
               )}
               <div className="border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
@@ -962,11 +967,11 @@ export default function ProjectFinancialDetailsModal({
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-900">
               <Info size={16} className="text-blue-500" />
               <p className="text-[10px] font-black uppercase tracking-wider leading-relaxed">
-                Overhead burned is each timecard's locked billing rate (currently{" "}
-                {formatCurrency(details.firmBillingRate)}/hr) × its non-billable
-                hours ({formatHours(details.totalProjectNonBillableHours)} in
-                total). A rate change only applies to timecards approved after
-                it.
+                Overhead burned is each timecard's locked billing rate
+                (currently {formatCurrency(details.firmBillingRate)}/hr) × its
+                non-billable hours (
+                {formatHours(details.totalProjectNonBillableHours)} in total). A
+                rate change only applies to timecards approved after it.
               </p>
             </div>
           </div>

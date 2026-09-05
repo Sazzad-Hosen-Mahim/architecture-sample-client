@@ -260,7 +260,7 @@ export default function NewInquiryPage({}: NewInquiryPageProps) {
               ? projectInfo.projectTypeOther?.trim() || undefined
               : undefined,
           squareFootage: projectInfo.squareFootage
-            ? `${projectInfo.squareFootage} ${projectInfo.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}`
+            ? `${Number(String(projectInfo.squareFootage).replace(/[^\d]/g, "")).toLocaleString("en-US")} ${projectInfo.projectSizeUnit === "sqm" ? "sq m" : "sq ft"}`
             : undefined,
           budgetRange: projectInfo.budgetRange || undefined,
         },
@@ -569,6 +569,21 @@ function ProjectTabFormForInquiry({
     );
   };
 
+  // Same trick for project size: stored bare, rendered grouped.
+  const squareFootageDigits = String(projectInfo.squareFootage || "").replace(
+    /[^\d]/g,
+    "",
+  );
+
+  const handleSquareFootageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    handleProjectInfoChange(
+      "squareFootage",
+      e.target.value.replace(/[^\d]/g, ""),
+    );
+  };
+
   const handleBudgetCurrencyChange = (currency: string) => {
     handleProjectInfoChange("budgetCurrency", currency);
     handleProjectInfoChange(
@@ -871,11 +886,14 @@ function ProjectTabFormForInquiry({
           <div className="flex justify-center items-center w-full">
             <Input
               id="squareFootage"
-              type="number"
-              value={projectInfo.squareFootage}
-              onChange={(e: any) =>
-                handleProjectInfoChange("squareFootage", e.target.value)
+              inputMode="numeric"
+              value={
+                squareFootageDigits
+                  ? Number(squareFootageDigits).toLocaleString("en-US")
+                  : ""
               }
+              onChange={handleSquareFootageChange}
+              placeholder="2,500"
               className="flex-1 border-r-0 rounded-r-none"
             />
             <div>

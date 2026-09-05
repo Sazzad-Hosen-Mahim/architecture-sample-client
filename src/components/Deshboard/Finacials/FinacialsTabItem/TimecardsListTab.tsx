@@ -24,6 +24,7 @@ import {
 import TimecardReviewDialog from "@/components/Deshboard/TimeCardDialog/TimecardReviewDialog";
 import { generatePayrollPDF } from "@/utils/payrollPDFGenerator";
 import { generatePayPeriods } from "@/utils/payPeriods";
+import { timecardHours } from "@/utils/timecardHours";
 import {
   timecardBreakdown,
   timecardHourlyRate,
@@ -121,8 +122,7 @@ const TimecardsListTab = () => {
       })
       .map((tc: any) => {
         const profile = tc.user?.employeeProfile;
-        const billable = Number(tc.billableHours || 0);
-        const total = Number(tc.totalHours || 0);
+        const hours = timecardHours(tc);
         const breakdown = timecardBreakdown(tc);
 
         return {
@@ -130,9 +130,9 @@ const TimecardsListTab = () => {
           timecard: tc,
           employee: tc.user,
           status: tc.status,
-          billableHours: billable,
-          overheadHours: total - billable,
-          utilization: total > 0 ? (billable / total) * 100 : 0,
+          billableHours: hours.billable,
+          overheadHours: hours.overhead,
+          utilization: hours.utilization,
           // An approved card is quoted at the rate it was approved under.
           hourlyRate: timecardHourlyRate(tc),
           salary: Number(profile?.salary || 0),

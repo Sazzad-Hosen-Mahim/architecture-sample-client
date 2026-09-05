@@ -68,7 +68,11 @@ export function BusinessAccounts() {
     isError: isAccountsError,
     error: accountsError,
     refetch: refetchAccounts,
-  } = useGetMercuryAccountsQuery();
+  } = useGetMercuryAccountsQuery(undefined, {
+    // A failed Mercury call (bad/rotated API key) otherwise stays cached for the
+    // whole session — remounting the tab would keep showing the old error.
+    refetchOnMountOrArgChange: true,
+  });
 
   const {
     data: txData,
@@ -76,7 +80,7 @@ export function BusinessAccounts() {
     isFetching: isFetchingTx,
   } = useGetMercuryTransactionsQuery(
     { accountId: selectedAccountId!, limit: txLimit },
-    { skip: !selectedAccountId }
+    { skip: !selectedAccountId, refetchOnMountOrArgChange: true }
   );
 
   const accounts = accountsData?.accounts || [];
