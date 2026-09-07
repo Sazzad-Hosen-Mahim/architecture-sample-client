@@ -52,7 +52,11 @@ function FloatingMenu() {
       {!isMenuOpen && !hideFloatingButton && (
         <button
           onClick={openMenu}
-          className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 text-sm font-semibold rounded-full w-20 h-24 bg-gray-300 cursor-pointer text-black shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+          // Offset by the safe-area inset as well as the 2rem: the page now
+          // renders edge to edge (viewport-fit=cover), so bottom-8 alone would
+          // measure from the physical edge and drop the button into the home
+          // indicator. The inset is 0 everywhere that has no cutout.
+          className="fixed bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 transform -translate-x-1/2 z-20 text-sm font-semibold rounded-full w-20 h-24 bg-gray-300 cursor-pointer text-black shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
         >
           Menu
         </button>
@@ -64,7 +68,7 @@ function FloatingMenu() {
           isMenuOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="flex flex-col justify-between h-full overflow-y-auto">
+        <div className="flex flex-col justify-between h-full overflow-y-auto pb-[env(safe-area-inset-bottom)]">
           <div className="px-6 py-2">
             {/* Close Button */}
             <div className="flex justify-center items-center">

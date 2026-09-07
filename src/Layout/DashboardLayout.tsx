@@ -9,7 +9,11 @@ export default function DashboardLayout() {
 
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
   return (
-    <div>
+    // min-h-lvh for the same reason as the public Layout: `lvh` runs the page
+    // the full height of the phone so it continues under iOS Safari's address
+    // bar, rather than stopping above it and leaving a strip of blank page for
+    // the bar to sit on. No effect where there is no retractable browser UI.
+    <div className="min-h-lvh">
       <div>
         {/* <NavbarAdminDashboard></NavbarAdminDashboard> */}
         {!shouldHideNavbar && <NavbarDashboard />}

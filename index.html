@@ -4,7 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/src/assets/logo-3.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover lets full-bleed content reach the physical edges of the
+       screen instead of stopping at the safe area, which is what left a white
+       band under the hero on iPhone. Anything anchored to the bottom must pay
+       that back with env(safe-area-inset-bottom) so it clears the home
+       indicator. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Architecture Simple</title>
 </head>
 
