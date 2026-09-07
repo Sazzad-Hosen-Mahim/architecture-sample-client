@@ -61,6 +61,56 @@ export function addDays(d: Date, days: number): Date {
   return out;
 }
 
+/**
+ * The zone the firm's office hours are expressed in.
+ *
+ * Office hours are the studio's wall-clock hours, so "12:00 to 18:00" means
+ * noon to six *in California*, for everyone. A viewer elsewhere sees the same
+ * instants rendered in their own time — from Dhaka a 1pm–8pm Pacific window
+ * shows up as 2am–9am local, and only those slots are bookable.
+ *
+ * Kept identical to STUDIO_TIME_ZONE in the API's project-request service: the
+ * grid must grey out exactly what the server would refuse.
+ */
+export const STUDIO_TIME_ZONE = "America/Los_Angeles";
+
+/** Minutes past midnight for `date`, read in `timeZone`. */
+export function zonedMinutes(date: Date, timeZone = STUDIO_TIME_ZONE): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    // h23 rather than hour12:false — the latter reports midnight as "24" on
+    // some ICU builds, which would read as the end of the day, not the start.
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(date);
+
+  const valueOf = (type: string) =>
+    Number(parts.find((part) => part.type === type)?.value ?? "0");
+
+  return valueOf("hour") * 60 + valueOf("minute");
+}
+
+/**
+ * Whether a slot beginning at `start` and running `durationMinutes` falls
+ * inside the studio's opening window. Both ends are compared in studio time,
+ * never the viewer's, which is what makes the window mean the same thing from
+ * California and from Dhaka.
+ */
+export function isWithinOfficeHours(
+  start: Date,
+  durationMinutes: number,
+  officeHours?: { start: string; end: string } | null,
+): boolean {
+  const open = parseTimeToMinutes(officeHours?.start);
+  const close = parseTimeToMinutes(officeHours?.end);
+  // A missing or malformed setting must not black out the whole grid.
+  if (open === null || close === null) return true;
+
+  const studioStart = zonedMinutes(start);
+  return studioStart >= open && studioStart + durationMinutes <= close;
+}
+
 /** "9:00 AM" / "1:30 PM" from minutes-since-midnight. */
 export function formatSlotLabel(minutes: number): string {
   const h24 = Math.floor(minutes / 60);
@@ -108,19 +158,16 @@ export function buildDaySlots(
   options: {
     now?: Date;
     /**
-     * Firm-wide booking window as local "HH:MM" times. Slots outside it are
-     * marked busy so the grid matches what the server will accept — a client
-     * picking 7am against 8am office hours would otherwise only find out on
-     * submit.
+     * Firm-wide booking window as "HH:MM" times in the studio's zone. Slots
+     * outside it are marked busy so the grid matches what the server will
+     * accept — a client picking 7am against 8am office hours would otherwise
+     * only find out on submit.
      */
     officeHours?: { start: string; end: string } | null;
   } = {}
 ): DaySlot[] {
   const now = options.now ?? new Date();
   const dayStart = startOfDay(day);
-
-  const officeOpen = parseTimeToMinutes(options.officeHours?.start);
-  const officeClose = parseTimeToMinutes(options.officeHours?.end);
 
   const ranges = busy.map((b) => ({
     start: new Date(b.start),
@@ -145,10 +192,14 @@ export function buildDaySlots(
     const tentativeHit = hits.find((r) => !r.blocking);
     const hit = blockingHit ?? tentativeHit;
 
-    const outsideOfficeHours =
-      officeOpen !== null &&
-      officeClose !== null &&
-      (minutes < officeOpen || minutes + SLOT_MINUTES > officeClose);
+    // Compared in studio time, not the viewer's: `minutes` is local, the window
+    // is Californian, and comparing the two directly is what left a Dhaka
+    // client staring at a grid where every open hour was greyed out.
+    const outsideOfficeHours = !isWithinOfficeHours(
+      start,
+      SLOT_MINUTES,
+      options.officeHours,
+    );
 
     return {
       minutes,

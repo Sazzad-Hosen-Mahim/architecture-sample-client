@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 // import { ArrowLeft } from "lucide-react";
 import article1 from "@/assets/newsfeed/newsfeed-1.jpg";
@@ -10,6 +11,8 @@ import {
 } from "@/components/ui/carousel";
 import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
+import ImageLightbox from "@/components/Common/ImageLightbox";
+import { toProjectImages, type ProjectImage } from "@/utils/projectImage";
 
 const NewsFeedDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +23,16 @@ const NewsFeedDetails = () => {
   } = useGetMediaByIdOrSlugQuery(id || "");
 
   const article = response?.data;
+
+  // Declared ahead of the loading / not-found returns below, so the hook order
+  // stays the same on every render.
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setIsLightboxOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -49,11 +62,11 @@ const NewsFeedDetails = () => {
   }
 
   // All uploaded images, in order; fall back to the cover image / placeholder.
-  const images: string[] = (article.assets
-    ?.map((a: any) => a.cdnUrl)
-    .filter(Boolean) ?? []) as string[];
+  // Kept as ProjectImage records rather than bare URLs so the lightbox gets each
+  // asset's stored width and can pick a sensible file from the srcset.
+  const images: ProjectImage[] = toProjectImages(article.assets);
   if (images.length === 0) {
-    images.push(article.coverImage || article1);
+    images.push({ url: article.coverImage || article1 });
   }
 
   const publishedDate = article.publishDate
@@ -76,16 +89,26 @@ const NewsFeedDetails = () => {
         Back to News Feed
       </Link> */}
 
+      {/* The article images crop to a fixed 20rem band, so what is on the page
+          is never the whole frame. Clicking one opens it uncropped, with the
+          arrows and thumbnail strip for moving between them. */}
       {images.length > 1 ? (
         <Carousel opts={{ loop: true }} className="mb-6">
           <CarouselContent>
-            {images.map((src, index) => (
-              <CarouselItem key={index}>
-                <img
-                  src={src}
-                  alt={`${article.title} — image ${index + 1}`}
-                  className="w-full h-80 object-cover rounded-xl"
-                />
+            {images.map((image, index) => (
+              <CarouselItem key={image.url}>
+                <button
+                  type="button"
+                  onClick={() => openLightbox(index)}
+                  aria-label={`View image ${index + 1} full screen`}
+                  className="block w-full cursor-zoom-in"
+                >
+                  <img
+                    src={image.url}
+                    alt={`${article.title} — image ${index + 1}`}
+                    className="w-full h-80 object-cover rounded-xl"
+                  />
+                </button>
               </CarouselItem>
             ))}
           </CarouselContent>
@@ -93,12 +116,28 @@ const NewsFeedDetails = () => {
           <CarouselNext className="right-4 z-10" />
         </Carousel>
       ) : (
-        <img
-          src={images[0]}
-          alt={article.title}
-          className="w-full h-80 object-cover rounded-xl mb-6"
-        />
+        <button
+          type="button"
+          onClick={() => openLightbox(0)}
+          aria-label="View image full screen"
+          className="block w-full cursor-zoom-in mb-6"
+        >
+          <img
+            src={images[0].url}
+            alt={article.title}
+            className="w-full h-80 object-cover rounded-xl"
+          />
+        </button>
       )}
+
+      <ImageLightbox
+        images={images}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        open={isLightboxOpen}
+        onOpenChange={setIsLightboxOpen}
+        alt={article.title}
+      />
 
       <h1 className="text-2xl font-bold text-gray-900 mb-2">{article.title}</h1>
       <p className="text-sm text-gray-600 mb-1">

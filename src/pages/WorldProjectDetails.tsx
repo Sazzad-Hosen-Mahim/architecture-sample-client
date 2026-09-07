@@ -14,6 +14,7 @@ import {
 import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 import ProjectPhoto from "@/components/Common/ProjectPhoto";
+import ImageLightbox from "@/components/Common/ImageLightbox";
 import {
   projectImageUrl,
   toProjectImages,
@@ -35,6 +36,7 @@ const toTitleCase = (value: string) =>
 function WorldProjectDetails() {
   const { id } = useParams<{ id: string }>();
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   // Arrow colour adapts to the brightness of the photo edge behind it.
   const [arrowTone, setArrowTone] = useState<"light" | "dark">("light");
 
@@ -164,7 +166,7 @@ function WorldProjectDetails() {
           one below it, justified to the edges. From md the wrapper collapses to
           `contents` so all three are direct flex children again, with explicit
           orders restoring the original left/centre/right row. */}
-      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
         <h1 className="flex-1 text-base md:text-lg font-semibold text-center order-first md:order-2">
           {project.name}
         </h1>
@@ -189,16 +191,26 @@ function WorldProjectDetails() {
           {/* Image gallery */}
           <div className="mb-6">
             <div className="relative w-full h-[300px] md:h-[430px] rounded-xl overflow-hidden mb-4 bg-gray-100">
-              <ProjectPhoto
-                image={images[activeIndex]}
-                alt={project.name}
-                sizes={GALLERY_SIZES}
-                priority
-                onError={(e) => {
-                  e.currentTarget.srcset = "";
-                  e.currentTarget.src = PLACEHOLDER.url;
-                }}
-              />
+              {/* The gallery crops to fill its box, so the photo on the page is
+                  never the whole frame. Clicking it opens the lightbox, which
+                  shows it uncropped. */}
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(true)}
+                aria-label="View image full screen"
+                className="absolute inset-0 h-full w-full cursor-zoom-in"
+              >
+                <ProjectPhoto
+                  image={images[activeIndex]}
+                  alt={project.name}
+                  sizes={GALLERY_SIZES}
+                  priority
+                  onError={(e) => {
+                    e.currentTarget.srcset = "";
+                    e.currentTarget.src = PLACEHOLDER.url;
+                  }}
+                />
+              </button>
 
               {images.length > 1 && (
                 <>
@@ -249,6 +261,15 @@ function WorldProjectDetails() {
                 ))}
               </div>
             )}
+
+            <ImageLightbox
+              images={images}
+              index={activeIndex}
+              onIndexChange={setSelectedImage}
+              open={isLightboxOpen}
+              onOpenChange={setIsLightboxOpen}
+              alt={project.name}
+            />
           </div>
 
           {/* Project Details + Tags */}

@@ -72,23 +72,18 @@ function FloatingMenu() {
           menu run to the bottom of the phone, so its content passes under the
           toolbar the way the rest of the site's pages do. */}
       <div
-        className={`fixed top-16 left-0 right-0 h-[calc(100lvh-4rem)] bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out lg:py-[15px] py-[10px] ${
+        className={`fixed top-16 left-0 right-0 h-[calc(100lvh-4rem)] bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out py-[10px] lg:py-[15px] lg:pb-0 ${
           isMenuOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div
-          className="flex flex-col justify-between h-full overflow-y-auto"
-          // Reserve the height of whatever browser UI is currently on screen,
-          // so the footer scrolls clear of iOS Safari's toolbar instead of
-          // ending up underneath it and unreadable. `100lvh - 100dvh` is that
-          // height and shrinks to 0 as the toolbar collapses; the safe-area
-          // inset covers the home indicator, and 1.5rem is breathing room.
-          // Everything without retractable browser UI gets just the 1.5rem.
-          style={{
-            paddingBottom:
-              "calc(env(safe-area-inset-bottom) + (100lvh - 100dvh) + 1.5rem)",
-          }}
-        >
+        {/* The bottom padding reserves the height of whatever browser UI is on
+            screen, so the footer clears iOS Safari's toolbar rather than ending
+            up under it: `100lvh - 100dvh` is that height and shrinks to 0 as the
+            toolbar collapses, and the safe-area inset covers the home indicator.
+            The extra 1.5rem of breathing room is dropped from `lg` up — a
+            desktop has no toolbar to clear, and on a tall panel that padding
+            only pushed the footer up away from the bottom edge. */}
+        <div className="flex flex-col justify-between h-full overflow-y-auto pb-[calc(env(safe-area-inset-bottom)_+_(100lvh_-_100dvh)_+_1.5rem)] lg:pb-[calc(env(safe-area-inset-bottom)_+_(100lvh_-_100dvh))]">
           <div className="px-6 py-2">
             {/* Close Button */}
             <div className="flex justify-center items-center">
@@ -186,7 +181,12 @@ function FloatingMenu() {
             </div> */}
           </div>
 
-          {/* Social Media Section */}
+          {/* Social Media Section. Its own bottom margin is left alone:
+              `justify-between` aligns the last item by its *margin* box, so
+              cancelling that margin with a negative one pushed the element's
+              border box past the container and produced a scrollbar. The footer
+              is lowered by trimming the padding beneath it instead — see the
+              `lg:` rules on the panel and on this scroll container. */}
           <HeroSocialMedia onNavigation={handleNavigation} />
         </div>
       </div>

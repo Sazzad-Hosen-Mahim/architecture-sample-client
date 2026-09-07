@@ -194,9 +194,10 @@ export default function ProjectDetailsSection({
 
   // Project size is stored as bare digits so validation can Number() it; the
   // input only renders it grouped, the same way the budget field reads.
-  const squareFootageDigits = String(
-    localFormData.squareFootage || "",
-  ).replace(/[^\d]/g, "");
+  const squareFootageDigits = String(localFormData.squareFootage || "").replace(
+    /[^\d]/g,
+    "",
+  );
 
   const handleSquareFootageChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -283,9 +284,15 @@ export default function ProjectDetailsSection({
       {/* --------------------------------------------------- Project Name */}
       <div>
         <h2 className="text-base font-medium mb-4">Project Name</h2>
-        <Label htmlFor="projectName" className="mb-2">
-          Name <span className="text-red-500 font-semibold">*</span>
-        </Label>
+        <div className="flex justify-between items-center">
+          <Label htmlFor="projectName" className="mb-2">
+            Name <span className="text-red-500 font-semibold">*</span>
+          </Label>
+
+          <p className="text-red-500 text-xs font-semibold mb-1">
+            * - indicates required field
+          </p>
+        </div>
         <Input
           id="projectName"
           name="projectName"
@@ -689,10 +696,6 @@ export default function ProjectDetailsSection({
             <h2 className="text-base font-medium mb-4">
               Architectural Preferences
             </h2>
-
-            <p className="text-red-500 text-sm font-semibold">
-              * - indicates required field
-            </p>
           </div>
           <div className="space-y-4">
             {/* <div>

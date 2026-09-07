@@ -26,6 +26,44 @@ import {
   type ValidationErrors,
 } from "@/utils/newProjectValidation";
 import { toast } from "sonner";
+import { useGetOfficeHoursQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
+
+import {
+  formatSlotLabel,
+  isWithinOfficeHours,
+  startOfDay,
+} from "@/utils/scheduleSlots";
+
+/** Appointments are offered on the hour. */
+const SLOT_STEP_MINUTES = 60;
+
+/**
+ * The hourly slots offered for `day`, labelled in the viewer's local time but
+ * limited to the studio's opening window.
+ *
+ * Every hour of the local day is tested by converting its instant into studio
+ * time, rather than reading the window as if it were local. That is what makes
+ * a 1pm–8pm California window appear to a Dhaka client as 2am–9am local — the
+ * same real hours, written in their clock — instead of showing 1pm–8pm Dhaka
+ * and having the server reject every one of them.
+ */
+const buildSlots = (
+  day: Date | undefined,
+  officeHours?: { start: string; end: string } | null,
+): string[] => {
+  if (!day) return [];
+
+  const dayStart = startOfDay(day);
+  const slots: string[] = [];
+
+  for (let minutes = 0; minutes < 24 * 60; minutes += SLOT_STEP_MINUTES) {
+    const start = new Date(dayStart.getTime() + minutes * 60 * 1000);
+    if (!isWithinOfficeHours(start, SLOT_STEP_MINUTES, officeHours)) continue;
+    slots.push(formatSlotLabel(minutes));
+  }
+
+  return slots;
+};
 
 export default function ScheduleAppointmentSection({
   formData,
@@ -78,18 +116,22 @@ export default function ScheduleAppointmentSection({
     updateFormData({ appointmentTime: time });
   };
 
-  const getAvailableTimes = (date: Date | undefined) => {
-    console.log(date);
-    return [
-      "8:00 AM",
-      "9:00 AM",
-      "10:00 AM",
-      "11:00 AM",
-      "12:00 PM",
-      "1:00 PM",
-      "2:00 PM",
-    ];
-  };
+  // The bookable window comes from the master schedule (Profile Settings →
+  // Master Schedule), so the slots offered here can't contradict the hours the
+  // studio actually keeps. The endpoint is public because this wizard is open
+  // to visitors without an account.
+  const { data: officeHoursResponse, isLoading: isLoadingOfficeHours } =
+    useGetOfficeHoursQuery();
+
+  // Recomputed per selected day: which local hours fall inside the studio's
+  // window shifts with the date, since California and the viewer can cross
+  // daylight-saving boundaries on different days.
+  const availableTimes = useMemo(
+    () => buildSlots(selectedDate, officeHoursResponse?.data),
+    [selectedDate, officeHoursResponse],
+  );
+
+  const getAvailableTimes = (_date: Date | undefined) => availableTimes;
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -328,7 +370,22 @@ export default function ScheduleAppointmentSection({
             <Label htmlFor="appointmentTime" className="text-md font-semibold">
               Select Time
             </Label>
-            {selectedDate ? (
+            {!selectedDate ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Available times will appear here once you select a date.
+              </p>
+            ) : isLoadingOfficeHours ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Loading available times…
+              </p>
+            ) : getAvailableTimes(selectedDate).length === 0 ? (
+              // The window can legitimately be too narrow for a whole hour, and
+              // an empty grid would read as a broken form.
+              <p className="text-sm text-muted-foreground mt-2">
+                No appointment times are open at the moment. Please contact us to
+                arrange a consultation.
+              </p>
+            ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
                 {getAvailableTimes(selectedDate).map((time) => (
                   <button
@@ -346,10 +403,6 @@ export default function ScheduleAppointmentSection({
                   </button>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-2">
-                Available times will appear here once you select a date.
-              </p>
             )}
             <FieldError message={errors.appointmentTime} />
           </div>

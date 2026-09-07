@@ -15,9 +15,9 @@ export default function ThumbprintButton({
 }: ThumbprintButtonProps) {
   const uniqueId = useId();
 
-  const LINE_HEIGHT = 17;
+  const LINE_HEIGHT = 20;
 
-  const buttonClasses = `w-20 h-26 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out relative overflow-hidden ${
+  const buttonClasses = `w-24 h-30 bg-black rounded-full shadow-lg flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out relative overflow-hidden ${
     disabled
       ? "opacity-60 cursor-not-allowed"
       : "cursor-pointer hover:scale-105"
@@ -49,8 +49,8 @@ export default function ThumbprintButton({
 
   // Calculate font size based on word length
   const getFontSize = (word: string) => {
-    if (word.length <= 6) return "14px";
-    if (word.length <= 12) return "13px";
+    if (word.length <= 6) return "13px";
+    if (word.length <= 12) return "12px";
     return "10px";
   };
 
@@ -76,8 +76,8 @@ export default function ThumbprintButton({
               y="60"
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-white font-bold tracking-[0.1em] cursor-pointer "
-              style={{ fontSize: getFontSize("SUBMIT") }}
+              className="fill-white font-bold cursor-pointer "
+              // style={{ fontSize: getFontSize("SUBMIT") }}
             >
               SUBMIT
             </text>
@@ -86,8 +86,8 @@ export default function ThumbprintButton({
               y="80"
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-white font-bold tracking-[0.1em] cursor-pointer"
-              style={{ fontSize: getFontSize("PROJECT") }}
+              className="fill-white font-bold cursor-pointer"
+              // style={{ fontSize: getFontSize("PROJECT") }}
             >
               PROJECT
             </text>

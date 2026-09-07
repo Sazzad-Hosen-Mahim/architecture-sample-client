@@ -278,26 +278,43 @@ export function ProfileSettings() {
           <Card className="border-2 border-gray-300 shadow-lg">
             <CardContent className="px-6">
               <div className="flex flex-col items-center space-y-4">
-                <div className="relative">
-                  <Avatar className="h-24 w-24 border">
-                    <AvatarImage src={profilePhoto} alt={user?.name} />
-                    <AvatarFallback className="text-lg">
-                      {user?.name?.charAt(0) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <label
-                    htmlFor="profile-photo"
-                    className="absolute bottom-0 right-0 bg-gray-800 text-white rounded-full p-1 cursor-pointer hover:bg-blue-700"
-                  >
-                    <UserCog className="h-4 w-4" />
-                    <input
-                      id="profile-photo"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleProfilePhotoChange}
-                    />
-                  </label>
+                {/* On a phone the avatar is flanked by the account status, which
+                    fills the empty space either side of it and lets the block
+                    that used to sit under the separator — and the band of white
+                    it left below the card — go away entirely. From `md` up the
+                    avatar is centred on its own and the status keeps its
+                    original place further down. */}
+                <div className="flex w-full items-center justify-between md:justify-center">
+                  <div className="md:hidden">
+                    <div className="text-sm text-gray-500">Account Status</div>
+                    <div className="text-sm text-gray-700">Active</div>
+                  </div>
+
+                  <div className="relative">
+                    <Avatar className="h-24 w-24 border">
+                      <AvatarImage src={profilePhoto} alt={user?.name} />
+                      <AvatarFallback className="text-lg">
+                        {user?.name?.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label
+                      htmlFor="profile-photo"
+                      className="absolute bottom-0 right-0 bg-gray-800 text-white rounded-full p-1 cursor-pointer hover:bg-blue-700"
+                    >
+                      <UserCog className="h-4 w-4" />
+                      <input
+                        id="profile-photo"
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleProfilePhotoChange}
+                      />
+                    </label>
+                  </div>
+
+                  <span className="md:hidden inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                    Verified
+                  </span>
                 </div>
                 <div className="text-center">
                   <h3 className="font-medium text-lg text-gray-900">
@@ -308,16 +325,21 @@ export function ProfileSettings() {
                     Role: {user?.role}
                   </h3>
                 </div>
-                <Separator />
-                <div className="w-full">
-                  <div className="text-sm text-gray-500 mb-2">
-                    Account Status
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">Active</span>
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                      Verified
-                    </span>
+                {/* Hidden on a phone — the same information is shown beside the
+                    avatar above, and keeping this as well is what left the
+                    empty strip at the bottom of the card. */}
+                <div className="hidden w-full space-y-4 md:block">
+                  <Separator />
+                  <div className="w-full">
+                    <div className="text-sm text-gray-500 mb-2">
+                      Account Status
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">Active</span>
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                        Verified
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
