@@ -61,10 +61,18 @@ function FloatingMenu() {
           Menu
         </button>
       )}
-      {/* Sliding Menu Panel — anchored to the bottom of the sticky navbar (h-14)
-          so it sits flush under it with no gap at any viewport height / zoom. */}
+      {/* Sliding Menu Panel — anchored under the sticky navbar, which is `h-16`
+          plus a 1px border. It used to be offset by `top-14` (56px), leaving a
+          9px strip of page showing through above it.
+
+          Height is `lvh`-based rather than `bottom-0`. On a fixed element
+          `bottom-0` resolves to the bottom of the viewport *above* iOS Safari's
+          toolbar, so the panel stopped there and the toolbar sat on its edge as
+          a hard grey band. Sizing it to the large viewport instead lets the
+          menu run to the bottom of the phone, so its content passes under the
+          toolbar the way the rest of the site's pages do. */}
       <div
-        className={`fixed top-14 left-0 right-0 bottom-0 bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out lg:py-[15px] py-[10px] ${
+        className={`fixed top-16 left-0 right-0 h-[calc(100lvh-4rem)] bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out lg:py-[15px] py-[10px] ${
           isMenuOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
