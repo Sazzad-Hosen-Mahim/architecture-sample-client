@@ -26,6 +26,12 @@ const ScrollToTop = () => {
   }, []);
 
   useEffect(() => {
+    // Only scroll if there is somewhere to scroll from. Landing on a new route
+    // already at the top and calling scrollTo anyway is not a no-op on iOS:
+    // Safari reads any scroll towards the top as the cue to expand its bottom
+    // toolbar back to the opaque bar, which is why navigating from the menu
+    // produced a grey band that a reload — which never sends that cue — fixed.
+    if (window.scrollY === 0) return;
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
 

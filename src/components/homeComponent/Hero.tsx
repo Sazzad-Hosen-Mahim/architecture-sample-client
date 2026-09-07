@@ -39,7 +39,6 @@ const detailPathFor = (media: any): string | null => {
 };
 
 function Hero() {
-  const [isMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const { data, isLoading } = useGetAllMediaQuery({});
@@ -86,18 +85,11 @@ function Hero() {
   //   setIsMenuOpen(!isMenuOpen);
   // };
 
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = "hidden"; // stop scrolling
-    } else {
-      document.body.style.overflow = ""; // allow scrolling
-    }
-
-    // cleanup when component unmounts
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMenuOpen]);
+  // A body-scroll lock keyed to a local `isMenuOpen` used to live here, but the
+  // state had no setter — it was permanently false, so the effect only ever
+  // wrote an empty overflow to `document.body` on each mount and unmount of the
+  // home page. Touching global document state on every navigation for no gain
+  // is worth not doing, so it is gone; the menu that needs the lock owns it.
 
   // The hero used to lock body scroll on mount. The layout now sizes the page
   // to the viewport on its own, so the lock earned nothing and only risked
