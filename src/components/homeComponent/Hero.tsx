@@ -19,6 +19,20 @@ import { toProjectImages, type ProjectImage } from "@/utils/projectImage";
  */
 const HERO_FILL = "flex-1 w-full";
 
+/**
+ * On a phone the hero is pushed 3rem past the height the layout gives it, so
+ * the photo runs beyond the bottom edge of the screen rather than ending level
+ * with it. Anything of that bottom strip that belongs to the page — as opposed
+ * to Safari's own toolbar chrome — is then covered by the picture.
+ *
+ * The overshoot also leaves the page slightly scrollable, and a scroll is what
+ * makes Safari collapse its toolbar, so the photo gets the taller viewport too.
+ *
+ * `max-md:` keeps it to small screens; a desktop hero still ends exactly at the
+ * fold with no scrollbar. The 4rem is the navbar (`h-16`).
+ */
+const HERO_MOBILE_OVERSHOOT = "max-md:min-h-[calc(100lvh_-_4rem_+_3rem)]";
+
 /** Shown only until the first featured project is published. */
 const FALLBACK_IMAGE: ProjectImage = {
   url: "https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2400&q=80",
@@ -111,7 +125,9 @@ function Hero() {
   const detailPath = detailPathFor(latestMedia);
 
   return (
-    <div className={`relative overflow-hidden ${HERO_FILL}`}>
+    <div
+      className={`relative overflow-hidden ${HERO_FILL} ${HERO_MOBILE_OVERSHOOT}`}
+    >
       {/* Background photos with transition. Real <img> elements rather than
           CSS `background-image` so each one carries a `srcset` — a background
           can only ever name a single file, which is what left the hero
