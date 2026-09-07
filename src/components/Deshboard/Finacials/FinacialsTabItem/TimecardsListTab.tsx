@@ -18,7 +18,7 @@ import {
   Filter,
   Archive,
   ChevronDown,
-  ArrowDownAZ,
+  ChevronUp,
   FilterX,
 } from "lucide-react";
 import TimecardReviewDialog from "@/components/Deshboard/TimeCardDialog/TimecardReviewDialog";
@@ -40,6 +40,149 @@ type StatusFilter = (typeof STATUS_FILTERS)[number];
 /** Every employee filter, i.e. no employee filter. */
 const ALL_EMPLOYEES = "ALL";
 
+/** The columns the payroll table can be ordered by. */
+type SortKey =
+  | "employee"
+  | "utilization"
+  | "hours"
+  | "hourlyRate"
+  | "gross"
+  | "location"
+  | "totalTax"
+  | "net"
+  | "payPeriod"
+  | "year"
+  | "status";
+
+interface SortState {
+  key: SortKey;
+  direction: "asc" | "desc";
+}
+
+/**
+ * The value a column sorts on.
+ *
+ * Money, hours and percentages return numbers so 0–100% and $0–$9,999 order
+ * properly rather than as text, where "$1,046.89" sorts before "$613.05".
+ * Everything textual is lowercased so A–Z ignores case.
+ */
+const sortValue = (item: any, key: SortKey): string | number | null => {
+  switch (key) {
+    case "employee":
+      return (item.employee?.name || item.employee?.email || "").toLowerCase();
+    case "utilization":
+      return item.utilization;
+    case "hours":
+      // The column shows billable and overhead together; billable is the one
+      // a payroll run is actually read against.
+      return item.billableHours;
+    case "hourlyRate":
+      return item.hourlyRate;
+    case "gross":
+      return item.breakdown.gross;
+    case "location":
+      return (item.location || "").toLowerCase();
+    case "totalTax":
+      return item.breakdown.totalTax;
+    case "net":
+      return item.breakdown.net;
+    case "payPeriod":
+      return Number(item.timecard?.payPeriod ?? 0);
+    case "year":
+      return Number(item.timecard?.payYear ?? 0);
+    case "status":
+      return String(item.status || "").toLowerCase();
+  }
+};
+
+/**
+ * A column header that sorts the payroll table by its column.
+ *
+ * Both arrows always show, greyed until the column is the active one, so it
+ * reads as "every column can be sorted" rather than only the one in use.
+ */
+function SortableTh({
+  sortKey,
+  sort,
+  onSort,
+  className = "",
+  children,
+}: {
+  sortKey: SortKey;
+  sort: SortState | null;
+  onSort: (key: SortKey) => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const isActive = sort?.key === sortKey;
+  const direction = isActive ? sort.direction : null;
+
+  return (
+    <th
+      aria-sort={
+        direction === "asc"
+          ? "ascending"
+          : direction === "desc"
+            ? "descending"
+            : undefined
+      }
+      className={className}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="group inline-flex items-center gap-1 cursor-pointer hover:text-gray-900 transition-colors"
+      >
+        {children}
+        <span className="flex flex-col leading-none">
+          <ChevronUp
+            size={10}
+            className={
+              direction === "asc"
+                ? "text-gray-900"
+                : "text-gray-300 group-hover:text-gray-400"
+            }
+          />
+          <ChevronDown
+            size={10}
+            className={
+              direction === "desc"
+                ? "text-gray-900"
+                : "text-gray-300 group-hover:text-gray-400"
+            }
+          />
+        </span>
+      </button>
+    </th>
+  );
+}
+
+/**
+ * Order a copy of the rows. Rows with no value — an employee with no state on
+ * file — sink to the bottom whichever way the column points, so reversing the
+ * sort never buries the rows that do have data under a block of blanks.
+ */
+const sortPayrollItems = <T,>(items: T[], sort: SortState | null): T[] => {
+  if (!sort) return items;
+  const factor = sort.direction === "asc" ? 1 : -1;
+
+  return [...items].sort((a, b) => {
+    const left = sortValue(a, sort.key);
+    const right = sortValue(b, sort.key);
+
+    const leftEmpty = left === null || left === undefined || left === "";
+    const rightEmpty = right === null || right === undefined || right === "";
+    if (leftEmpty && rightEmpty) return 0;
+    if (leftEmpty) return 1;
+    if (rightEmpty) return -1;
+
+    if (typeof left === "number" && typeof right === "number") {
+      return (left - right) * factor;
+    }
+    return String(left).localeCompare(String(right)) * factor;
+  });
+};
+
 const TimecardsListTab = () => {
   const currentYear = new Date().getFullYear();
 
@@ -48,7 +191,21 @@ const TimecardsListTab = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [employeeFilter, setEmployeeFilter] = useState<string>(ALL_EMPLOYEES);
   const [search, setSearch] = useState("");
-  const [sortByEmployee, setSortByEmployee] = useState(false);
+  // Replaced the old "Sort By Employee" toggle: every column header sorts now,
+  // so a single button pinned to one column had nothing left to do.
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  /**
+   * Click a header to sort by it; click again to reverse; a third click clears
+   * back to the natural order, so there is always a way back without a reload.
+   */
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, direction: "asc" };
+      if (prev.direction === "asc") return { key, direction: "desc" };
+      return null;
+    });
+  };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedTaxId, setExpandedTaxId] = useState<string | null>(null);
   const [selectedTimecardId, setSelectedTimecardId] = useState<string | null>(null);
@@ -139,14 +296,14 @@ const TimecardsListTab = () => {
           location: profile?.state || null,
           breakdown,
         };
-      })
-      // Grouping every record for one person together makes a payroll run far
-      // easier to read than the default date order.
-      .sort((a, b) => {
-        if (!sortByEmployee) return 0;
-        return (a.employee?.name || "").localeCompare(b.employee?.name || "");
       });
-  }, [timecards, search, statusFilter, employeeFilter, selectedYear, sortByEmployee]);
+  }, [timecards, search, statusFilter, employeeFilter, selectedYear]);
+
+  /** Ordering is applied after filtering, so it covers every matching row. */
+  const sortedPayrollItems = useMemo(
+    () => sortPayrollItems(payrollItems, sort),
+    [payrollItems, sort],
+  );
 
   /** The status tallies follow the year in view, not the whole history. */
   const yearTimecards = useMemo(
@@ -160,8 +317,7 @@ const TimecardsListTab = () => {
     selectedPeriod !== -1 ||
     statusFilter !== "ALL" ||
     employeeFilter !== ALL_EMPLOYEES ||
-    search.trim() !== "" ||
-    sortByEmployee;
+    search.trim() !== "";
 
   const clearFilters = () => {
     setSelectedYear(currentYear);
@@ -169,7 +325,8 @@ const TimecardsListTab = () => {
     setStatusFilter("ALL");
     setEmployeeFilter(ALL_EMPLOYEES);
     setSearch("");
-    setSortByEmployee(false);
+    // Sorting is a view preference rather than a filter, so "Clear filters"
+    // leaves the chosen column order alone.
     setSelectedIds(new Set());
   };
 
@@ -271,20 +428,8 @@ const TimecardsListTab = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* Groups every record for one person together for a payroll run. */}
-            <button
-              type="button"
-              onClick={() => setSortByEmployee((prev) => !prev)}
-              aria-pressed={sortByEmployee}
-              className={`flex items-center gap-2 border px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-                sortByEmployee
-                  ? "bg-gray-900 border-gray-900 text-white"
-                  : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <ArrowDownAZ size={14} />
-              Sort By Employee
-            </button>
+            {/* The "Sort By Employee" toggle that used to sit here is gone —
+                the Employee column header sorts now, along with every other. */}
 
             {/* Narrows the run to one person, rather than only grouping them. */}
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 sm:px-4 py-2 rounded-xl">
@@ -446,23 +591,47 @@ const TimecardsListTab = () => {
                   className="w-4 h-4 accent-black cursor-pointer disabled:cursor-not-allowed"
                 />
               </th>
-              <th>Employee</th>
-              <th>Utilization Rate</th>
-              <th>Hours Breakdown</th>
-              <th>Hourly / Salary</th>
-              <th>Gross Pay</th>
-              <th>State/Region/Country</th>
-              <th>Total Taxes</th>
+              <SortableTh sortKey="employee" sort={sort} onSort={toggleSort}>
+                Employee
+              </SortableTh>
+              <SortableTh sortKey="utilization" sort={sort} onSort={toggleSort}>
+                Utilization Rate
+              </SortableTh>
+              <SortableTh sortKey="hours" sort={sort} onSort={toggleSort}>
+                Hours Breakdown
+              </SortableTh>
+              <SortableTh sortKey="hourlyRate" sort={sort} onSort={toggleSort}>
+                Hourly / Salary
+              </SortableTh>
+              <SortableTh sortKey="gross" sort={sort} onSort={toggleSort}>
+                Gross Pay
+              </SortableTh>
+              <SortableTh sortKey="location" sort={sort} onSort={toggleSort}>
+                State/Region/Country
+              </SortableTh>
+              <SortableTh sortKey="totalTax" sort={sort} onSort={toggleSort}>
+                Total Taxes
+              </SortableTh>
+              {/* Not sortable — it holds an expander, not a value. */}
               <th>Taxes Breakdown</th>
-              <th>Net Pay</th>
-              <th>Pay Period</th>
-              <th>Year</th>
-              <th>Status</th>
+              <SortableTh sortKey="net" sort={sort} onSort={toggleSort}>
+                Net Pay
+              </SortableTh>
+              <SortableTh sortKey="payPeriod" sort={sort} onSort={toggleSort}>
+                Pay Period
+              </SortableTh>
+              <SortableTh sortKey="year" sort={sort} onSort={toggleSort}>
+                Year
+              </SortableTh>
+              <SortableTh sortKey="status" sort={sort} onSort={toggleSort}>
+                Status
+              </SortableTh>
+              {/* Not sortable — it holds buttons. */}
               <th className="text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {payrollItems.map((item) => {
+            {sortedPayrollItems.map((item) => {
               const tc = item.timecard;
               const emp = item.employee;
               const isExpanded = expandedTaxId === item.id;

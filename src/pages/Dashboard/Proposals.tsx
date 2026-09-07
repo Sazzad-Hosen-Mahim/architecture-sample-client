@@ -229,10 +229,7 @@ const Proposals = () => {
   );
 
   // Pagination — rows per page is user-selectable (default 25).
-  const totalPages = Math.max(
-    1,
-    Math.ceil(groupedProposals.length / pageSize),
-  );
+  const totalPages = Math.max(1, Math.ceil(groupedProposals.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageProposals = groupedProposals.slice(
     (currentPage - 1) * pageSize,
@@ -384,49 +381,53 @@ const Proposals = () => {
         </div>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
+          {/* `w-full` rather than `min-w-full`: with the wide columns free to
+              wrap, the table should settle into the container instead of being
+              pushed out to whatever its widest row demands. `overflow-x-auto`
+              on the wrapper stays as the fallback for very narrow screens. */}
+          <table className="w-full table-auto divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Proposal #
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Amendment Total #
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Client
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Project
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Location
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Project Manager
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Start Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   End Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Total Days
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Original Contract Total
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Amendment Contract Total
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Created
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Actions
                 </th>
               </tr>
@@ -449,7 +450,7 @@ const Proposals = () => {
                 return (
                   <React.Fragment key={proposal.id}>
                     <tr className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                         <div className="flex items-center gap-2">
                           {hasAmendments ? (
                             <button
@@ -473,7 +474,7 @@ const Proposals = () => {
                           {proposal.proposalNumber}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs">
                         {hasAmendments ? (
                           <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100 text-xs font-bold">
                             {proposal.amendments.length}
@@ -482,45 +483,56 @@ const Proposals = () => {
                           <span className="text-gray-300">0</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                      {/* The free-text columns wrap rather than `nowrap`. A
+                          location like "Oklahoma City, Calfiornia, United
+                          States" held on one line is what pushed the last
+                          columns off the screen; wrapping lets these four give
+                          back the width the fixed columns need. */}
+                      <td className="px-2 py-2 text-xs text-gray-600">
                         {proposal.clientName}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-2 py-2 text-xs text-gray-600">
                         {proposal.projectName}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-2 py-2 text-xs text-gray-600 min-w-[7rem]">
                         {locationOf(proposal)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-2 py-2 text-xs text-gray-600">
                         {managerNameOf(proposal) || (
                           <span className="text-gray-400 italic">
                             Unassigned
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(proposal.status)}`}
                         >
                           {proposal.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {proposal.run.start
-                          ? formatDate(proposal.run.start.toISOString())
-                          : <span className="text-gray-400 italic">Not started</span>}
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
+                        {proposal.run.start ? (
+                          formatDate(proposal.run.start.toISOString())
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            Not started
+                          </span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                         {!proposal.run.start ? (
                           <span className="text-gray-400 italic">—</span>
                         ) : proposal.run.ongoing ? (
-                          <span className="text-gray-400 italic">In progress</span>
+                          <span className="text-gray-400 italic">
+                            In progress
+                          </span>
                         ) : (
                           formatDate(proposal.run.end.toISOString())
                         )}
                       </td>
                       <td
-                        className="px-4 py-3 whitespace-nowrap text-sm text-gray-600"
+                        className="px-2 py-2 whitespace-nowrap text-xs text-gray-600"
                         title={
                           proposal.run.slices.length > 1
                             ? proposal.run.slices
@@ -539,16 +551,16 @@ const Proposals = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-700">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-gray-700">
                         {formatCurrency(proposal.originalTotal)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-purple-700">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-purple-700">
                         {formatCurrency(proposal.amendmentTotal)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                         {formatDate(proposal.createdAt)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs">
                         <button
                           onClick={() => handleViewDetails(proposal)}
                           className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
@@ -565,26 +577,26 @@ const Proposals = () => {
                           key={amendment.id}
                           className="bg-purple-50/30 hover:bg-purple-50/60 transition-colors"
                         >
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-700 pl-12">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-700 pl-7">
                             <span className="text-purple-700">
                               {amendment.proposalNumber}
                             </span>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs">
                             <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 font-bold uppercase tracking-tighter">
                               Amendment
                             </span>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                             {amendment.clientName}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                             {amendment.projectName}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                             {locationOf(amendment)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                             {managerNameOf(amendment) ||
                               managerNameOf(proposal) || (
                                 <span className="text-gray-400 italic">
@@ -592,7 +604,7 @@ const Proposals = () => {
                                 </span>
                               )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-2 py-2 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(amendment.status)}`}
                             >
@@ -601,20 +613,20 @@ const Proposals = () => {
                           </td>
                           {/* An amendment inherits its project's run, so the
                               date columns belong to the parent row only. */}
-                          <td className="px-4 py-3" colSpan={3} />
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-400">
+                          <td className="px-2 py-2" colSpan={3} />
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-400">
                             —
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-purple-700">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-purple-700">
                             {formatCurrency(
                               Number(amendment.totalAmount || 0) *
                                 proposal.share,
                             )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                             {formatDate(amendment.createdAt)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs">
                             <button
                               onClick={() => handleViewDetails(amendment)}
                               className="text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
@@ -634,19 +646,22 @@ const Proposals = () => {
               <tr>
                 <td
                   colSpan={10}
-                  className="px-4 py-3 text-xs font-bold uppercase tracking-wider"
+                  className="px-2 py-2 text-[10px] font-bold uppercase tracking-tight"
                 >
                   Total · {groupedProposals.length} project
                   {groupedProposals.length === 1 ? "" : "s"}
                   {yearFilter !== ALL_TIME && ` · ${yearFilter} portion`}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold">
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold">
                   {formatCurrency(columnTotals.original)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-purple-300">
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-purple-300">
                   {formatCurrency(columnTotals.amendment)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold" colSpan={2}>
+                <td
+                  className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold"
+                  colSpan={2}
+                >
                   {formatCurrency(columnTotals.total)}
                 </td>
               </tr>
@@ -720,6 +735,110 @@ interface ProposalDetailsModalProps {
   onClose: () => void;
 }
 
+/**
+ * One contract's worth of services — the original scope, or one amendment.
+ *
+ * The accent colour is the whole point: amendments are purple here and purple
+ * in the proposals table, so the same work reads the same way in both places.
+ */
+const ServiceGroup = ({
+  title,
+  proposalNumber,
+  total,
+  services,
+  isAmendment,
+}: {
+  title: string;
+  proposalNumber?: string;
+  total?: number | string;
+  services: any[];
+  isAmendment: boolean;
+}) => {
+  const accent = isAmendment
+    ? {
+        bar: "bg-purple-500",
+        chip: "bg-purple-50 text-purple-700 border-purple-100",
+        order: "bg-purple-100 text-purple-800",
+        card: "border-purple-100",
+      }
+    : {
+        bar: "bg-blue-500",
+        chip: "bg-blue-50 text-blue-700 border-blue-100",
+        order: "bg-blue-100 text-blue-800",
+        card: "border-gray-200",
+      };
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <span className={`h-4 w-1 rounded-full ${accent.bar}`} />
+        <h4 className="text-sm font-bold text-gray-900">{title}</h4>
+        {proposalNumber && (
+          <span
+            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${accent.chip}`}
+          >
+            {proposalNumber}
+          </span>
+        )}
+        <span className="text-xs text-gray-400">
+          {services.length} service{services.length === 1 ? "" : "s"}
+        </span>
+        {total !== undefined && total !== null && (
+          <span className="ml-auto text-sm font-semibold text-gray-700">
+            ${total}
+          </span>
+        )}
+      </div>
+
+      {services.length === 0 ? (
+        <p className="text-xs text-gray-400 italic py-3">
+          No services on this contract.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {services.map((service: any) => (
+            <div
+              key={service.id}
+              className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${accent.card}`}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <h4 className="font-bold text-gray-900 text-sm">
+                  <span
+                    className={`text-xs px-2 mx-1 py-1 rounded ${accent.order}`}
+                  >
+                    #{service.order}
+                  </span>{" "}
+                  {service.name}
+                </h4>
+                <p
+                  className={`text-xs px-2 py-1 rounded whitespace-nowrap ${service?.approvalStatus === "PENDING" ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}`}
+                >
+                  {service?.approvalStatus === "PENDING"
+                    ? "Pending"
+                    : "Approved"}
+                </p>
+              </div>
+              {service.description && (
+                <p className="text-xs text-gray-600 mb-2">
+                  {service.description}
+                </p>
+              )}
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <h1 className="text-lg font-semibold ">
+                  Price:{" "}
+                  <span className="text-green-600 font-bold">
+                    ${service.amount}
+                  </span>
+                </h1>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ProposalDetailsModal = ({
   proposal,
   onClose,
@@ -776,8 +895,9 @@ const ProposalDetailsModal = ({
   const [sendProposalToClient, { isLoading: isSending }] =
     useSendProposalToClientMutation();
   const [addService, { isLoading: isAddingService }] = useAddServiceMutation();
-  const { data: allProposalsData, isLoading: isLoadingAllProposals } =
-    useGetAllProposalsForProposalQuery(proposal.id);
+  const { data: allProposalsData } = useGetAllProposalsForProposalQuery(
+    proposal.id,
+  );
 
   // Review modal state
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -825,11 +945,11 @@ const ProposalDetailsModal = ({
   const amendments = Array.isArray(amendmentsRaw) ? amendmentsRaw : [];
 
   // Backend returns { normalProposal, amendmentProposals, totalProposals }
-  const amendmentProposals = Array.isArray(
-    allProposalsData?.data?.amendmentProposals,
-  )
-    ? allProposalsData.data.amendmentProposals
-    : [];
+  // const amendmentProposals = Array.isArray(
+  //   allProposalsData?.data?.amendmentProposals,
+  // )
+  //   ? allProposalsData.data.amendmentProposals
+  //   : [];
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
@@ -1222,7 +1342,10 @@ const ProposalDetailsModal = ({
                       label="Project Apt / Suite / Unit"
                       value={projectReq.projectAptSuiteUnit}
                     />
-                    <InfoField label="Project City" value={projectReq.projectCity} />
+                    <InfoField
+                      label="Project City"
+                      value={projectReq.projectCity}
+                    />
                     <InfoField
                       label="Project State"
                       value={projectReq.projectState}
@@ -1272,47 +1395,42 @@ const ProposalDetailsModal = ({
               )}
             </section>
 
-            {/* Services */}
-            {proposal.services && proposal.services.length > 0 && (
+            {/* Services, split by contract.
+                Amendment work is priced and approved separately from the
+                original scope, so running the two together as one flat grid
+                hid which line items the client actually signed up for first.
+                Purple marks amendments, matching the badge in the table. */}
+            {((proposal.services?.length ?? 0) > 0 ||
+              (proposal.amendments?.length ?? 0) > 0) && (
               <section>
                 <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">
                   Services
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {proposal.services.map((service: any) => (
-                    <div
-                      key={service.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-bold text-gray-900 text-sm">
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 mx-1 py-1 rounded">
-                            #{service.order}
-                          </span>{" "}
-                          {service.name}
-                        </h4>
-                        <p
-                          className={`text-xs px-2 py-1 rounded ${service?.approvalStatus === "PENDING" ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}`}
-                        >
-                          {service?.approvalStatus === "PENDING"
-                            ? "Pending"
-                            : "Approved"}
-                        </p>
-                      </div>
-                      {service.description && (
-                        <p className="text-xs text-gray-600 mb-2">
-                          {service.description}
-                        </p>
-                      )}
-                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <h1 className="text-lg font-semibold ">
-                          Price:{" "}
-                          <span className="text-green-600 font-bold">
-                            ${service.amount}
-                          </span>
-                        </h1>
-                      </div>
-                    </div>
+
+                <div className="space-y-6">
+                  {proposal.services?.length > 0 && (
+                    <ServiceGroup
+                      title={
+                        proposal.proposalType === "AMENDMENT"
+                          ? "Amendment Contract"
+                          : "Original Contract"
+                      }
+                      proposalNumber={proposal.proposalNumber}
+                      total={proposal.totalAmount}
+                      services={proposal.services}
+                      isAmendment={proposal.proposalType === "AMENDMENT"}
+                    />
+                  )}
+
+                  {proposal.amendments?.map((amendment: any) => (
+                    <ServiceGroup
+                      key={amendment.id}
+                      title="Amendment Contract"
+                      proposalNumber={amendment.proposalNumber}
+                      total={amendment.totalAmount}
+                      services={amendment.services || []}
+                      isAmendment
+                    />
                   ))}
                 </div>
               </section>
@@ -1346,14 +1464,14 @@ const ProposalDetailsModal = ({
                     ${proposal.totalAmount}
                   </span>
                 </div>
-                {proposal.paymentMethod && (
+                {/* {proposal.paymentMethod && (
                   <div className="flex justify-between pt-2 border-t border-gray-200">
                     <span className="text-gray-600">Payment Method:</span>
                     <span className="font-medium">
                       {toTitleCase(proposal.paymentMethod)}
                     </span>
                   </div>
-                )}
+                )} */}
                 {proposal.paymentType && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment Type:</span>
@@ -1633,7 +1751,7 @@ const ProposalDetailsModal = ({
             </section>
 
             {/* ─── Amendment Proposals Section ─── */}
-            <section>
+            {/* <section>
               <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">
                 Amendment Proposals
               </h3>
@@ -1700,7 +1818,7 @@ const ProposalDetailsModal = ({
                   ))}
                 </div>
               )}
-            </section>
+            </section> */}
           </div>
 
           {/* Footer */}

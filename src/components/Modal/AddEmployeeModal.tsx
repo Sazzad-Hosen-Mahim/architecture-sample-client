@@ -9,7 +9,15 @@ import {
 import { useUpdateEmployeeProfileMutation } from "@/redux/api/financialApi";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Eye, EyeOff } from "lucide-react";
+import type { DashboardSection } from "@/utils/dashboardAccess";
+
+/** The dashboard tabs an employee can be given, in the order they're shown. */
+const SECTION_OPTIONS: { value: DashboardSection; label: string }[] = [
+  { value: "studio", label: "Studio" },
+  { value: "media", label: "Media" },
+  { value: "financials", label: "Financials" },
+];
 
 const TAX_TYPES = [
   { value: "FITWH", label: "FITWH (Federal Income Tax)" },
@@ -28,8 +36,23 @@ interface AddEmployeeModalProps {
   readOnly?: boolean;
 }
 
+/**
+ * Group a stored amount for display: "85000" -> "85,000", "21.63" -> "21.63".
+ *
+ * Only the whole-number part is grouped, and a trailing "." is preserved so a
+ * decimal can still be typed. State keeps the raw value, so `Number()` at
+ * submit is unaffected.
+ */
+const formatMoney = (value: string): string => {
+  if (!value) return "";
+  const [whole, ...rest] = String(value).split(".");
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return rest.length ? `${grouped}.${rest.join("")}` : grouped;
+};
+
 const emptyForm = {
   name: "",
+  username: "",
   email: "",
   password: "",
   role: "EMPLOYEE",
@@ -38,6 +61,7 @@ const emptyForm = {
   salary: "",
   phone: "",
   streetAddress: "",
+  aptSuiteUnit: "",
   city: "",
   stateRegion: "",
   zipCode: "",
@@ -56,6 +80,22 @@ const AddEmployeeModal = ({
     useUpdateEmployeeProfileMutation();
 
   const [form, setForm] = useState(emptyForm);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Kept beside the form rather than inside it: it's a list, and only ever
+  // read when the role is EMPLOYEE.
+  const [sections, setSections] = useState<DashboardSection[]>([]);
+
+  const toggleSection = (section: DashboardSection) =>
+    setSections((prev) =>
+      prev.includes(section)
+        ? prev.filter((s) => s !== section)
+        : // Kept in the canonical order so the saved value doesn't depend on
+          // the order the boxes happened to be ticked in.
+          SECTION_OPTIONS.map((o) => o.value).filter(
+            (s) => s === section || prev.includes(s),
+          ),
+    );
 
   const [taxes, setTaxes] = useState([
     { taxType: "FITWH", percentage: "", customName: "", state: "" },
@@ -71,6 +111,7 @@ const AddEmployeeModal = ({
     const profile = member.employeeProfile;
     setForm({
       name: member.name || "",
+      username: member.username || "",
       email: member.email || "",
       password: "",
       role: member.role || "EMPLOYEE",
@@ -81,11 +122,17 @@ const AddEmployeeModal = ({
       salary: profile?.salary ? String(profile.salary) : "",
       phone: member.phoneNumber || profile?.phone || "",
       streetAddress: member.streetAddress || "",
+      aptSuiteUnit: member.aptSuiteUnit || "",
       city: member.city || "",
       stateRegion: member.stateRegion || profile?.state || "",
       zipCode: member.zipCode || "",
       country: member.country || "United States",
     });
+    setSections(
+      Array.isArray(member.dashboardSections)
+        ? (member.dashboardSections as DashboardSection[])
+        : [],
+    );
     if (profile?.taxes?.length) {
       setTaxes(
         profile.taxes.map((t: any) => ({
@@ -150,6 +197,7 @@ const AddEmployeeModal = ({
 
     const addressFields = {
       streetAddress: form.streetAddress || undefined,
+      aptSuiteUnit: form.aptSuiteUnit || undefined,
       city: form.city || undefined,
       stateRegion: form.stateRegion || undefined,
       zipCode: form.zipCode || undefined,
@@ -164,13 +212,20 @@ const AddEmployeeModal = ({
       taxes: formattedTaxes,
     };
 
+    // Only an employee's access is chosen here; the backend clears it for any
+    // other role, and sending [] keeps a demoted account from carrying a stale
+    // grant it can no longer see in the form.
+    const dashboardSections = form.role === "EMPLOYEE" ? sections : [];
+
     try {
       if (isEdit) {
         await updateUser({
           id: member.id,
           name: form.name,
+          username: form.username.trim() || undefined,
           role: form.role,
           phoneNumber: form.phone || undefined,
+          dashboardSections,
           ...addressFields,
         }).unwrap();
         await updateProfile({ userId: member.id, ...profileFields }).unwrap();
@@ -178,18 +233,36 @@ const AddEmployeeModal = ({
       } else {
         const result = await createStaff({
           name: form.name,
+          username: form.username.trim() || undefined,
           email: form.email,
           password: form.password,
           role: form.role,
           phone: form.phone || undefined,
+          dashboardSections,
           ...addressFields,
         }).unwrap();
 
+        // Two calls, two outcomes. The account exists the moment createStaff
+        // resolves, so a failure in the profile call that follows must not be
+        // reported as "failed to save team member" — that read as though
+        // nothing had happened while the employee had in fact been created,
+        // and a second attempt then failed on the duplicate email.
         const userId = result?.data?.user?.id;
         if (userId) {
-          await updateProfile({ userId, ...profileFields }).unwrap();
+          try {
+            await updateProfile({ userId, ...profileFields }).unwrap();
+            toast.success("Employee created successfully");
+          } catch (profileErr: any) {
+            toast.warning(
+              `Employee created, but their compensation details could not be saved: ${
+                profileErr?.data?.message || "unknown error"
+              }. Edit the member to add them.`,
+              { duration: 8000 },
+            );
+          }
+        } else {
+          toast.success("Employee created successfully");
         }
-        toast.success("Employee created successfully");
       }
       onClose();
     } catch (err: any) {
@@ -295,21 +368,81 @@ const AddEmployeeModal = ({
                 </div>
               </div>
 
+              {/* Employees are the one role whose access is picked per person —
+                  every other role's tabs are fixed by the role itself, so the
+                  checkboxes only appear here. Nothing ticked means no
+                  dashboard, which is the safe default for payroll figures. */}
+              {form.role === "EMPLOYEE" && (
+                <div className="rounded-md border border-gray-200 bg-gray-50/50 p-3">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Dashboard Access
+                  </label>
+                  <p className="text-[11px] text-gray-500 mb-2.5">
+                    Tick the sections this employee can open. They can view
+                    these sections but not make changes.
+                  </p>
+                  <div className="flex flex-wrap gap-x-5 gap-y-2">
+                    {SECTION_OPTIONS.map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex items-center gap-2 text-sm text-gray-800 ${
+                          readOnly ? "" : "cursor-pointer"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 accent-black"
+                          checked={sections.includes(option.value)}
+                          onChange={() => toggleSection(option.value)}
+                          disabled={readOnly}
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                  {sections.length === 0 && (
+                    <p className="mt-2 text-[11px] text-amber-600">
+                      With nothing ticked they'll sign in to an empty
+                      dashboard.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Home address split into its own fields */}
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Street Address
-                  </label>
-                  <input
-                    placeholder="123 Main St, Apt 4B"
-                    className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
-                    value={form.streetAddress}
-                    onChange={(e) =>
-                      setForm({ ...form, streetAddress: e.target.value })
-                    }
-                    disabled={readOnly}
-                  />
+                {/* Apt/Suite gets its own field rather than being folded into
+                    the street line, so the two can be stored and printed apart
+                    — the same split the client and project addresses use. */}
+                <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Street Address
+                    </label>
+                    <input
+                      placeholder="123 Main St"
+                      className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                      value={form.streetAddress}
+                      onChange={(e) =>
+                        setForm({ ...form, streetAddress: e.target.value })
+                      }
+                      disabled={readOnly}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Apt / Suite / Unit
+                    </label>
+                    <input
+                      placeholder="Apt 4B"
+                      className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                      value={form.aptSuiteUnit}
+                      onChange={(e) =>
+                        setForm({ ...form, aptSuiteUnit: e.target.value })
+                      }
+                      disabled={readOnly}
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -376,6 +509,29 @@ const AddEmployeeModal = ({
                 </div>
               </div>
 
+              {/* Username — a second handle the employee can sign in with,
+                  alongside their email. Optional: an account works on the email
+                  alone, and the server rejects one already taken. */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    placeholder="e.g. ericrivera49"
+                    className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm({ ...form, username: e.target.value })
+                    }
+                    disabled={readOnly}
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Optional. They can sign in with this or their email.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 {/* Password is only set at creation time */}
                 {!isEdit && (
@@ -383,17 +539,36 @@ const AddEmployeeModal = ({
                     <label className="block text-xs font-bold text-gray-700 mb-1">
                       Initial Password
                     </label>
-                    <input
-                      placeholder="Min 8 characters"
-                      type="password"
-                      className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
-                      value={form.password}
-                      onChange={(e) =>
-                        setForm({ ...form, password: e.target.value })
-                      }
-                      required
-                      minLength={8}
-                    />
+                    {/* No capital/number rule here on purpose: this is a
+                        throwaway the manager hands over, and the employee is
+                        held to the full rule when they set their own. */}
+                    <div className="relative">
+                      <input
+                        placeholder="Min 8 characters"
+                        type={showPassword ? "text" : "password"}
+                        className="w-full border border-gray-300 rounded-md p-2.5 pr-10 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                        value={form.password}
+                        onChange={(e) =>
+                          setForm({ ...form, password: e.target.value })
+                        }
+                        required
+                        minLength={8}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={16} strokeWidth={1.8} />
+                        ) : (
+                          <Eye size={16} strokeWidth={1.8} />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
                 <div>
@@ -424,33 +599,52 @@ const AddEmployeeModal = ({
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Base Salary (Annual $)
                   </label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 85000"
-                    className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
-                    value={form.salary}
-                    onChange={(e) =>
-                      setForm({ ...form, salary: e.target.value })
-                    }
-                    disabled={readOnly}
-                    step="0.01"
-                    min="0"
-                  />
+                  {/* `text` rather than `number`: a number input refuses to
+                      display grouping separators, so "85,000" could never be
+                      shown. The state still holds bare digits, which is what
+                      Number() is called on at submit. */}
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                      $
+                    </span>
+                    <input
+                      inputMode="numeric"
+                      placeholder="85,000"
+                      className="w-full border border-gray-300 rounded-md p-2.5 pl-7 pr-12 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                      value={formatMoney(form.salary)}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          // Digits and a single decimal point: stripping every
+                          // non-digit turned "85000.50" into "8500050".
+                          salary: e.target.value
+                            .replace(/[^\d.]/g, "")
+                            .replace(/(\..*)\./g, "$1"),
+                        })
+                      }
+                      disabled={readOnly}
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">
+                      USD
+                    </span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Hourly Rate ($/hr)
                   </label>
                   <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-blue-500">
+                      $
+                    </span>
                     <input
-                      type="number"
                       readOnly
                       placeholder="Auto-calculated"
-                      className="w-full border border-gray-200 rounded-md p-2.5 text-sm bg-blue-50/50 text-blue-700 font-bold outline-none cursor-not-allowed"
-                      value={form.hourlyRate}
+                      className="w-full border border-gray-200 rounded-md p-2.5 pl-7 pr-24 text-sm bg-blue-50/50 text-blue-700 font-bold outline-none cursor-not-allowed"
+                      value={formatMoney(form.hourlyRate)}
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-blue-500 font-bold">
-                      Salary / 2080
+                      USD · Salary / 2080
                     </div>
                   </div>
                 </div>

@@ -23,8 +23,17 @@ import { Users, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader } from "@/components/ui/loader";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
+
+/** "IN_PROGRESS" -> "In Progress", to match how status reads elsewhere. */
+const formatProjectStatus = (status: string) =>
+  status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export default function Teams() {
+  const canEdit = useCanEdit();
   const { data: teams, isLoading } = useGetTeamsQuery();
   const { data: assignableMembers } = useGetAssignableMembersQuery();
 
@@ -112,12 +121,14 @@ export default function Teams() {
         </div>
 
         <Dialog open={isCreateModalOpen} onOpenChange={(open) => { setIsCreateModalOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="bg-black text-white hover:bg-gray-800 gap-2 shadow-lg hover:shadow-xl transition-all">
-              <Plus size={18} />
-              Create New Team
-            </Button>
-          </DialogTrigger>
+          {canEdit && (
+            <DialogTrigger asChild>
+              <Button className="bg-black text-white hover:bg-gray-800 gap-2 shadow-lg hover:shadow-xl transition-all">
+                <Plus size={18} />
+                Create New Team
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-sm md:max-w-md bg-white border-gray-200">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold">Create New Team</DialogTitle>
@@ -189,14 +200,16 @@ export default function Teams() {
               <div className="bg-gray-50 p-3 rounded-xl group-hover:bg-black group-hover:text-white transition-colors">
                 <Users size={24} />
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => openEditModal(team)}>
-                  <Pencil size={14} />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteTeam(team.id)}>
-                  <Trash2 size={14} />
-                </Button>
-              </div>
+              {canEdit && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => openEditModal(team)}>
+                    <Pencil size={14} />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteTeam(team.id)}>
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              )}
             </div>
 
             <h3 className="text-xl font-bold text-gray-900 mb-2">{team.name}</h3>
@@ -220,6 +233,42 @@ export default function Teams() {
                 {team.members.length === 0 && <p className="text-xs text-gray-400 italic">No members assigned</p>}
               </div>
             </div>
+
+            {/* Assigned work. The Projects badge above gives the number; this
+                says which ones, so a manager can see what a team is on without
+                opening every project. */}
+            <div className="space-y-3 mt-6 pt-4 border-t border-gray-100">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Assigned Projects
+              </p>
+              {team.projects && team.projects.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {team.projects.map((project) => (
+                    <li
+                      key={project.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span
+                        className="text-sm text-gray-700 truncate"
+                        title={project.projectName}
+                      >
+                        {project.projectName}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 border-none bg-gray-100 text-[10px] font-semibold text-gray-600 hover:bg-gray-100"
+                      >
+                        {formatProjectStatus(project.status)}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-gray-400 italic">
+                  No projects assigned
+                </p>
+              )}
+            </div>
           </div>
         ))}
 
@@ -230,9 +279,11 @@ export default function Teams() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900">No teams created yet</h3>
             <p className="text-gray-500 max-w-xs mt-1">Start by creating a team to organize your drafting staff and assign them to projects.</p>
-            <Button variant="outline" className="mt-6 gap-2" onClick={() => setIsCreateModalOpen(true)}>
-              <Plus size={16} /> Create your first team
-            </Button>
+            {canEdit && (
+              <Button variant="outline" className="mt-6 gap-2" onClick={() => setIsCreateModalOpen(true)}>
+                <Plus size={16} /> Create your first team
+              </Button>
+            )}
           </div>
         )}
       </div>

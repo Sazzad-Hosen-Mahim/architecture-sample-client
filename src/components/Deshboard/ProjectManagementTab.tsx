@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ProjectRequest,
   useGetProjectRequestsQuery,
@@ -29,11 +29,14 @@ import { useProjectDeepLink } from "@/hooks/useProjectDeepLink";
 import ProjectDetailsModal from "./ProjectDetailesModal";
 import { BsFillClipboard2PlusFill } from "react-icons/bs";
 import { toast } from "sonner";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
 import {
   Archive,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Search,
 } from "lucide-react";
 import {
@@ -46,6 +49,167 @@ import {
 } from "@/components/ui/dialog";
 
 const PAGE_SIZE_OPTIONS = ["10", "25", "50", "all"] as const;
+
+/** The columns the table can be ordered by. */
+type SortKey =
+  | "project"
+  | "location"
+  | "serviceType"
+  | "client"
+  | "manager"
+  | "appointmentDate"
+  | "startDate"
+  | "endDate"
+  | "status"
+  | "progress";
+
+interface SortState {
+  key: SortKey;
+  direction: "asc" | "desc";
+}
+
+/**
+ * The value each column sorts on.
+ *
+ * Text columns return a lowercased string so A–Z ignores case; date and
+ * progress columns return a number, which is what makes "earliest to latest"
+ * and "0%–100%" order properly rather than alphabetically by their rendered
+ * label ("Sep 1" before "Sep 16" before "T.B.D.").
+ */
+const sortValue = (
+  project: ProjectRequest,
+  key: SortKey,
+): string | number | null => {
+  const time = (value?: string | null) =>
+    value ? new Date(value).getTime() : null;
+
+  switch (key) {
+    case "project":
+      return (project.projectName || "").toLowerCase();
+    case "location":
+      return [project.projectCity, project.projectState]
+        .filter(Boolean)
+        .join(", ")
+        .toLowerCase();
+    case "serviceType":
+      return (project.serviceType || "").toLowerCase();
+    case "client":
+      return `${project.clientFirstName || ""} ${project.clientLastName || ""}`
+        .trim()
+        .toLowerCase();
+    case "manager":
+      return (project.assignedManager?.name || "").toLowerCase();
+    case "appointmentDate":
+      return time(project.appointmentDate);
+    case "startDate":
+      return time(project.projectStartedAt);
+    case "endDate":
+      return time(project.projectCompletedAt);
+    case "status":
+      return (project.status || "").toLowerCase();
+    case "progress":
+      return getProjectProgress(
+        project.status,
+        (project.stages || []).filter((s) => s.status === "COMPLETED").length,
+        (project.stages || []).length,
+      );
+  }
+};
+
+/**
+ * A column header that sorts the table by its column.
+ *
+ * The arrows always show, greyed until the column is the active one, so it is
+ * obvious every column can be sorted rather than only the one in use.
+ */
+function SortableHead({
+  sortKey,
+  sort,
+  onSort,
+  hideOnMobile = false,
+  children,
+}: {
+  sortKey: SortKey;
+  sort: SortState | null;
+  onSort: (key: SortKey) => void;
+  hideOnMobile?: boolean;
+  children: React.ReactNode;
+}) {
+  const isActive = sort?.key === sortKey;
+  const direction = isActive ? sort.direction : null;
+
+  return (
+    <TableHead
+      // Tells a screen reader which way the column is ordered, and leaves it
+      // off entirely when this column is not the one being sorted.
+      aria-sort={
+        direction === "asc"
+          ? "ascending"
+          : direction === "desc"
+            ? "descending"
+            : undefined
+      }
+      className={`text-xs font-bold text-gray-600 ${hideOnMobile ? "hidden md:table-cell" : ""}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="group inline-flex items-center gap-1 cursor-pointer hover:text-gray-900 transition-colors"
+      >
+        {children}
+        <span className="flex flex-col leading-none">
+          <ChevronUp
+            size={10}
+            className={
+              direction === "asc"
+                ? "text-gray-900"
+                : "text-gray-300 group-hover:text-gray-400"
+            }
+          />
+          <ChevronDown
+            size={10}
+            className={
+              direction === "desc"
+                ? "text-gray-900"
+                : "text-gray-300 group-hover:text-gray-400"
+            }
+          />
+        </span>
+      </button>
+    </TableHead>
+  );
+}
+
+/**
+ * Order a copy of the list. Rows with no value — an unset start date, an
+ * unassigned manager — always sink to the bottom whichever way the column is
+ * pointing, so flipping the direction never buries the rows that do have data
+ * under a block of blanks.
+ */
+const sortProjects = (
+  projects: ProjectRequest[],
+  sort: SortState | null,
+): ProjectRequest[] => {
+  if (!sort) return projects;
+
+  const factor = sort.direction === "asc" ? 1 : -1;
+
+  return [...projects].sort((a, b) => {
+    const left = sortValue(a, sort.key);
+    const right = sortValue(b, sort.key);
+
+    const leftEmpty = left === null || left === "";
+    const rightEmpty = right === null || right === "";
+    if (leftEmpty && rightEmpty) return 0;
+    if (leftEmpty) return 1;
+    if (rightEmpty) return -1;
+
+    if (typeof left === "number" && typeof right === "number") {
+      return (left - right) * factor;
+    }
+    return String(left).localeCompare(String(right)) * factor;
+  });
+};
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 export function ProjectManagementTab() {
@@ -61,8 +225,24 @@ export function ProjectManagementTab() {
   const [projectToArchive, setProjectToArchive] =
     useState<ProjectRequest | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  /**
+   * Click a header to sort by it; click it again to reverse; a third click
+   * clears back to the list's natural order, so there is always a way back to
+   * where you started without reloading.
+   */
+  const toggleSort = (key: SortKey) => {
+    setCurrentPage(1);
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, direction: "asc" };
+      if (prev.direction === "asc") return { key, direction: "desc" };
+      return null;
+    });
+  };
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const canEdit = useCanEdit();
 
   const scrollTabs = (direction: "left" | "right") => {
     if (tabsContainerRef.current) {
@@ -241,7 +421,11 @@ export function ProjectManagementTab() {
     );
   }, []);
 
-  const renderProjectTable = (filteredProjects: ProjectRequest[]) => {
+  const renderProjectTable = (unsortedProjects: ProjectRequest[]) => {
+    // Sorting happens before pagination, so it orders the whole result rather
+    // than shuffling the ten rows that happen to be on screen.
+    const filteredProjects = sortProjects(unsortedProjects, sort);
+
     // "all" collapses to a single page holding everything.
     const perPage =
       pageSize === "all"
@@ -297,6 +481,14 @@ export function ProjectManagementTab() {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Link
+              to="/dashboard/teams"
+              className="border border-black text-black px-4 py-[8px] text-sm hover:bg-black hover:text-white rounded-md"
+            >
+              Teams
+            </Link>
+          </div>
         </div>
 
         {isLoading ? (
@@ -319,36 +511,37 @@ export function ProjectManagementTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs font-bold text-gray-600">
+                    <SortableHead sortKey="project" sort={sort} onSort={toggleSort}>
                       Project
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="location" sort={sort} onSort={toggleSort} hideOnMobile>
                       Location
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">
+                    </SortableHead>
+                    <SortableHead sortKey="serviceType" sort={sort} onSort={toggleSort}>
                       Service Type
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="client" sort={sort} onSort={toggleSort} hideOnMobile>
                       Client
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="manager" sort={sort} onSort={toggleSort} hideOnMobile>
                       Assigned Manager
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="appointmentDate" sort={sort} onSort={toggleSort} hideOnMobile>
                       Initial Appointment Date
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="startDate" sort={sort} onSort={toggleSort} hideOnMobile>
                       Start Date
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="endDate" sort={sort} onSort={toggleSort} hideOnMobile>
                       End Date
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600">
+                    </SortableHead>
+                    <SortableHead sortKey="status" sort={sort} onSort={toggleSort}>
                       Status
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-gray-600 hidden md:table-cell">
+                    </SortableHead>
+                    <SortableHead sortKey="progress" sort={sort} onSort={toggleSort} hideOnMobile>
                       Progress
-                    </TableHead>
+                    </SortableHead>
+                    {/* Not sortable — it holds buttons, not a value. */}
                     <TableHead className="text-xs font-bold text-gray-600">
                       Action
                     </TableHead>
@@ -456,7 +649,8 @@ export function ProjectManagementTab() {
             {/* Pagination UI */}
             <div className="p-4 border-t border-gray-300 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-50/50">
               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">
-                Page {safePage} of {totalPages} ({filteredProjects.length} total)
+                Page {safePage} of {totalPages} ({filteredProjects.length}{" "}
+                total)
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-gray-500">Show:</span>
@@ -625,15 +819,17 @@ export function ProjectManagementTab() {
               <ChevronRight size={14} />
             </button>
           </div>
-          <Button
-            onClick={() => navigate("/dashboard/new-inquiries")}
-            className="bg-black cursor-pointer text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
-          >
-            <span className="text-white">
-              <BsFillClipboard2PlusFill />
-            </span>{" "}
-            New Inquiry
-          </Button>
+          {canEdit && (
+            <Button
+              onClick={() => navigate("/dashboard/new-inquiries")}
+              className="bg-black cursor-pointer text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
+            >
+              <span className="text-white">
+                <BsFillClipboard2PlusFill />
+              </span>{" "}
+              New Inquiry
+            </Button>
+          )}
         </div>
 
         <TabsContent value="all">

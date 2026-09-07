@@ -4,10 +4,19 @@ import {
   useDeleteUserMutation,
 } from "@/redux/api/userApi";
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowUpDown, Edit, Trash2, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  Edit,
+  Trash2,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
 
 /**
  * This directory is staff only — clients (the USER role) are listed under
@@ -66,6 +75,7 @@ const daysWorked = (startingDate?: string | null) => {
 const Employees = () => {
   const { data, isLoading } = useGetAllUsersQuery();
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
+  const canEdit = useCanEdit();
 
   const [open, setOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
@@ -73,13 +83,13 @@ const Employees = () => {
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
 
   const staff = useMemo(() => {
     const rows = (data || []).filter((u: any) => STAFF_ROLES.includes(u.role));
 
     const compensation = (u: any) => Number(u.employeeProfile?.salary || 0);
-    const utilization = (u: any) =>
-      Number(u.employeeProfile?.utilizationRate || 0);
+    const utilization = (u: any) => Number(u.utilization?.rate || 0);
 
     return [...rows].sort((a: any, b: any) => {
       switch (sortBy) {
@@ -107,16 +117,29 @@ const Employees = () => {
     });
   }, [data, sortBy]);
 
+  const closeDeleteDialog = () => {
+    setDeleteTarget(null);
+    setDeletePassword("");
+    setShowDeletePassword(false);
+  };
+
   const handleDelete = async () => {
-    if (!deleteTarget || !deletePassword.trim()) return;
+    if (!deleteTarget || !deletePassword.trim() || isDeleting) return;
     try {
       const result = await deleteUser({
         id: deleteTarget.id,
         password: deletePassword,
       }).unwrap();
-      toast.success(result?.message || "Team member deleted");
-      setDeleteTarget(null);
-      setDeletePassword("");
+      // An account with payroll history is deactivated rather than removed, so
+      // the Financial Tracker keeps its hours — the server says which happened
+      // and how many projects went back to the owner.
+      const message = result?.message || "Team member deleted";
+      if (result?.deactivated) {
+        toast.warning(message, { duration: 9000 });
+      } else {
+        toast.success(message, { duration: 6000 });
+      }
+      closeDeleteDialog();
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to delete team member");
     }
@@ -158,12 +181,14 @@ const Employees = () => {
             </select>
           </div>
 
-          <button
-            onClick={() => setOpen(true)}
-            className="px-5 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 text-sm font-bold transition-all"
-          >
-            + Add Team Member
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setOpen(true)}
+              className="px-5 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 text-sm font-bold transition-all"
+            >
+              + Add Team Member
+            </button>
+          )}
         </div>
       </div>
 
@@ -188,7 +213,12 @@ const Employees = () => {
           <tbody className="divide-y divide-gray-100">
             {staff.map((user: any) => {
               const profile = user.employeeProfile;
-              const utilization = Number(profile?.utilizationRate || 0);
+              // Billable over total across every approved timecard, computed
+              // by the server. `employeeProfile.utilizationRate` used to be
+              // read here, but nothing ever wrote it, so it was always 0%.
+              const util = user.utilization;
+              const utilization = Number(util?.rate || 0);
+              const hasApprovedHours = Number(util?.totalHours || 0) > 0;
               const timeWorked = formatTimeWorked(profile?.startingDate);
 
               return (
@@ -266,34 +296,54 @@ const Employees = () => {
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="flex items-center gap-2"
+                      title={
+                        hasApprovedHours
+                          ? `${Number(util.billableHours).toFixed(2)} billable of ${Number(util.totalHours).toFixed(2)} approved hours`
+                          : "No approved timecards yet"
+                      }
+                    >
+                      <div className="w-16 bg-gray-200 rounded-full h-1.5 overflow-hidden flex-shrink-0">
                         <div
                           className="bg-blue-600 h-1.5 rounded-full"
-                          style={{ width: `${Math.min(100, utilization)}%` }}
+                          style={{
+                            width: hasApprovedHours
+                              ? `${Math.min(100, utilization)}%`
+                              : "0%",
+                          }}
                         />
                       </div>
                       <span className="text-xs font-bold text-blue-700 whitespace-nowrap">
-                        {utilization > 0 ? `${utilization.toFixed(0)}%` : "—"}
+                        {hasApprovedHours ? `${utilization.toFixed(0)}%` : "—"}
                       </span>
                     </div>
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
+                      {/* A view-only account still opens the record — the
+                          modal renders read-only for them — but deleting a
+                          colleague is not theirs to do. */}
                       <button
-                        onClick={() => setEditingMember(user)}
+                        onClick={() =>
+                          canEdit
+                            ? setEditingMember(user)
+                            : setViewingMember(user)
+                        }
                         className="p-2 text-gray-400 hover:text-black transition-colors"
-                        title="View & edit details"
+                        title={canEdit ? "View & edit details" : "View details"}
                       >
                         <Edit size={16} />
                       </button>
-                      <button
-                        onClick={() => setDeleteTarget(user)}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => setDeleteTarget(user)}
+                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -340,20 +390,39 @@ const Employees = () => {
               confirm. If this member has project history their account is
               deactivated instead, so the records stay intact.
             </p>
-            <input
-              type="password"
-              autoFocus
-              placeholder="Your password"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none"
-            />
+            <div className="relative">
+              <input
+                type={showDeletePassword ? "text" : "password"}
+                autoFocus
+                placeholder="Your password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                // Enter submits, the way it would in a real form. The button
+                // stays the visible affordance; this just saves the reach for
+                // the mouse after typing.
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleDelete();
+                  }
+                }}
+                className="w-full border border-gray-300 rounded-lg p-2.5 pr-10 text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowDeletePassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700 transition-colors"
+                aria-label={
+                  showDeletePassword ? "Hide password" : "Show password"
+                }
+                tabIndex={-1}
+              >
+                {showDeletePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => {
-                  setDeleteTarget(null);
-                  setDeletePassword("");
-                }}
+                onClick={closeDeleteDialog}
                 className="px-5 py-2 text-sm font-bold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel

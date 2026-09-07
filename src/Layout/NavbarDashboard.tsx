@@ -11,6 +11,14 @@ import AvatarMenu, {
 } from "@/components/Common/AvatarMenu";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { signOut } from "@/redux/features/auth/authActions";
+import { sectionsFor, type DashboardSection } from "@/utils/dashboardAccess";
+
+/** The three top-level tabs, in the order they are shown. */
+const TABS: { section: DashboardSection; to: string; label: string }[] = [
+  { section: "studio", to: "/dashboard", label: "Studio" },
+  { section: "media", to: "/dashboard/media", label: "Media" },
+  { section: "financials", to: "/dashboard/financials", label: "Financials" },
+];
 
 export default function NavbarDashboard() {
   const navigate = useNavigate();
@@ -20,6 +28,11 @@ export default function NavbarDashboard() {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const user = useAppSelector(selectCurrentUser);
+
+  // Same table the layout guard uses, so a hidden tab is also an unreachable
+  // route — rather than a tab that is merely painted out of the way.
+  const allowed = sectionsFor(user);
+  const tabs = TABS.filter((tab) => allowed.includes(tab.section));
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
@@ -82,59 +95,21 @@ export default function NavbarDashboard() {
             <NotificationPopover />
           </div>
           <div className="hidden md:flex space-x-2  w-1/3">
-            <NavLink
-              to="/dashboard"
-              end
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
-                }`
-              }
-            >
-              Studio
-            </NavLink>
-
-            <NavLink
-              to="/dashboard/media"
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-2 border-black" : ""
-                }`
-              }
-            >
-              Media
-            </NavLink>
-
-            {(user?.role === "SUPER_ADMIN" ||
-              user?.role === "ADMIN" ||
-              user?.role === "PROJECT_MANAGER" ||
-              user?.role === "FINANCE") && (
-              <>
-                <NavLink
-                  to="/dashboard/financials"
-                  className={({ isActive }) =>
-                    `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                      isActive ? "border-b-2 border-black" : ""
-                    }`
-                  }
-                >
-                  Financials
-                </NavLink>
-
-                {/* {(user?.role === "SUPER_ADMIN" || user?.role === "PROJECT_MANAGER" || user?.role === "FINANCE") && (
-                  <NavLink
-                    to="/dashboard/adjust-rates"
-                    className={({ isActive }) =>
-                      `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${isActive ? "border-b-2 border-black" : ""
-                      }`
-                    }
-                  >
-                    Adjust Rates
-                  </NavLink>
-                )} */}
-              </>
-            )}
-            <NavLink
+            {tabs.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.to === "/dashboard"}
+                className={({ isActive }) =>
+                  `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                    isActive ? "border-b-2 border-black" : ""
+                  }`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+            {/* <NavLink
               to="/dashboard/teams"
               className={({ isActive }) =>
                 `px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
@@ -143,7 +118,7 @@ export default function NavbarDashboard() {
               }
             >
               Teams
-            </NavLink>
+            </NavLink> */}
             {/* <NavLink
               to="/dashboard/employees"
               className={({ isActive }) =>
@@ -244,58 +219,38 @@ export default function NavbarDashboard() {
           className="md:hidden bg-gray-50 border-t border-gray-200 pb-2"
         >
           <div className="flex flex-col px-2 pt-2 pb-3 space-y-2 max-w-xs mx-auto">
-            <NavLink
-              to="/dashboard"
-              end
-              className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-4 border-black bg-gray-100" : ""
-                }`
-              }
-            >
-              Studio
-            </NavLink>
-            <NavLink
-              to="/dashboard/media"
-              className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-4 border-black bg-gray-100" : ""
-                }`
-              }
-            >
-              Media
-            </NavLink>
-            {(user?.role === "SUPER_ADMIN" ||
-              user?.role === "ADMIN" ||
-              user?.role === "PROJECT_MANAGER" ||
-              user?.role === "FINANCE") && (
+            {tabs.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.to === "/dashboard"}
+                className={({ isActive }) =>
+                  `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                    isActive ? "border-b-4 border-black bg-gray-100" : ""
+                  }`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+
+            {/* Shortcuts into pages the tabs above own. Same gate as the
+                section they belong to, so they cannot outlive their tab. */}
+            {allowed.includes("financials") && (
+              <NavLink
+                to="/dashboard/adjust-rates"
+                className={({ isActive }) =>
+                  `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                    isActive ? "border-b-4 border-black bg-gray-100" : ""
+                  }`
+                }
+              >
+                Adjust Rates
+              </NavLink>
+            )}
+
+            {allowed.includes("studio") && (
               <>
-                <NavLink
-                  to="/dashboard/financials"
-                  className={({ isActive }) =>
-                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                      isActive ? "border-b-4 border-black bg-gray-100" : ""
-                    }`
-                  }
-                >
-                  Financials
-                </NavLink>
-
-                {(user?.role === "SUPER_ADMIN" ||
-                  user?.role === "PROJECT_MANAGER" ||
-                  user?.role === "FINANCE") && (
-                  <NavLink
-                    to="/dashboard/adjust-rates"
-                    className={({ isActive }) =>
-                      `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                        isActive ? "border-b-4 border-black bg-gray-100" : ""
-                      }`
-                    }
-                  >
-                    Adjust Rates
-                  </NavLink>
-                )}
-
                 <NavLink
                   to="/dashboard/teams"
                   className={({ isActive }) =>
@@ -306,18 +261,19 @@ export default function NavbarDashboard() {
                 >
                   Teams
                 </NavLink>
+
+                <NavLink
+                  to="/dashboard/new-inquiries-list"
+                  className={({ isActive }) =>
+                    `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
+                      isActive ? "border-b-4 border-black bg-gray-100" : ""
+                    }`
+                  }
+                >
+                  New Inquiries
+                </NavLink>
               </>
             )}
-            <NavLink
-              to="/dashboard/new-inquiries-list"
-              className={({ isActive }) =>
-                `block w-full px-3 py-2 rounded-md text-sm font-medium text-black hover:bg-website-color-lightGray hover:text-black ${
-                  isActive ? "border-b-4 border-black bg-gray-100" : ""
-                }`
-              }
-            >
-              New Inquiries
-            </NavLink>
           </div>
         </div>
       )}

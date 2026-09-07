@@ -62,6 +62,16 @@ const DAYS_MAP = {
 
 const DAYS = Object.keys(DAYS_MAP) as Array<keyof typeof DAYS_MAP>;
 
+/**
+ * Every select in the project/phase row.
+ *
+ * `w-full` overrides the trigger's default `w-fit`, and the two `min-w-0`s —
+ * on the trigger and on the value node inside it — are what let a long value
+ * clip at the column edge instead of pushing the control over its neighbour.
+ */
+const SELECT_TRIGGER_CLASS =
+  "w-full min-w-0 bg-white border-gray-200 *:data-[slot=select-value]:min-w-0";
+
 export default function TimesheetEntryFormDialog({
   open,
   onOpenChange,
@@ -456,19 +466,34 @@ export default function TimesheetEntryFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-[1100px] max-h-[90vh] flex flex-col bg-white text-black p-0 overflow-hidden rounded-2xl">
+      {/* Wider from `xl` up: this sheet is a wide table plus a five-control
+          row, and 1100px left both cramped on a large monitor. */}
+      <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-[1100px] xl:max-w-[1340px] 2xl:max-w-[1480px] max-h-[90vh] flex flex-col bg-white text-black p-0 overflow-hidden rounded-2xl">
         <div id="timesheet-modal-content" className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex-shrink-0">
-            <div className="flex justify-between items-center">
-              <DialogTitle className="text-xl font-bold tracking-tight">
-                Bi-Weekly Timesheet
-                <span className="ml-3 flex flex-col sm:flex-row text-sm font-medium text-gray-400">
-                  {timecard?.weekStarting ? new Date(timecard.weekStarting).toLocaleDateString() : ""} — {timecard?.weekEnding ? new Date(timecard.weekEnding).toLocaleDateString() : ""}
-                </span>
-                {timecard?.payPeriod && <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Period {timecard.payPeriod}</span>}
-              </DialogTitle>
-              <div className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest ${timecard?.status === "APPROVED" ? "bg-green-100 text-green-700" :
-                timecard?.status === "SUBMITTED" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+            {/* The date range and period pill sit on one meta line under the
+                title. Previously the range was a block-level flex span with a
+                left margin, so it broke the line and left the pill stranded on
+                a third row at a different indent. */}
+            <div className="flex justify-between items-start gap-4">
+              <div className="min-w-0">
+                <DialogTitle className="text-xl font-bold tracking-tight">
+                  Bi-Weekly Timesheet
+                </DialogTitle>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <span className="text-sm font-medium text-gray-400">
+                    {timecard?.weekStarting ? new Date(timecard.weekStarting).toLocaleDateString() : ""} — {timecard?.weekEnding ? new Date(timecard.weekEnding).toLocaleDateString() : ""}
+                  </span>
+                  {timecard?.payPeriod && (
+                    <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      Period {timecard.payPeriod}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest ${timecard?.status === "APPROVED" ? "bg-green-100 text-green-700" :
+                timecard?.status === "SUBMITTED" ? "bg-blue-100 text-blue-700" :
+                  timecard?.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
                 }`}>
                 {timecard?.status || "DRAFT"}
               </div>
@@ -517,11 +542,16 @@ export default function TimesheetEntryFormDialog({
               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
                 <Plus className="h-4 w-4" /> Select Project & Phase
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4">
-                <div className="lg:col-span-3">
+              {/* SelectTrigger is `w-fit` by default, so a long value grows the
+                  control past its grid cell and over the next one — an
+                  amendment's proposal number plus its badge did exactly that.
+                  Every trigger here is pinned to its column and its value
+                  truncated instead. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-14 gap-x-4 gap-y-4">
+                <div className="lg:col-span-3 min-w-0">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Project</label>
                   <Select value={selectedProject} onValueChange={handleProjectChange}>
-                    <SelectTrigger className="bg-white border-gray-200">
+                    <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                       <SelectValue placeholder="Pick a Project..." />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
@@ -534,23 +564,27 @@ export default function TimesheetEntryFormDialog({
                 </div>
                 {/* The original contract and every amendment on the project.
                     Phases are scoped to whichever is picked here. */}
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-4 min-w-0">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Contract</label>
                   <Select
                     value={selectedContract}
                     onValueChange={handleContractChange}
                     disabled={!selectedProject}
                   >
-                    <SelectTrigger className="bg-white border-gray-200">
+                    <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                       <SelectValue placeholder="Pick a Contract" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
                       {currentProjectContracts.map((c: any) => (
                         <SelectItem key={c.id ?? "unassigned"} value={c.id ?? "unassigned"}>
-                          <span className="flex items-center gap-2">
-                            {c.proposalNumber || c.title}
+                          {/* The number gives way before the badge does: which
+                              contract it is matters less than whether it's an
+                              amendment, and the full number is still readable
+                              in the open list. */}
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className="truncate">{c.proposalNumber || c.title}</span>
                             {c.isAmendment && (
-                              <span className="text-[9px] font-black uppercase tracking-wider text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">
+                              <span className="flex-shrink-0 text-[9px] font-black uppercase tracking-wider text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">
                                 Amendment
                               </span>
                             )}
@@ -563,14 +597,14 @@ export default function TimesheetEntryFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-3 min-w-0">
                   <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Select Phase</label>
                   <Select
                     value={selectedPhase}
                     onValueChange={setSelectedPhase}
                     disabled={!selectedContract}
                   >
-                    <SelectTrigger className="bg-white border-gray-200">
+                    <SelectTrigger className={SELECT_TRIGGER_CLASS}>
                       <SelectValue placeholder="Pick a Phase" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
@@ -585,11 +619,11 @@ export default function TimesheetEntryFormDialog({
                 </div>
                 {!isReadOnly && (
                   <>
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-3 min-w-0">
                       <label className="block text-[10px] uppercase font-black text-gray-500 mb-1">Brief Description</label>
                       <Input
                         placeholder="What did you work on?"
-                        className="bg-white border-gray-200 text-xs"
+                        className="w-full bg-white border-gray-200 text-xs"
                         value={entryDescription}
                         onChange={(e) => setEntryDescription(e.target.value)}
                       />

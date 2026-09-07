@@ -82,6 +82,8 @@ export interface Team {
     name: string;
     createdById: string;
     members: { id: string; name: string; email: string; avatar: string | null; role: string }[];
+    /** Live project requests assigned to this team, newest first. */
+    projects?: { id: string; projectName: string; status: string }[];
     _count?: {
         projects: number;
     };
@@ -116,6 +118,13 @@ export interface SendProposalRequest {
 
 export interface Proposal {
     id: string;
+    /**
+     * Amendments of this proposal. Not returned by the API as a nested field —
+     * the proposals page groups the flat list by `parentProposalId` and hangs
+     * them here, so anything reading a grouped row (the table, the details
+     * modal) can rely on it. Absent on a raw API proposal.
+     */
+    amendments?: Proposal[];
     projectRequestId: string;
     userId: string;
     proposalNumber: string;

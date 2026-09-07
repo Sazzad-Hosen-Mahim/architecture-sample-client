@@ -81,13 +81,11 @@ export default function ClientInfoSection({
 
     (async () => {
       try {
+        // GET ".../states/q?country=" rather than POST ".../states": upstream
+        // now 301-redirects the POST to this query form, and a 301 turns the
+        // request into a GET with the JSON body dropped, so no states came back.
         const res = await fetch(
-          "https://countriesnow.space/api/v0.1/countries/states",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ country: selectedCountry }),
-          },
+          `https://countriesnow.space/api/v0.1/countries/states/q?country=${encodeURIComponent(selectedCountry)}`,
         );
         const data = await res.json();
         const names: string[] =

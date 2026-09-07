@@ -20,10 +20,14 @@ import { toast } from "sonner";
 import SyncLoader from "react-spinners/SyncLoader";
 import { signIn } from "@/redux/features/auth/authActions";
 import { useLoginMutation } from "@/redux/api/authApi";
+import { landingPathFor } from "@/utils/dashboardAccess";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email format"),
+  // Not `.email()`: this field takes an email *or* a username, which the server
+  // matches against both columns. Validating it as an address here rejected
+  // every username before the request was even sent.
+  email: z.string().min(1, "Email or username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -42,7 +46,9 @@ const Login = () => {
   // user here with ?redirect=<same-origin path> so they resume where they were.
   const redirectParam = searchParams.get("redirect");
   const safeRedirect =
-    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+    redirectParam &&
+    redirectParam.startsWith("/") &&
+    !redirectParam.startsWith("//")
       ? redirectParam
       : null;
 
@@ -76,7 +82,10 @@ const Login = () => {
       } else if (user.role === "USER") {
         navigate("/user-dashboard");
       } else {
-        navigate("/dashboard"); // fallback / admin / other roles
+        // Land on the first section this role actually covers, so a finance or
+        // media account doesn't open straight onto a "not part of your
+        // dashboard" page. Roles with everything still get Studio first.
+        navigate(landingPathFor(user) ?? "/dashboard");
       }
     } catch (error: any) {
       toast.error(error?.data?.message || "Login failed", {
@@ -101,12 +110,18 @@ const Login = () => {
               htmlFor="email"
               className="block text-sm font-medium text-gray-900 mb-2"
             >
-              Email
+              Email / Username
             </label>
+            {/* `text`, not `email` — the browser's own validation on an email
+                input blocks a username before the form is ever submitted, and
+                it silently trims nothing else useful here. `username` for
+                autocomplete is the standard token for a field that takes
+                either, so password managers still offer saved logins. */}
             <input
-              type="email"
+              type="text"
               id="email"
-              placeholder="Enter your email"
+              autoComplete="username"
+              placeholder="Enter your email or username"
               {...register("email")}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:border-black"
             />
@@ -219,12 +234,10 @@ const Login = () => {
               This is a private client portal. Accounts are invitation-only.
             </p>
             <p>
-              If you’ve submitted a project inquiry (or one was created for you),
-              check your email for a secure link to create your account.
+              If you’ve submitted a project inquiry (or one was created for
+              you), check your email for a secure link to create your account.
             </p>
-            <p>
-              Didn’t receive it? Just reach out and we’ll gladly resend it.
-            </p>
+            <p>Didn’t receive it? Just reach out and we’ll gladly resend it.</p>
           </div>
           <div className="mt-2">
             <button

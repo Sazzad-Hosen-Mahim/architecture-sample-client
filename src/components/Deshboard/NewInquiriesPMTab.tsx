@@ -21,11 +21,13 @@ import MeetingSlotPicker, {
     toMeetingWindow,
     type SlotSelection,
 } from "@/components/Common/MeetingSlotPicker";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
 
 const NewInquiriesPMTab = () => {
     const { data: response, isLoading } = useGetAllNewInquiriesQuery();
     const [sendMeetingLink, { isLoading: isSendingMeeting }] = useSendMeetingLinkMutation();
     const navigate = useNavigate();
+    const canEdit = useCanEdit();
     const inquiries = response?.data || [];
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [meetingModalOpen, setMeetingModalOpen] = useState(false);
@@ -122,15 +124,19 @@ const NewInquiriesPMTab = () => {
             <div className="p-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
                 <LayoutList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No new inquiries yet</p>
-                <p className="text-xs text-gray-400 mt-1">
-                    Create a new inquiry to get started.
-                </p>
-                <Button
-                    onClick={() => navigate("/dashboard/new-inquiries")}
-                    className="mt-4 bg-gray-800 text-white hover:bg-black cursor-pointer"
-                >
-                    Create New Inquiry
-                </Button>
+                {canEdit && (
+                    <>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Create a new inquiry to get started.
+                        </p>
+                        <Button
+                            onClick={() => navigate("/dashboard/new-inquiries")}
+                            className="mt-4 bg-gray-800 text-white hover:bg-black cursor-pointer"
+                        >
+                            Create New Inquiry
+                        </Button>
+                    </>
+                )}
             </div>
         );
     }
@@ -142,12 +148,14 @@ const NewInquiriesPMTab = () => {
                     <h2 className="text-xl font-bold text-gray-800">New Inquiries</h2>
                     <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-500">{inquiries.length} total</span>
-                        <Button
-                            onClick={() => navigate("/dashboard/new-inquiries")}
-                            className="bg-gray-800 text-white hover:bg-black cursor-pointer text-xs"
-                        >
-                            + New Inquiry
-                        </Button>
+                        {canEdit && (
+                            <Button
+                                onClick={() => navigate("/dashboard/new-inquiries")}
+                                className="bg-gray-800 text-white hover:bg-black cursor-pointer text-xs"
+                            >
+                                + New Inquiry
+                            </Button>
+                        )}
                     </div>
                 </div>
 

@@ -29,11 +29,24 @@ const NotificationPopover = () => {
   const [acceptProject] = useAcceptProjectMutation();
   const [rejectProject] = useRejectProjectMutation();
 
+  // Once the decision is made the prompt has done its job, so it is removed
+  // rather than left in the list as a card with nothing left to do. Deleting is
+  // best-effort: the decision itself already succeeded, and failing to tidy up
+  // afterwards is not worth reporting as a failed accept.
+  const dismissAfterDecision = async (id: string) => {
+    try {
+      await deleteNotification(id).unwrap();
+    } catch {
+      /* leaves the notification in place, now marked read by the server */
+    }
+  };
+
   const handleAccept = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
       await acceptProject(id).unwrap();
       toast.success("Project accepted successfully");
+      await dismissAfterDecision(id);
     } catch (err) {
       toast.error("Failed to accept project");
     }
@@ -44,6 +57,7 @@ const NotificationPopover = () => {
     try {
       await rejectProject(id).unwrap();
       toast.success("Project rejected");
+      await dismissAfterDecision(id);
     } catch (err) {
       toast.error("Failed to reject project");
     }
@@ -60,12 +74,28 @@ const NotificationPopover = () => {
   };
 
   /**
-   * Clicking a notification marks it read and follows its deep link. Links
-   * carry the target as query params (?project=&tab=&proposal=), which the
-   * destination dashboard uses to open the right modal on the right tab.
+   * A notification whose buttons are still waiting on a decision.
+   *
+   * The Accept / Reject pair is hidden once the notification is read, and the
+   * server marks every notification for a project read as soon as anyone
+   * decides it — that is what stops a second manager acting on a request that
+   * is already settled. The trouble was that simply *opening* a notification
+   * marked it read too, so the buttons vanished on a plain click and it looked
+   * as though clicking the body had accepted the project.
+   */
+  const awaitsDecision = (notification: any) =>
+    notification.type === "NEW_PROJECT_REQUEST" && !notification.isRead;
+
+  /**
+   * Clicking a notification follows its deep link. Links carry the target as
+   * query params (?project=&tab=&proposal=), which the destination dashboard
+   * uses to open the right modal on the right tab.
+   *
+   * It also marks the notification read — unless it is still carrying a
+   * decision, which stays unread until that decision is actually made.
    */
   const handleNotificationClick = async (notification: any) => {
-    if (!notification.isRead) {
+    if (!notification.isRead && !awaitsDecision(notification)) {
       markAsRead(notification.id);
     }
     if (notification.link) {
@@ -128,7 +158,7 @@ const NotificationPopover = () => {
                   </p>
 
                   {/* Accept/Reject actions for new project requests */}
-                  {notification.type === "NEW_PROJECT_REQUEST" && !notification.isRead && (
+                  {awaitsDecision(notification) && (
                     <div className="mt-3 flex gap-2">
                       <Button
                         size="sm"

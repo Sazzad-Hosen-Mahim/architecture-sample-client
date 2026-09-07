@@ -73,27 +73,29 @@ export default function AvatarMenu({
       <PopoverContent
         align={align}
         sideOffset={10}
-        className="w-60 mr-3 p-2 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,2,0.35)] text-white z-[60]"
+        className="w-60 mr-3 p-2 rounded-2xl border border-gray-300 bg-white backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,2,0.35)] text-black z-[60]"
       >
         {actions.map((action) => {
           const Icon = action.icon;
           return (
             <Fragment key={action.key}>
-              {action.danger && <div className="h-px bg-white/10 my-1" />}
+              {action.danger && <div className="h-px bg-white/10" />}
               <button
                 onClick={() => {
                   setOpen(false);
                   action.onClick();
                 }}
-                className={`group w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 cursor-pointer ${
-                  action.danger ? "hover:bg-red-500/10" : "hover:bg-white/10"
+                className={`group w-full flex items-center gap-3 px-2 py-3 rounded-xl text-left transition-all duration-200 cursor-pointer ${
+                  action.danger
+                    ? "hover:bg-red-500/10"
+                    : "hover:bg-green-300/30"
                 }`}
               >
                 <div
-                  className={`h-9 w-9 rounded-lg flex items-center justify-center bg-white/10 border border-white/10 transition-all duration-200 ${
+                  className={`h-9 w-9 rounded-lg flex items-center justify-center bg-white/10 border border-gray-300 transition-all duration-200 ${
                     action.danger
-                      ? "text-white/80 group-hover:bg-red-500 group-hover:text-white"
-                      : "text-white group-hover:bg-white group-hover:text-black"
+                      ? " group-hover:bg-red-500 group-hover:text-white"
+                      : "text-black group-hover:bg-green-300"
                   }`}
                 >
                   <Icon size={16} />
@@ -101,21 +103,19 @@ export default function AvatarMenu({
 
                 <div className="flex-1">
                   <p
-                    className={`text-sm font-medium text-white ${
+                    className={`text-sm font-medium text-black ${
                       action.danger ? "group-hover:text-red-400" : ""
                     }`}
                   >
                     {action.label}
                   </p>
-                  <p className="text-[11px] text-white/40">
-                    {action.description}
-                  </p>
+                  <p className="text-[11px] text-black">{action.description}</p>
                 </div>
 
                 {!action.danger && (
                   <ChevronRight
                     size={15}
-                    className="text-white/30 transition-all duration-200 group-hover:text-white group-hover:translate-x-0.5"
+                    className="text-white/30 transition-all duration-200 group-hover:text-black group-hover:translate-x-0.5"
                   />
                 )}
               </button>

@@ -250,13 +250,23 @@ export default function ClientProjectInfoTab({
                 </span>
               </div>
             )}
-            {project.preferredArchitecturalStyle && (
+            {/* {project.preferredArchitecturalStyle && (
               <div>
                 <span className="text-[10px] text-gray-400 font-bold uppercase block">
                   Architectural Style
                 </span>
                 <span className="text-sm text-gray-700">
                   {project.preferredArchitecturalStyle}
+                </span>
+              </div>
+            )} */}
+            {projectNarrative.description && (
+              <div>
+                <span className="text-[10px] text-gray-400 font-bold uppercase block">
+                  Project Description
+                </span>
+                <span className="text-sm text-gray-700 whitespace-pre-line">
+                  {projectNarrative.description}
                 </span>
               </div>
             )}
@@ -277,16 +287,6 @@ export default function ClientProjectInfoTab({
                 </span>
                 <span className="text-sm text-gray-700">
                   {project.sustainabilityGoals}
-                </span>
-              </div>
-            )}
-            {projectNarrative.description && (
-              <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase block">
-                  Project Description
-                </span>
-                <span className="text-sm text-gray-700 whitespace-pre-line">
-                  {projectNarrative.description}
                 </span>
               </div>
             )}

@@ -99,6 +99,12 @@ const Contact = () => {
                 >
                   Message
                 </label>
+                {/* `block` matters for more than display: a textarea is
+                    inline-block by default, so it sits on its parent's text
+                    baseline and leaves a few pixels of descender space beneath
+                    the visible border. The form's bottom edge landed there
+                    rather than on the border, and the Send button — which
+                    aligns to the form's bottom — sat that much too low. */}
                 <textarea
                   id="message"
                   name="message"
@@ -106,7 +112,7 @@ const Contact = () => {
                   value={formData.message}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:border-black resize-vertical"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:border-black resize-vertical"
                 />
               </div>
               {/* Honeypot — hidden from real users, catches naive bots. */}
@@ -122,7 +128,13 @@ const Contact = () => {
               />
             </form>
           </div>
-          <div className="space-y-4 flex flex-col justify-between">
+          {/* `justify-between` alone does the spacing here — pinning the card to
+              the top and the button to the bottom of the column. A `space-y-4`
+              on top of it added a further 16px of forced margin above the
+              button, which made this column the taller of the two and so the
+              one setting the row height; the button then sat below the bottom
+              edge of the form opposite. */}
+          <div className="flex flex-col justify-between">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
               <div className="p-6">
                 <h2 className="text-lg font-semibold mb-4">
@@ -136,16 +148,15 @@ const Contact = () => {
                     </span>
                   </div>
                   <div>
-                    <p className="text-gray-600">
+                    <p className="text-black">
                       Please email the contact above. Additional contact
                       information can be given through our response if
                       necessary.
                     </p>
-                    <p className="text-gray-800 mt-4">
+                    <p className="text-black mt-4">
                       We appreciate notes, tips, or pointers on how to improve
                       our website application. Please also use this form to let
-                      us know how we can improve your experience using this
-                      site. Thank you.
+                      us know how we can improve your experience. Thank you.
                     </p>
                   </div>
                 </div>

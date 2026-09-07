@@ -64,6 +64,7 @@ import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 import { selectCurrentUser, updateUser } from "@/redux/features/auth/authSlice";
 import { toast } from "sonner";
 import { useUpdatedProfileInfoMutation } from "@/redux/features/ProfileSettings/profileSettings";
+import { useGetMeQuery } from "@/redux/api/userApi";
 
 type ProfileData = {
   firstName: string;
@@ -106,10 +107,16 @@ export function ProfileSettings() {
 
   const [profileData, setProfileData] = useState<ProfileData>(EMPTY_PROFILE);
 
-  // when user data becomes available, populate the form
+  // Populate from the server's copy, falling back to the session's while it
+  // loads. The persisted Redux user is only written at login, so anything
+  // changed since — or in another browser — was missing from it, which is why
+  // Country and State/Region rendered blank on a record that had both stored.
+  const { data: freshUser } = useGetMeQuery();
+
   useEffect(() => {
-    if (user) {
-      const u = user as any;
+    const source = freshUser ?? user;
+    if (source) {
+      const u = source as any;
       // Fall back to splitting the legacy single `name` for pre-migration rows.
       const nameParts = (u.name || "").trim().split(/\s+/);
       setProfileData({
@@ -127,7 +134,7 @@ export function ProfileSettings() {
       });
       setProfilePhoto(getUserPhoto(u));
     }
-  }, [user]);
+  }, [freshUser, user]);
 
   const isOwner = user?.role === "Owner";
   const isStaff =

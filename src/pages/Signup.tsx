@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   useRegisterMutation,
   useGetClaimInfoQuery,
@@ -22,7 +22,14 @@ const signUpSchema = z
     companyName: z.string().optional(),
     username: z.string().min(1, "Username is required"),
     email: z.string().email("Invalid email format"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    // Matches the note shown under the fields — a stated requirement the form
+    // did not actually check would just be a promise to the client that the
+    // next screen breaks.
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password needs at least 1 capital letter")
+      .regex(/[0-9]/, "Password needs at least 1 number"),
     confirmPassword: z.string().min(8, "Confirm your password"),
     // Optional address details
     country: z.string().optional(),
@@ -137,7 +144,9 @@ const SignUp = () => {
     }
     try {
       const res = await resendClaim({ email }).unwrap();
-      toast.success(res?.message || "If an accepted inquiry exists, a new link was sent.");
+      toast.success(
+        res?.message || "If an accepted inquiry exists, a new link was sent.",
+      );
     } catch (error: any) {
       toast.error(error?.data?.message || "Could not send a new link.");
     }
@@ -192,15 +201,20 @@ const SignUp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-10 px-4">
-      <div className="w-full max-w-lg bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    // Sized to fit a 100% zoom viewport without scrolling: the outer padding,
+    // the card padding, the heading margin and the banner have each been pulled
+    // in a step, which together buy back roughly the height the page was
+    // overflowing by. `items-start` rather than `items-center` so a short
+    // viewport scrolls from the top of the card instead of clipping it.
+    <div className="min-h-screen bg-gray-50 flex items-start justify-center py-4 px-4">
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         {/* Header */}
-        <h1 className="text-2xl font-semibold text-center text-gray-900 mb-4">
+        <h1 className="text-2xl font-semibold text-center text-gray-900 mb-3">
           Create Account
         </h1>
 
         {isValidClaim && (
-          <div className="mb-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-3 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
             Your inquiry
             {claim?.projectName ? (
               <>
@@ -214,7 +228,7 @@ const SignUp = () => {
         )}
 
         {/* Sign Up Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           {/* First / Last name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -260,43 +274,46 @@ const SignUp = () => {
             </div>
           </div>
 
-          {/* Company Name (optional) */}
-          <div>
-            <label
-              htmlFor="companyName"
-              className="block text-sm font-medium text-gray-900 mb-2"
-            >
-              Company Name (optional)
-            </label>
-            <input
-              type="text"
-              id="companyName"
-              placeholder="Enter your company name"
-              {...register("companyName")}
-              className={inputClass}
-            />
-          </div>
+          {/* Company Name + Username share a row, the same as the name pair
+              above — two short fields on their own lines were a good part of
+              why this form needed scrolling. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="companyName"
+                className="block text-sm font-medium text-gray-900 mb-1"
+              >
+                Company Name (optional)
+              </label>
+              <input
+                type="text"
+                id="companyName"
+                placeholder="Enter your company name"
+                {...register("companyName")}
+                className={inputClass}
+              />
+            </div>
 
-          {/* Username */}
-          <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-900 mb-2"
-            >
-              Username <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="username"
-              placeholder="Enter your username"
-              {...register("username")}
-              className={inputClass}
-            />
-            {errors.username && (
-              <p className="text-sm text-red-600 mt-1">
-                {errors.username.message}
-              </p>
-            )}
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-900 mb-1"
+              >
+                Username <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="username"
+                placeholder="Enter your username"
+                {...register("username")}
+                className={inputClass}
+              />
+              {errors.username && (
+                <p className="text-sm text-red-600 mt-1">
+                  {errors.username.message}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Email */}
@@ -397,11 +414,19 @@ const SignUp = () => {
                 </p>
               )}
             </div>
+
+            {/* Spans both columns so it reads as a note on the pair, not on the
+                confirm field. `text-xs` matches the email note above it. */}
+            <p className="text-xs text-red-600 sm:col-span-2 -mt-2">
+              Password Requires:
+              <br />
+              Minimum 8 Characters, 1 Capital Letter Minimum, 1 Number Minimum
+            </p>
           </div>
 
           {/* Optional address details */}
           <div className="pt-2 border-t border-gray-200">
-            <p className="text-md font-light text-gray-900 mt-4 mb-2">
+            <p className="text-md font-light text-gray-900 mt-2 mb-2">
               Address (Optional)
             </p>
             {/* <p className="text-xs text-gray-500 mb-4">
@@ -529,19 +554,9 @@ const SignUp = () => {
             {isLoading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
-
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-gray-900 font-medium hover:text-gray-700"
-            >
-              Login
-            </Link>
-          </p>
-        </div>
+        {/* No "Already have an account?" link here — this card is reached from
+            an invitation, so the reader is by definition signing up. The empty
+            footer that held it was still contributing its `mt-8`. */}
       </div>
     </div>
   );

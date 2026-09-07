@@ -35,6 +35,7 @@ import CreateProposalFromAmendmentModal, {
   AmendmentProposalForm,
 } from "../CreateProposalFromAmendmentModal";
 import { toast } from "sonner";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ type FilterType = "all" | "proposals" | "amendments";
 
 export default function ContractsTab({ project }: ContractsTabProps) {
   const navigate = useNavigate();
+  const canEdit = useCanEdit();
   const [filter, setFilter] = useState<FilterType>("all");
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [contractProposalId, setContractProposalId] = useState<string>("");
@@ -409,7 +411,9 @@ export default function ContractsTab({ project }: ContractsTabProps) {
         </div>
 
         <div className="flex flex-col items-start sm:items-end gap-1">
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Drafters and employees read this tab; the two buttons that start
+              paperwork are theirs to see the results of, not to press. */}
+          <div className={`flex-wrap items-center gap-2 ${canEdit ? "flex" : "hidden"}`}>
             {/* Raised for a client who can't do it from their own panel. */}
             <button
               onClick={() => setIsNewAmendmentOpen(true)}

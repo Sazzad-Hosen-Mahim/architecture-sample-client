@@ -47,6 +47,7 @@ const NewInquiriesListPage = lazy(
   () => import("@/pages/Dashboard/NewInquiriesList"),
 );
 const TimecardsPage = lazy(() => import("@/pages/Dashboard/TimecardsPage"));
+const MyTimecard = lazy(() => import("@/pages/Dashboard/MyTimecard"));
 const Teams = lazy(() => import("@/pages/Dashboard/Teams"));
 const RefundRequests = lazy(() => import("@/pages/Dashboard/RefundRequests"));
 const ConsultationRefunds = lazy(
@@ -329,6 +330,16 @@ const routes = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <TimecardsPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        // The employee's own card, opened from a rejection notification. Not
+        // owned by any dashboard section — see MyTimecard for why.
+        path: "my-timecard/:timecardId",
+        element: (
+          <SuspenseWrapper>
+            <MyTimecard />
           </SuspenseWrapper>
         ),
       },

@@ -56,11 +56,13 @@ function useStates(country?: string) {
 
     (async () => {
       try {
-        const res = await fetch(`${COUNTRIES_NOW}/states`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ country }),
-        });
+        // GET ".../states/q?country=" rather than POST ".../states": upstream
+        // now 301-redirects the POST to this query form, and a 301 turns the
+        // request into a GET with the JSON body dropped — so `data.states` came
+        // back undefined and the control sat on "Loading states..." forever.
+        const res = await fetch(
+          `${COUNTRIES_NOW}/states/q?country=${encodeURIComponent(country)}`,
+        );
         const data = await res.json();
         const names: string[] =
           data?.data?.states?.map((s: any) => s.name) ?? [];

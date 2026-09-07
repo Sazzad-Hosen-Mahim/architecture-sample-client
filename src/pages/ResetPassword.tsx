@@ -10,7 +10,14 @@ import { useResetPasswordMutation } from "@/redux/api/authApi";
 // Validation Schema — mirrors the server's 8-character minimum.
 const resetPasswordSchema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    // Same rule as signup: this is a password the person chooses for
+    // themselves, unlike the throwaway a manager sets on the Add Team Member
+    // form, which is deliberately unconstrained.
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password needs at least 1 capital letter")
+      .regex(/[0-9]/, "Password needs at least 1 number"),
     confirmPassword: z
       .string()
       .min(8, "Confirm password must be at least 8 characters"),

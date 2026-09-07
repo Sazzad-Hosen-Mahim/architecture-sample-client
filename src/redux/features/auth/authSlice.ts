@@ -7,6 +7,12 @@ interface User {
   email: string;
   name: string;
   role: string;
+  /**
+   * Dashboard tabs an EMPLOYEE may open ("studio" | "media" | "financials"),
+   * ticked per person when their account is created. Empty for every other
+   * role, whose access comes from the role itself.
+   */
+  dashboardSections?: string[] | null;
   imagUrl?: string | null;
   avatar?: string | null;
   phoneNumber?: string | null;

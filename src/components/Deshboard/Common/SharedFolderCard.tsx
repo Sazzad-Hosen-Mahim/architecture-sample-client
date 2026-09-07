@@ -5,9 +5,7 @@ import {
     ExternalLink,
     Pencil,
     Trash2,
-    Plus,
     FolderOpen,
-    HardHat,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toExternalUrl } from "@/utils/externalUrl";
@@ -39,28 +37,17 @@ interface SharedFolderCardProps {
     readOnly?: boolean;
 }
 
-const SECTIONS: {
-    side: AttachmentSide;
-    title: string;
-    blurb: string;
-    icon: typeof HardHat;
-    accent: string;
-}[] = [
-    {
-        side: "ARCHITECT",
-        title: "Architect",
-        blurb: "Folders and deliverables shared by the architect.",
-        icon: HardHat,
-        accent: "text-blue-600 bg-blue-50",
-    },
-];
-
 /**
- * The project's shared folder: an Architect section only.
+ * The project's shared folder.
  *
  * Both sides read the card, but only the architect adds, edits or deletes links
  * — the client just opens them. The server enforces the same rule, so a client
  * cannot touch the architect's links even by calling the API directly.
+ *
+ * Laid out to match the internal Project Folder card it sits under: same border,
+ * padding and heading, and the same dashed "add" affordance. Emerald rather than
+ * that card's blue, so the pair read as siblings while staying easy to tell
+ * apart — the blue one is architect-only, the green one the client can see.
  */
 export default function SharedFolderCard({
     projectId,
@@ -123,19 +110,22 @@ export default function SharedFolderCard({
         }
     };
 
-    const items = attachments || [];
+    // Only the architect's links are shown; a client viewing the card reads
+    // them but has no controls, which the server enforces independently.
+    const items = (attachments || []).filter((a) => a.ownerSide === "ARCHITECT");
+    const canManage = side === "ARCHITECT" && !readOnly;
 
     return (
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-3 mb-1">
+        <div className="border border-gray-200 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <FolderOpen className="w-4 h-4 text-gray-400" />
+                    <FolderOpen className="w-5 h-5 text-emerald-600" />
                     <h3 className="text-lg font-semibold text-gray-900">
                         Architect + Client Folder
                     </h3>
                 </div>
             </div>
-            <p className="text-xs text-gray-500 mb-5">
+            <p className="text-xs text-gray-500 mb-4">
                 External project folder, visible to both the architect and the client.
                 The architect manages the links; the client can open them.
             </p>
@@ -145,104 +135,61 @@ export default function SharedFolderCard({
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
                 </div>
             ) : (
-                <div className="space-y-5">
-                    {SECTIONS.map((section) => {
-                        const sectionItems = items.filter((a) => a.ownerSide === section.side);
-                        const isMine = section.side === side && !readOnly;
-                        const Icon = section.icon;
-
-                        return (
-                            <div
-                                key={section.side}
-                                className="border border-gray-100 rounded-lg p-4 bg-gray-50/40"
+                <div className="space-y-2">
+                    {items.map((attachment) => (
+                        <div
+                            key={attachment.id}
+                            className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3"
+                        >
+                            <a
+                                href={toExternalUrl(attachment.url) ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-900 font-medium truncate max-w-[70%]"
+                                title={attachment.url}
                             >
-                                <div className="flex items-start justify-between gap-3 mb-3">
-                                    <div className="flex items-start gap-2.5 min-w-0">
-                                        <div className={`p-1.5 rounded-md flex-shrink-0 ${section.accent}`}>
-                                            <Icon className="w-3.5 h-3.5" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-bold text-gray-900">
-                                                {section.title} Section
-                                            </p>
-                                            <p className="text-[11px] text-gray-500">{section.blurb}</p>
-                                        </div>
-                                    </div>
-                                    {isMine && (
-                                        <button
-                                            onClick={openCreate}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex-shrink-0 cursor-pointer"
-                                        >
-                                            <Plus className="w-3.5 h-3.5" />
-                                            Add Link
-                                        </button>
-                                    )}
+                                <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{attachment.title}</span>
+                            </a>
+                            {canManage && (
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button
+                                        onClick={() => openEdit(attachment)}
+                                        className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    >
+                                        <Pencil className="w-3 h-3" />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => setDeleteTarget(attachment)}
+                                        className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-md border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        Delete
+                                    </button>
                                 </div>
+                            )}
+                        </div>
+                    ))}
 
-                                {sectionItems.length === 0 ? (
-                                    <p className="text-xs text-gray-400 italic py-3 text-center">
-                                        {isMine
-                                            ? "No links yet — add one for the other side to see."
-                                            : `No links shared by the ${section.title.toLowerCase()} yet.`}
-                                    </p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {sectionItems.map((attachment) => (
-                                            <div
-                                                key={attachment.id}
-                                                className="border border-gray-200 rounded-lg p-3 bg-white flex items-start justify-between gap-3"
-                                            >
-                                                <div className="flex items-start gap-2.5 min-w-0">
-                                                    <div className="p-1.5 bg-gray-100 rounded-md flex-shrink-0">
-                                                        <LinkIcon className="w-3.5 h-3.5 text-gray-500" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">
-                                                            {attachment.title}
-                                                        </p>
-                                                        <a
-                                                            href={toExternalUrl(attachment.url) ?? undefined}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 truncate mt-0.5"
-                                                        >
-                                                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                                                            <span className="truncate">{attachment.url}</span>
-                                                        </a>
-                                                        {attachment.createdBy && (
-                                                            <p className="text-[10px] text-gray-400 mt-0.5">
-                                                                Added by{" "}
-                                                                {attachment.createdBy.name ||
-                                                                    attachment.createdBy.email}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {isMine && (
-                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                        <button
-                                                            onClick={() => openEdit(attachment)}
-                                                            className="p-1.5 rounded-md border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors cursor-pointer"
-                                                            title="Edit"
-                                                        >
-                                                            <Pencil className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setDeleteTarget(attachment)}
-                                                            className="p-1.5 rounded-md border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors cursor-pointer"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {canManage && (
+                        <button
+                            onClick={openCreate}
+                            className="inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-800 font-medium border border-dashed border-emerald-300 rounded-lg px-4 py-3 w-full justify-center hover:bg-emerald-50 transition-colors cursor-pointer"
+                        >
+                            <LinkIcon className="w-4 h-4" />
+                            Add Shared Folder Link
+                        </button>
+                    )}
+
+                    {/* A client with nothing shared yet would otherwise see an
+                        empty card and no explanation, since the add button is
+                        the architect's alone. */}
+                    {!canManage && items.length === 0 && (
+                        <p className="text-xs text-gray-400 italic py-3 text-center">
+                            No links shared by the architect yet.
+                        </p>
+                    )}
                 </div>
             )}
 

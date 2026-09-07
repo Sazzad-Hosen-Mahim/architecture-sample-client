@@ -14,6 +14,20 @@ export const userApi = baseApi.injectEndpoints({
       providesTags: ["User"],
     }),
 
+    /**
+     * The signed-in user's own record, straight from the server.
+     *
+     * Profile Settings used to render from the persisted Redux user, which is
+     * only written at login — so any field changed since then (or in another
+     * session) showed blank even though the database had it. Reading it here
+     * means the form always reflects what is actually stored.
+     */
+    getMe: builder.query<any, void>({
+      query: () => ({ url: "/users/me", method: "GET" }),
+      transformResponse: (response: any) => response.data,
+      providesTags: ["User"],
+    }),
+
     // CREATE staff/admin
     createStaff: builder.mutation({
       query: (data) => ({
@@ -60,8 +74,9 @@ export const userApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { 
-  useGetAllUsersQuery, 
+export const {
+  useGetMeQuery,
+  useGetAllUsersQuery,
   useCreateStaffMutation, 
   useDeleteUserMutation,
   useDeleteOwnAccountMutation,

@@ -616,33 +616,53 @@ export default function MasterScheduleTab() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
+                {/* Selects of the same half-hour slots, for the reason already
+                    established on Office Hours above: the native time picker
+                    lists every minute whatever `step` says, so a block could be
+                    set to 9:07–5:23 and never line up with a bookable slot. */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  <label
+                    htmlFor="blockStartTime"
+                    className="block text-xs font-semibold text-gray-900 mb-1"
+                  >
                     Start
                   </label>
-                  <input
-                    type="time"
-                    step={SLOT_MINUTES * 60}
+                  <select
+                    id="blockStartTime"
                     value={blockForm.startTime}
                     onChange={(e) =>
                       setBlockForm((p) => ({ ...p, startTime: e.target.value }))
                     }
-                    className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
+                    className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    {SLOT_TIME_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  <label
+                    htmlFor="blockEndTime"
+                    className="block text-xs font-semibold text-gray-900 mb-1"
+                  >
                     End
                   </label>
-                  <input
-                    type="time"
-                    step={SLOT_MINUTES * 60}
+                  <select
+                    id="blockEndTime"
                     value={blockForm.endTime}
                     onChange={(e) =>
                       setBlockForm((p) => ({ ...p, endTime: e.target.value }))
                     }
-                    className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
+                    className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    {SLOT_TIME_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -869,21 +889,27 @@ export default function MasterScheduleTab() {
                       : `${new Date(b.startAt).toLocaleString()} – ${new Date(b.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                   </p>
                 </div>
-                <button
-                  onClick={() => openBlockForEdit(b)}
-                  title="Edit this time off"
-                  className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg cursor-pointer"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteBlock(b.id)}
-                  disabled={isDeletingBlock}
-                  title="Remove this time off"
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {/* The two actions are one group, so the row's
+                    `justify-between` splits the space between the text and the
+                    pair rather than between all three children — which left the
+                    pencil stranded in the middle of the row. */}
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => openBlockForEdit(b)}
+                    title="Edit this time off"
+                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg cursor-pointer"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBlock(b.id)}
+                    disabled={isDeletingBlock}
+                    title="Remove this time off"
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
