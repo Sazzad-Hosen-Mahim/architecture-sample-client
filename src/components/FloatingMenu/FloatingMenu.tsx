@@ -76,7 +76,19 @@ function FloatingMenu() {
           isMenuOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="flex flex-col justify-between h-full overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+        <div
+          className="flex flex-col justify-between h-full overflow-y-auto"
+          // Reserve the height of whatever browser UI is currently on screen,
+          // so the footer scrolls clear of iOS Safari's toolbar instead of
+          // ending up underneath it and unreadable. `100lvh - 100dvh` is that
+          // height and shrinks to 0 as the toolbar collapses; the safe-area
+          // inset covers the home indicator, and 1.5rem is breathing room.
+          // Everything without retractable browser UI gets just the 1.5rem.
+          style={{
+            paddingBottom:
+              "calc(env(safe-area-inset-bottom) + (100lvh - 100dvh) + 1.5rem)",
+          }}
+        >
           <div className="px-6 py-2">
             {/* Close Button */}
             <div className="flex justify-center items-center">

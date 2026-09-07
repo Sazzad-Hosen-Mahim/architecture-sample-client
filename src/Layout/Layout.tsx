@@ -16,14 +16,21 @@ import ScrollToTop from "@/components/Common/ScrollToTop";
  * The two units are identical wherever there is no retractable browser UI, so
  * desktop and Android are unaffected. On iOS the page gains the bar's height,
  * which is what makes it scroll away on the first swipe.
+ *
+ * The safe-area inset is added on top because `lvh` does not reliably include
+ * the strip around the home indicator: falling ~34px short there left a band of
+ * page background below the hero, right at the bottom edge of the phone. Where
+ * the inset is already counted the page simply runs that much longer, which
+ * costs nothing — the hero grows to fill it either way. The inset is 0 on every
+ * device without a cutout.
  */
 const Layout: React.FC = () => {
   return (
-    <div className="relative min-h-lvh">
+    <div className="relative min-h-[calc(100lvh_+_env(safe-area-inset-bottom))]">
       <ScrollToTop />
       {/*  Background grid pattern */}
       <GridpatternBg />
-      <div className="relative z-10 flex min-h-lvh flex-col">
+      <div className="relative z-10 flex min-h-[calc(100lvh_+_env(safe-area-inset-bottom))] flex-col">
         <Navbar />
         <main className="flex flex-1 flex-col">
           <Outlet />
