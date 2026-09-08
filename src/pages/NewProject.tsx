@@ -186,7 +186,13 @@ function NewProject() {
         {/* Step strip — sticks just below the app navbar. `sticky` (not
             `fixed`) so it stays in normal flow and the content below needs no
             padding hack to clear it. */}
-        <div className="sticky top-16 bg-white z-20 border-b border-gray-50">
+        {/* dot-grid-surface, not bg-white: this strip is positioned (`sticky`
+            + z-20) so it paints above the page's grid overlay and would show as
+            a solid white band. The panels around it are unpositioned and take
+            the overlay's texture, so they stay plain white here — giving them
+            this class too would double the pattern. It sits at y=64, a multiple
+            of the 8px tile, so the dots line up with the page. */}
+        <div className="sticky top-16 dot-grid-surface z-20 border-b border-gray-50">
           <div className="max-w-4xl mx-auto px-4">
             <div ref={tabStripRef} className="overflow-x-auto scrollbar-hide">
               <div className="flex space-x-2 md:space-x-4 py-4">

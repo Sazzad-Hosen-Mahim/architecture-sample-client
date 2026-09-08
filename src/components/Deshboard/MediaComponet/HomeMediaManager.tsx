@@ -8,7 +8,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CheckCircle, Pencil, Plus, Trash2, Search, X } from "lucide-react";
+import {
+  CheckCircle,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useGetAllMediaAdminQuery,
@@ -25,7 +33,7 @@ const MEDIA_TYPE_OPTIONS: { label: string; value: MediaFilterType }[] = [
 ];
 
 export default function HomeMediaManager() {
-  const [updateMedia] = useUpdateMediaMutation();
+  const [updateMedia, { isLoading: isSavingFeatured }] = useUpdateMediaMutation();
 
   // Fetch featured items (isFeatured=true across all types)
   const { data: allMediaResponse, isLoading: isFetchingAll } = useGetAllMediaAdminQuery({});
@@ -39,6 +47,9 @@ export default function HomeMediaManager() {
   const [selectedMediaType, setSelectedMediaType] = useState<MediaFilterType>("WORLD_PROJECT");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  /** The featured item awaiting removal confirmation, kept so it can be named. */
+  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
 
   // Fetch media by type for the dialog dropdown
   const { data: filteredMediaResponse, isLoading: isFetchingFiltered } = useGetAllMediaAdminQuery(
@@ -74,18 +85,19 @@ export default function HomeMediaManager() {
     }
   };
 
-  const handleRemoveFeatured = async (id: string) => {
+  const confirmRemoveFromHome = async () => {
+    if (!removeTarget) return;
     try {
-      await updateMedia({ id, data: { isFeatured: false } }).unwrap();
+      await updateMedia({
+        id: removeTarget.id,
+        data: { isFeatured: false },
+      }).unwrap();
       toast.success("Removed from home page");
+      setRemoveTarget(null);
     } catch (error: any) {
+      // The dialog stays open on failure, so the action can be retried
+      // without hunting for the row again.
       toast.error(error?.data?.message || "Failed to remove");
-    }
-  };
-
-  const handleDeleteFromHome = async (id: string) => {
-    if (confirm("Remove this project from the home page?")) {
-      await handleRemoveFeatured(id);
     }
   };
 
@@ -215,7 +227,7 @@ export default function HomeMediaManager() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 cursor-pointer"
-                        onClick={() => handleDeleteFromHome(item.id)}
+                        onClick={() => setRemoveTarget(item)}
                       >
                         <Trash2 size={14} />
                       </Button>
@@ -346,6 +358,49 @@ export default function HomeMediaManager() {
                 Update
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Remove Confirmation ===== */}
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+      >
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader className="items-center text-center">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-1">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <DialogTitle>Remove from home page</DialogTitle>
+            <p className="text-sm text-gray-500">
+              <span className="font-semibold text-gray-700">
+                {removeTarget?.title}
+              </span>{" "}
+              will stop appearing in the hero section. The project itself is not
+              deleted — you can feature it again at any time.
+            </p>
+          </DialogHeader>
+
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={() => setRemoveTarget(null)}
+              disabled={isSavingFeatured}
+              className="flex-1 px-4 py-2.5 cursor-pointer text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmRemoveFromHome}
+              disabled={isSavingFeatured}
+              className="flex-1 px-4 py-2.5 cursor-pointer text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center"
+            >
+              {isSavingFeatured ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Remove"
+              )}
+            </button>
           </div>
         </DialogContent>
       </Dialog>

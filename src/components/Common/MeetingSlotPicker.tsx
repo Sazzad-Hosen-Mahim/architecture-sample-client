@@ -6,10 +6,12 @@ import {
     buildDaySlots,
     formatSlotLabel,
     fromDateInputValue,
+    isOpenDay,
     isRangeAvailable,
     slotDateTime,
     startOfDay,
     toDateInputValue,
+    WEEKDAY_LABELS,
     type DaySlot,
 } from "@/utils/scheduleSlots";
 import { useGetOfficeHoursQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
@@ -181,6 +183,18 @@ export default function MeetingSlotPicker({
 
     const hasBlockedTime = busy.some((b) => b.type === "BLOCK");
 
+    // "Saturday and Sunday" — only worth saying when the studio isn't open all
+    // week, so a firm with no closed days sees no extra copy.
+    const openDaysLabel = useMemo(() => {
+        const days = officeHours?.days;
+        if (!days || days.length === 0 || days.length === 7) return "";
+        const names = WEEKDAY_LABELS.filter((d) => days.includes(d.value)).map(
+            (d) => d.label,
+        );
+        if (names.length === 1) return names[0];
+        return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    }, [officeHours]);
+
     /** Start times that are free — the options for the Start dropdown. */
     const startOptions = slots.filter((s) => !s.busy && !s.past);
 
@@ -225,7 +239,18 @@ export default function MeetingSlotPicker({
                                 endMinutes: null,
                             })
                         }
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 ${colors.ring} disabled:bg-gray-100 disabled:text-gray-400`}
+                        // `w-full` alone is not enough on iOS Safari: WebKit
+                        // sizes a date input from its own content and leaves
+                        // the declared width unapplied, so the box stopped
+                        // short of the time selects below it. `appearance-none`
+                        // drops that native sizing and `min-w-full` holds the
+                        // field to the column either way. The calendar icon on
+                        // desktop is a separate shadow element and is untouched.
+                        // min-h matches the start/end selects below (text-sm
+                        // line-height 20px + py-2 + 1px borders), so an empty
+                        // field keeps its box now that appearance-none has
+                        // removed WebKit's intrinsic height.
+                        className={`block w-full min-w-full min-h-[38px] appearance-none px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 ${colors.ring} disabled:bg-gray-100 disabled:text-gray-400`}
                     />
                 </div>
             </div>
@@ -234,6 +259,24 @@ export default function MeetingSlotPicker({
                 <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-lg px-3 py-4">
                     <CalendarDays className="w-4 h-4" />
                     Pick a date to see the available times.
+                    {openDaysLabel && (
+                        <span className="text-gray-400">
+                            We're open {openDaysLabel}.
+                        </span>
+                    )}
+                </div>
+            ) : selectedDay && !isOpenDay(selectedDay, officeHours) ? (
+                // Said plainly rather than shown as a grid of greyed-out slots:
+                // a whole day of disabled buttons reads as a fault, not a
+                // closure. The server refuses these days too.
+                <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-4">
+                    <CalendarDays className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                        The office is closed that day.
+                        {openDaysLabel
+                            ? ` We take meetings on ${openDaysLabel} — please pick one of those.`
+                            : " Please pick another date."}
+                    </span>
                 </div>
             ) : (
                 <div>

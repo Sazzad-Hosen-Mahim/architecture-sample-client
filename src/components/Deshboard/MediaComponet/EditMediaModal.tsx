@@ -20,11 +20,14 @@ import {
   useGetMediaByIdOrSlugQuery,
   useUpdateMediaMutation,
   useUploadMediaAssetsMutation,
+  useUpdateMediaAssetMutation,
   useDeleteMediaAssetMutation,
 } from "@/redux/features/Media/mediaApi";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Cloud } from "lucide-react";
+import { X, Cloud, Crop } from "lucide-react";
 import { useGetMediaQuickTagsQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
+import ImageCropEditor from "@/components/Common/ImageCropEditor";
+import { toAssetCrop, type AssetCrop } from "@/utils/projectImage";
 
 interface EditMediaModalProps {
   mediaId: string | null;
@@ -79,6 +82,7 @@ export default function EditMediaModal({
   const [updateMedia, { isLoading: isUpdating }] = useUpdateMediaMutation();
   const [uploadAssets, { isLoading: isUploading }] = useUploadMediaAssetsMutation();
   const [deleteAsset] = useDeleteMediaAssetMutation();
+  const [updateAsset, { isLoading: isSavingCrop }] = useUpdateMediaAssetMutation();
 
   const media = response?.data;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -106,6 +110,8 @@ export default function EditMediaModal({
   const [newFilesToUpload, setNewFilesToUpload] = useState<File[]>([]);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const [newTagInput, setNewTagInput] = useState("");
+  /** The asset whose crop is open for editing, if any. */
+  const [croppingAsset, setCroppingAsset] = useState<any | null>(null);
 
   // Same curated suggestions the create form offers.
   const { data: quickTagsData } = useGetMediaQuickTagsQuery();
@@ -171,6 +177,21 @@ export default function EditMediaModal({
       toast.error(error?.data?.message || "Failed to remove image.");
     } finally {
       setDeletingAssetId(null);
+    }
+  };
+
+  const handleSaveCrop = async (crop: AssetCrop | null) => {
+    if (!mediaId || !croppingAsset) return;
+    try {
+      await updateAsset({
+        mediaId,
+        assetId: croppingAsset.id,
+        data: { crop },
+      }).unwrap();
+      toast.success(crop ? "Crop saved." : "Crop removed.");
+      setCroppingAsset(null);
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to save crop.");
     }
   };
 
@@ -251,6 +272,7 @@ export default function EditMediaModal({
   const isBusy = isUpdating || isUploading;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col bg-white p-0 overflow-y-auto scrollbar-hide">
         <DialogHeader className="p-6 border-b border-gray-200">
@@ -281,19 +303,34 @@ export default function EditMediaModal({
                           alt="Media asset"
                           className="w-full h-full object-cover"
                         />
-                        {/* Always-visible delete button */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAsset(asset.id)}
-                          disabled={deletingAssetId === asset.id}
-                          className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors disabled:opacity-50"
-                        >
-                          {deletingAssetId === asset.id ? (
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                          ) : (
-                            <X size={14} />
-                          )}
-                        </button>
+                        {/* Always-visible controls */}
+                        <div className="absolute top-1.5 right-1.5 flex gap-1">
+                          <button
+                            type="button"
+                            title="Choose which part of this photo the page shows"
+                            onClick={() => setCroppingAsset(asset)}
+                            className="bg-gray-900/80 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer hover:bg-gray-900 transition-colors"
+                          >
+                            <Crop size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAsset(asset.id)}
+                            disabled={deletingAssetId === asset.id}
+                            className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors disabled:opacity-50"
+                          >
+                            {deletingAssetId === asset.id ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                            ) : (
+                              <X size={14} />
+                            )}
+                          </button>
+                        </div>
+                        {toAssetCrop(asset.crop) && (
+                          <span className="absolute bottom-0 left-0 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-tr">
+                            Cropped
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -741,5 +778,23 @@ export default function EditMediaModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Keyed by asset so switching photos starts the editor over rather than
+        carrying the previous one's boxes across. A sibling of the edit modal
+        rather than a child, so the two dialogs do not nest. */}
+    {croppingAsset && (
+      <ImageCropEditor
+        key={croppingAsset.id}
+        open
+        onClose={() => setCroppingAsset(null)}
+        imageUrl={croppingAsset.cdnUrl}
+        imageWidth={croppingAsset.width}
+        imageHeight={croppingAsset.height}
+        initialCrop={toAssetCrop(croppingAsset.crop)}
+        onSave={handleSaveCrop}
+        isSaving={isSavingCrop}
+      />
+    )}
+    </>
   );
 }

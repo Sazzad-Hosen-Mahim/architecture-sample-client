@@ -2,7 +2,11 @@ function GridpatternBg() {
   const gridSize = 8; // 1/8 inch = 8 pixels (assuming 96 DPI)
   const dotSize = 1;
   return (
-    <div className="fixed inset-0 pointer-events-none z-50">
+    // z-0, not z-50: this is a background, and at z-50 it painted over the
+    // navbar and every card on the page. Positioned with z-0 it still sits
+    // above the non-positioned page content it is meant to texture, while the
+    // navbar and floating menu stay above it. See Layout for the full story.
+    <div className="fixed inset-0 pointer-events-none z-0">
       <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern

@@ -282,7 +282,10 @@ export function ProfileSettings() {
       <div className="grid grid-cols-12 gap-6">
         {/* Sidebar */}
         <div className="col-span-12 md:col-span-4 lg:col-span-3">
-          <Card className="border-2 border-gray-300 shadow-lg">
+          {/* Bottom padding is trimmed on a phone only — with the status block
+              moved up beside the avatar there was a band of empty card left
+              under the role line. `md` keeps the original py-6. */}
+          <Card className="border-2 border-gray-300 shadow-lg pb-2 md:pb-6">
             <CardContent className="px-6">
               <div className="flex flex-col items-center space-y-4">
                 {/* On a phone the avatar is flanked by the account status, which
@@ -290,8 +293,12 @@ export function ProfileSettings() {
                     that used to sit under the separator — and the band of white
                     it left below the card — go away entirely. From `md` up the
                     avatar is centred on its own and the status keeps its
-                    original place further down. */}
-                <div className="flex w-full items-center justify-between md:justify-center">
+                    original place further down.
+
+                    Top-aligned rather than centred so the status and the badge
+                    sit level with the top of the avatar instead of floating in
+                    the middle of its height. */}
+                <div className="flex w-full items-start justify-between md:items-center md:justify-center">
                   <div className="md:hidden">
                     <div className="text-sm text-gray-500">Account Status</div>
                     <div className="text-sm text-gray-700">Active</div>

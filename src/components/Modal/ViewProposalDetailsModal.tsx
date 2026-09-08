@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { formatBudgetRange, formatProjectSize } from "@/utils/projectFormat";
 
 interface ViewProposalDetailsModalProps {
   proposal: any;
@@ -136,10 +137,19 @@ const ViewProposalDetailsModal = ({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-white p-0 border-none shadow-2xl">
-        <DialogHeader className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10 shadow-sm">
+      {/* The width has to be set on the `sm:` variant, not unprefixed.
+          DialogContent's own base carries `sm:max-w-lg`, and tailwind-merge
+          keeps an unprefixed `max-w-6xl` alongside it as a separate group — so
+          the responsive rule won and this dialog has been rendering at 512px,
+          which is what forced the long scroll. Matching the variant lets the
+          merge replace it properly. Mobile keeps the base's calc(100% - 2rem).
+
+          scrollbar-hide keeps the wheel/touch scrolling but drops the visible
+          track, which is what was cutting into the right edge of the panel. */}
+      <DialogContent className="sm:max-w-6xl xl:max-w-7xl max-h-[95vh] overflow-y-auto scrollbar-hide bg-white p-0 border-none shadow-2xl">
+        <DialogHeader className="sticky top-0 bg-white border-b border-gray-300 px-6 py-4 flex items-center justify-between z-10 shadow-sm">
           <div>
-            <DialogTitle className="text-2xl font-bold text-gray-800">
+            <DialogTitle className="text-2xl font-bold text-center text-gray-800">
               Proposal Details
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
@@ -151,7 +161,7 @@ const ViewProposalDetailsModal = ({
         <div className="p-6 space-y-6">
           {/* Proposal Information */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Proposal Information
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -178,7 +188,7 @@ const ViewProposalDetailsModal = ({
 
           {/* Client Information */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Client Information
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -194,7 +204,7 @@ const ViewProposalDetailsModal = ({
 
           {/* Project Information */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Project Information
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -207,9 +217,12 @@ const ViewProposalDetailsModal = ({
               <InfoField label="Category" value={proposal.projectCategory} />
               <InfoField
                 label="Square Footage"
-                value={proposal.squareFootage}
+                value={formatProjectSize(proposal.squareFootage)}
               />
-              <InfoField label="Budget Range" value={proposal.budgetRange} />
+              <InfoField
+                label="Budget Range"
+                value={formatBudgetRange(proposal.budgetRange)}
+              />
             </div>
             {proposal.projectDescription && (
               <div className="mt-4">
@@ -234,11 +247,11 @@ const ViewProposalDetailsModal = ({
           {/* Services */}
           {proposal.services && proposal.services.length > 0 && (
             <section>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
                 Services
               </h3>
               <div className="overflow-x-auto">
-                <table className="min-w-full border border-gray-200">
+                <table className="min-w-full border border-gray-300">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">
@@ -258,7 +271,7 @@ const ViewProposalDetailsModal = ({
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-300">
                     {proposal.services.map((service: ProposalService) => (
                       <tr key={service.id}>
                         <td className="px-4 py-2 text-sm">
@@ -302,7 +315,7 @@ const ViewProposalDetailsModal = ({
 
           {/* Financial Summary */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Financial Summary
             </h3>
             <div className="bg-gray-50 p-4 rounded space-y-2">
@@ -316,7 +329,7 @@ const ViewProposalDetailsModal = ({
                   ${proposal.taxAmount || "0"}
                 </span>
               </div>
-              <div className="flex justify-between text-lg font-bold border-t pt-2">
+              <div className="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
                 <span>Total Amount:</span>
                 <span className="text-green-600">${proposal.totalAmount}</span>
               </div>
@@ -325,7 +338,7 @@ const ViewProposalDetailsModal = ({
 
           {/* Created By */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Created By
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -336,7 +349,7 @@ const ViewProposalDetailsModal = ({
 
           {/* ─── Amendments Section ─── */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Amendments
             </h3>
             {isLoadingAmendments ? (
@@ -352,7 +365,7 @@ const ViewProposalDetailsModal = ({
                 {amendments.map((amendment: Amendment) => (
                   <div
                     key={amendment.id}
-                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    className="border border-gray-300 rounded-lg p-4 bg-gray-50"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -376,7 +389,7 @@ const ViewProposalDetailsModal = ({
                       {amendment.services}
                     </div>
                     {amendment.reviewNotes && (
-                      <div className="text-sm text-gray-600 mb-2 bg-white p-2 rounded border border-gray-100">
+                      <div className="text-sm text-gray-600 mb-2 bg-white p-2 rounded border border-gray-300">
                         <span className="font-medium text-gray-700">
                           Review Notes:
                         </span>{" "}
@@ -385,7 +398,7 @@ const ViewProposalDetailsModal = ({
                     )}
                     {/* Show linked amendment proposal info */}
                     {amendment.amendmentProposal && (
-                      <div className="text-sm mb-2 bg-blue-50 p-2 rounded border border-blue-100">
+                      <div className="text-sm mb-2 bg-blue-50 p-2 rounded border border-gray-300">
                         <span className="font-medium text-blue-800">
                           Amendment Proposal:
                         </span>{" "}
@@ -416,7 +429,7 @@ const ViewProposalDetailsModal = ({
 
           {/* ─── Amendment Proposals Section ─── */}
           {/* <section>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Amendment Proposals
             </h3>
             {isLoadingAllProposals ? (
@@ -432,7 +445,7 @@ const ViewProposalDetailsModal = ({
                 {amendmentProposals.map((p: any) => (
                   <div
                     key={p.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                    className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
                   >
                     <div className="flex items-start justify-between">
                       <div>
@@ -464,7 +477,9 @@ const ViewProposalDetailsModal = ({
                       <div>
                         <span className="text-gray-500">Budget:</span>{" "}
                         <span className="font-medium">
-                          {p.budgetRange || p.totalAmount || "N/A"}
+                          {formatBudgetRange(p.budgetRange) ||
+                            p.totalAmount ||
+                            "N/A"}
                         </span>
                       </div>
                       <div>
@@ -488,10 +503,10 @@ const ViewProposalDetailsModal = ({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t flex justify-end">
+        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-300 flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors cursor-pointer font-medium"
+            className="px-6 py-2 bg-black text-white rounded hover:bg-gray-900 transition-colors cursor-pointer font-medium"
           >
             Close
           </button>

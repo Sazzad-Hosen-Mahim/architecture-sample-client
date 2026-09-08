@@ -13,9 +13,10 @@ import { toProjectImages, type ProjectImage } from "@/utils/projectImage";
  * no viewport arithmetic, so it stays flush whatever the navbar does and
  * leaves no band of background under the photo.
  *
- * Which part of the frame survives that shape is not decided here: it is
- * `object-position` per photo (see DEFAULT_FOCAL_POINT), which is the lever
- * that actually controls how much of a building's base gets cropped.
+ * How a photo meets that shape is not decided here either: ProjectPhoto
+ * compares the two and either crops to fill or fits the photo whole against a
+ * blurred enlargement of itself, so an upload that is nothing like the hero's
+ * shape does not arrive as a magnified detail of itself.
  */
 const HERO_FILL = "flex-1 w-full";
 
@@ -181,13 +182,21 @@ function Hero() {
             Project Name: {latestMedia?.title || ""}
           </h1>
 
-          <p className="text-[14px] md:text-base mix-blend-difference text-white">
-            Architect: {latestMedia?.architect || ""}
-          </p>
+          {/* A portfolio entry has no architect field at all, so the label
+              would sit over the photo with nothing after it. Same for a missing
+              photo credit — an unanswered label reads as a mistake. The lines
+              below simply close up when one is absent. */}
+          {latestMedia?.architect?.trim() && (
+            <p className="text-[14px] md:text-base mix-blend-difference text-white">
+              Architect: {latestMedia.architect}
+            </p>
+          )}
 
-          <p className="text-[14px] md:text-base mix-blend-difference text-white">
-            Photographer: {latestMedia?.photographer}
-          </p>
+          {latestMedia?.photographer?.trim() && (
+            <p className="text-[14px] md:text-base mix-blend-difference text-white">
+              Photographer: {latestMedia.photographer}
+            </p>
+          )}
 
           {detailPath && (
             <Button

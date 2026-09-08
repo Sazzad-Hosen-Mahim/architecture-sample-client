@@ -9,6 +9,9 @@ export const mediaApi = baseApi.injectEndpoints({
         method: "GET",
         params,
       }),
+      // The hero reads this. Untagged, it could not be invalidated at all, so
+      // an admin's edit was invisible here until the page was reloaded.
+      providesTags: [{ type: "Media" as const, id: "LIST" }],
     }),
 
     //   GET single media
@@ -48,6 +51,24 @@ export const mediaApi = baseApi.injectEndpoints({
         body: formData,
       }),
       invalidatesTags: (_result, _error, { id }) => [{ type: "Media" as const, id }],
+    }),
+
+    //   UPDATE one asset's presentation (crop, alt text) without re-uploading
+    updateMediaAsset: builder.mutation<
+      any,
+      { mediaId: string; assetId: string; data: any }
+    >({
+      query: ({ mediaId, assetId, data }) => ({
+        url: `/media/${mediaId}/assets/${assetId}`,
+        method: "PATCH",
+        body: data,
+      }),
+      // LIST too: a crop changes what the home page hero shows, and that list
+      // is a separate cache entry from the media item being edited.
+      invalidatesTags: (_result, _error, { mediaId }) => [
+        { type: "Media" as const, id: mediaId },
+        { type: "Media" as const, id: "LIST" },
+      ],
     }),
 
     //   DELETE single asset from media
@@ -132,6 +153,7 @@ export const {
   useUpdateMediaMutation,
   useDeleteMediaMutation,
   useUploadMediaAssetsMutation,
+  useUpdateMediaAssetMutation,
   useDeleteMediaAssetMutation,
   useGetMediaByIdOrSlugQuery,
   useToggleLikeMutation,

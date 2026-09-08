@@ -27,11 +27,11 @@ const AccountantDesk = () => {
                             onClick={() => setShowOverheadModal(true)}
                             className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                         >
-                            <div className="flex items-center gap-2">
-                                <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                     <Building2 size={16} />
                                 </div>
-                                <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Update Overhead</span>
+                                <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Update<br />Overhead</span>
                             </div>
                         </button>
 
@@ -39,11 +39,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <Users size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Update Labor</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Update<br />Labor</span>
                                 </div>
                             </button>
                         </Link>
@@ -52,11 +52,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <DollarSign size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Refund Requests</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Refund<br />Requests</span>
                                 </div>
                             </button>
                         </Link>
@@ -65,11 +65,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <DollarSign size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Consultation Refunds</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Consultation<br />Refunds</span>
                                 </div>
                             </button>
                         </Link>
@@ -78,11 +78,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <ShieldCheck size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Show Users</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Show<br />Users</span>
                                 </div>
                             </button>
                         </Link>
@@ -90,11 +90,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <ShieldCheck size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Adjust Rates</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Adjust<br />Rates</span>
                                 </div>
                             </button>
                         </Link>
@@ -102,11 +102,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <Users size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">All Proposals</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">All<br />Proposals</span>
                                 </div>
                             </button>
                         </Link>
@@ -115,11 +115,11 @@ const AccountantDesk = () => {
                             <button
                                 className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-black hover:text-white transition-all rounded-2xl border border-gray-100 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-1 bg-white rounded-xl text-gray-900 shadow-sm group-hover:bg-gray-900 group-hover:text-white transition-colors shrink-0">
                                         <Archive size={16} />
                                     </div>
-                                    <span className="text-sm font-black uppercase tracking-widest text-start cursor-pointer">Archived Projects</span>
+                                    <span className="text-xs font-black uppercase tracking-wide leading-tight text-start cursor-pointer break-words">Archived<br />Projects</span>
                                 </div>
                             </button>
                         </Link>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   useRegisterMutation,
   useGetClaimInfoQuery,
@@ -10,6 +10,9 @@ import {
 } from "@/redux/api/authApi";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import LegalDocumentModal, {
+  type LegalDocument,
+} from "@/components/Common/LegalDocumentModal";
 import {
   CountrySelect,
   StateSelect,
@@ -66,8 +69,13 @@ const SignUp = () => {
 
   const [resendClaim, { isLoading: isResending }] = useResendClaimMutation();
   const [resendEmail, setResendEmail] = useState("");
+  // Reachable without a token at all: someone who has *lost* the email has no
+  // link to open, so the expired screen was unreachable for exactly the people
+  // who needed it most.
+  const [showResendPanel, setShowResendPanel] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [legalDocument, setLegalDocument] = useState<LegalDocument | null>(null);
 
   const {
     register,
@@ -79,6 +87,13 @@ const SignUp = () => {
   } = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
   });
+
+  // Seed the resend box with the address the invite went to, so an expired
+  // link needs one click rather than retyping an email from memory.
+  useEffect(() => {
+    const known = claim?.email;
+    if (known) setResendEmail((prev) => prev || known);
+  }, [claim?.email]);
 
   useEffect(() => {
     if (!claim?.valid) return;
@@ -144,9 +159,19 @@ const SignUp = () => {
     }
     try {
       const res = await resendClaim({ email }).unwrap();
-      toast.success(
-        res?.message || "If an accepted inquiry exists, a new link was sent.",
-      );
+      const message =
+        res?.message || "If an accepted inquiry exists, a new link was sent.";
+
+      // The three outcomes read differently on purpose. Previously every one
+      // of them — including "found nothing" and "the mail failed" — showed the
+      // same success toast, which is why this looked like it did nothing.
+      if (res?.status === "ALREADY_REGISTERED") {
+        toast.info(message, { duration: 9000 });
+      } else if (res?.status === "NOT_FOUND") {
+        toast.warning(message, { duration: 9000 });
+      } else {
+        toast.success(message, { duration: 8000 });
+      }
     } catch (error: any) {
       toast.error(error?.data?.message || "Could not send a new link.");
     }
@@ -160,22 +185,27 @@ const SignUp = () => {
     );
   }
 
-  if (isExpiredClaim) {
+  if (isExpiredClaim || showResendPanel) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-10 px-4">
         <div className="w-full max-w-md bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
           <h1 className="text-xl font-semibold text-gray-900">
-            This signup link has expired
+            {isExpiredClaim
+              ? "This signup link has expired"
+              : "Get a new signup link"}
           </h1>
           <p className="text-sm text-gray-600">
             Enter the email address you used for your inquiry and we'll send a
             fresh link.
           </p>
+          {/* The known address goes in as the *value*, not just the
+              placeholder: a placeholder looks filled in but submits nothing,
+              so pressing the button did nothing but raise "enter an email". */}
           <input
             type="email"
             value={resendEmail}
             onChange={(e) => setResendEmail(e.target.value)}
-            placeholder={claim?.email || "you@example.com"}
+            placeholder="you@example.com"
             className={inputClass}
           />
           <button
@@ -186,15 +216,28 @@ const SignUp = () => {
           >
             {isResending ? "Sending..." : "Send me a new link"}
           </button>
+          {/* A route, not a mailto: — a mailto does nothing at all on a machine
+              with no mail client configured, which is why this read as a dead
+              button. The contact page works everywhere. */}
           <p className="text-sm text-center text-gray-600">
             Questions?{" "}
-            <a
-              href="mailto:contactus@architecturesimple.com"
-              className="text-gray-900 font-medium hover:text-gray-700"
+            <Link
+              to="/contact"
+              className="text-gray-900 font-medium underline underline-offset-2 hover:text-gray-700"
             >
               Contact us
-            </a>
+            </Link>
           </p>
+
+          {showResendPanel && !isExpiredClaim && (
+            <button
+              type="button"
+              onClick={() => setShowResendPanel(false)}
+              className="w-full text-sm text-gray-500 hover:text-gray-800 cursor-pointer"
+            >
+              Back to sign up
+            </button>
+          )}
         </div>
       </div>
     );
@@ -553,7 +596,51 @@ const SignUp = () => {
           >
             {isLoading ? "Creating Account..." : "Sign Up"}
           </button>
+
+          {/* Opened in a modal rather than navigated to: someone part-way
+              through this form must not lose what they've typed to go and read
+              the terms. */}
+          <p className="text-xs text-center text-gray-500 mt-3">
+            By creating an account, you agree to the{" "}
+            <button
+              type="button"
+              onClick={() => setLegalDocument("terms")}
+              className="text-gray-900 font-medium underline underline-offset-2 hover:text-black cursor-pointer"
+            >
+              Terms of Service
+            </button>{" "}
+            and our{" "}
+            <button
+              type="button"
+              onClick={() => setLegalDocument("privacy")}
+              className="text-gray-900 font-medium underline underline-offset-2 hover:text-black cursor-pointer"
+            >
+              Privacy Policy
+            </button>
+            .
+          </p>
+
+          {/* For someone whose inquiry was accepted but who no longer has the
+              email. Without this the resend screen could only be reached by
+              opening a link they had already lost. */}
+          <p className="text-xs text-center text-gray-500 mt-2">
+            Lost the signup link from your inquiry?{" "}
+            <button
+              type="button"
+              onClick={() => setShowResendPanel(true)}
+              className="text-gray-900 font-medium underline underline-offset-2 hover:text-black cursor-pointer"
+            >
+              Send it again
+            </button>
+          </p>
         </form>
+
+        {legalDocument && (
+          <LegalDocumentModal
+            document={legalDocument}
+            onClose={() => setLegalDocument(null)}
+          />
+        )}
         {/* No "Already have an account?" link here — this card is reached from
             an invitation, so the reader is by definition signing up. The empty
             footer that held it was still contributing its `mt-8`. */}

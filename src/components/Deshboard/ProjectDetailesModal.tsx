@@ -7,10 +7,9 @@ import {
 } from "@/redux/api/adminDashboard/proposalApi";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
-  FileTextIcon,
   FolderKanban,
   Info,
-  CalendarIcon,
+  Users,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -46,10 +45,23 @@ type ProjectModalProps = {
   project: ProjectRequest | null;
   readOnly?: boolean;
   /** Tab to land on, used by notification deep links. */
-  initialTab?: ModalTab | null;
+  initialTab?: DeepLinkTab | null;
 };
 
-type ModalTab = "information" | "contracts" | "management" | "meeting";
+/**
+ * "client" is Client Management, which holds what used to be two tabs of its
+ * own: Contracts first, then Meeting Request beneath it.
+ */
+type ModalTab = "information" | "client" | "management";
+
+/**
+ * Notifications already in circulation deep-link to the two tabs Client
+ * Management replaced, so those names are still accepted and land on it.
+ */
+type DeepLinkTab = ModalTab | "contracts" | "meeting";
+
+const resolveTab = (tab: DeepLinkTab | null | undefined): ModalTab =>
+  tab === "contracts" || tab === "meeting" ? "client" : (tab ?? "information");
 
 const STATUS_OPTIONS = [
   { value: "PENDING", label: "PENDING" },
@@ -132,7 +144,7 @@ export default function ProjectDetailsModal({
   // Reset tab when project changes, honouring a deep-linked tab if given.
   useEffect(() => {
     if (initialProject) {
-      setActiveTab(initialTab || "information");
+      setActiveTab(resolveTab(initialTab));
     }
   }, [initialProject, initialTab]);
 
@@ -196,14 +208,9 @@ export default function ProjectDetailsModal({
       icon: <Info className="w-4 h-4" />,
     },
     {
-      key: "meeting" as ModalTab,
-      label: "Meeting Request",
-      icon: <CalendarIcon className="w-4 h-4" />,
-    },
-    {
-      key: "contracts" as ModalTab,
-      label: "Contracts",
-      icon: <FileTextIcon className="w-4 h-4" />,
+      key: "client" as ModalTab,
+      label: "Client Management",
+      icon: <Users className="w-4 h-4" />,
     },
     {
       key: "management" as ModalTab,
@@ -462,11 +469,14 @@ export default function ProjectDetailsModal({
               {activeTab === "information" && (
                 <ProjectInformationTab project={{ ...project, meetingLinks }} />
               )}
-              {activeTab === "meeting" && (
-                <MeetingRequestTab project={{ ...project, meetingLinks }} />
-              )}
-              {activeTab === "contracts" && (
-                <ContractsTab project={{ ...project, meetingLinks }} />
+              {/* Client Management. The two panels are the same components
+                  that had a tab each, rendered one above the other and
+                  otherwise untouched — contracts first, meetings below. */}
+              {activeTab === "client" && (
+                <div className="space-y-8">
+                  <ContractsTab project={{ ...project, meetingLinks }} />
+                  <MeetingRequestTab project={{ ...project, meetingLinks }} />
+                </div>
               )}
               {activeTab === "management" && (
                 <ProjectMgmtTab

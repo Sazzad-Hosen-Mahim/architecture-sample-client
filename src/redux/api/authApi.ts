@@ -114,7 +114,12 @@ export const authApi = baseApi.injectEndpoints({
 
     // "My signup link expired" — re-issues a fresh link to the same email.
     resendClaim: builder.mutation<
-      { success: boolean; message: string },
+      {
+        success: boolean;
+        /** SENT · ALREADY_REGISTERED · NOT_FOUND — see resendClaimByEmail. */
+        status?: "SENT" | "ALREADY_REGISTERED" | "NOT_FOUND";
+        message: string;
+      },
       { email: string }
     >({
       query: (body) => ({

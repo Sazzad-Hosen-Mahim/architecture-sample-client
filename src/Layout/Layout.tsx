@@ -28,9 +28,21 @@ const Layout: React.FC = () => {
   return (
     <div className="relative min-h-[calc(100lvh_+_env(safe-area-inset-bottom))]">
       <ScrollToTop />
-      {/*  Background grid pattern */}
-      <GridpatternBg />
       <div className="relative z-10 flex min-h-[calc(100lvh_+_env(safe-area-inset-bottom))] flex-col">
+        {/* Background grid pattern.
+
+            It used to sit outside this wrapper at z-50. The wrapper is z-10 and
+            the outer div sets no z-index, so both landed in the root stacking
+            context and the grid — black lines at 10% and dots at 20% — painted
+            over the entire app, the navbar included. The floating menu escaped
+            it only because its slide `transform` promotes it to its own
+            compositing layer, which is why the navbar read as the darker white
+            of the two despite both being #fff.
+
+            Inside the wrapper at z-0 it still covers the page content below it,
+            but the navbar (z-50) and the menu panel (z-99) now sit above it, so
+            both render as plain white on every browser. */}
+        <GridpatternBg />
         <Navbar />
         <main className="flex flex-1 flex-col">
           <Outlet />

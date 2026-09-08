@@ -11,6 +11,7 @@ import {
   Calendar,
   DollarSign,
   RefreshCcw,
+  UserCog,
   //   ArrowRight,
 } from "lucide-react";
 import { getProjectProgress } from "@/utils/projectProgress";
@@ -18,6 +19,14 @@ import {
   isLumpSum,
   // paymentPlanDescription
 } from "@/utils/paymentPlan";
+import {
+  formatAddressLines,
+  formatBudgetRange,
+  formatProjectSize,
+} from "@/utils/projectFormat";
+import { GiResize } from "react-icons/gi";
+import { FaMoneyCheckAlt } from "react-icons/fa";
+import { MdOutlineConstruction } from "react-icons/md";
 
 interface ClientProjectInfoTabProps {
   project: any;
@@ -138,6 +147,8 @@ export default function ClientProjectInfoTab({
       }));
   }, [stages, project, paymentInfo, isPaidAll]);
 
+  const assignedManager = project.assignedManager;
+
   const fullClientName = [
     project.clientFirstName,
     project.clientMiddleName,
@@ -145,25 +156,53 @@ export default function ClientProjectInfoTab({
   ]
     .filter(Boolean)
     .join(" ");
-  const projectAddress = [
-    project.projectStreetAddress,
-    project.projectCity,
-    project.projectState,
-    project.projectCountry,
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const clientAddress = [
-    project.streetAddress,
-    project.city,
-    project.state,
-    project.country,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  // Street / apt on one line, then city, country and postcode on the next —
+  // the way an address is actually read, rather than one long comma run.
+  const projectAddress = formatAddressLines({
+    street: project.projectStreetAddress,
+    aptSuite: project.projectAptSuiteUnit,
+    city: project.projectCity,
+    country: project.projectCountry,
+    zip: project.projectZipCode,
+  });
+  const clientAddress = formatAddressLines({
+    street: project.streetAddress,
+    aptSuite: project.aptSuiteUnit,
+    city: project.city,
+    country: project.country,
+    zip: project.zipCode,
+  });
 
   return (
     <>
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50/30 rounded-2xl p-6 mb-8 border border-blue-100/50 shadow-sm relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex justify-between items-end mb-4">
+            <div>
+              <span className="text-[10px] font-black text-blue-900 uppercase tracking-widest block mb-1">
+                Current Progress
+              </span>
+              <span className="text-sm font-medium text-blue-700">
+                Completion rate for all project phases
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-3xl font-black text-blue-600 block leading-none">
+                {progress}%
+              </span>
+            </div>
+          </div>
+          <div className="h-4 bg-white/60 rounded-full p-0.5 border border-blue-200 shadow-inner">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-1500 ease-out rounded-full shadow-lg relative"
+              style={{ width: `${progress}%` }}
+            >
+              <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
+            </div>
+          </div>
+        </div>
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+      </div>
       {/* Project Information Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Client Info Card */}
@@ -201,12 +240,62 @@ export default function ClientProjectInfoTab({
                 <span className="text-sm text-gray-700">{project.phone}</span>
               </div>
             )}
-            {clientAddress && (
+            {!clientAddress.isEmpty && (
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
-                <span className="text-sm text-gray-600">{clientAddress}</span>
+                <div className="text-sm text-gray-600">
+                  {clientAddress.line1 && <div>{clientAddress.line1}</div>}
+                  {clientAddress.line2 && <div>{clientAddress.line2}</div>}
+                </div>
               </div>
             )}
+
+            {/* Who to talk to about this project. Always rendered, N/A
+                included: a client looking for their manager needs an answer
+                either way, and an omitted row reads as a page that failed to
+                load rather than as "nobody yet". */}
+            <div className="pt-3 mt-1 border-t border-gray-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <UserCog className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Assigned Manager
+                </span>
+              </div>
+              {assignedManager?.name ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-sm text-gray-900 font-medium">
+                      {assignedManager.name}
+                    </span>
+                  </div>
+                  {assignedManager.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      <a
+                        href={`mailto:${assignedManager.email}`}
+                        className="text-sm text-gray-700 hover:text-black underline underline-offset-2 break-all"
+                      >
+                        {assignedManager.email}
+                      </a>
+                    </div>
+                  )}
+                  {assignedManager.phoneNumber && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-sm text-gray-700">
+                        {assignedManager.phoneNumber}
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-gray-300" />
+                  <span className="text-sm text-gray-400 italic">N/A</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -217,37 +306,44 @@ export default function ClientProjectInfoTab({
             Project Details
           </h4>
           <div className="space-y-3">
-            {projectAddress && (
+            {!projectAddress.isEmpty && (
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
-                <div>
+                <div className="">
                   <span className="text-[10px] text-gray-400 font-bold uppercase block">
                     Location:
                   </span>
-                  <span className="text-sm text-gray-700">
-                    {projectAddress}, {project.projectZipCode}
-                  </span>
+                  <div className="text-sm text-gray-700">
+                    {projectAddress.line1 && <div>{projectAddress.line1}</div>}
+                    {projectAddress.line2 && <div>{projectAddress.line2}</div>}
+                  </div>
                 </div>
               </div>
             )}
             {project.projectSize && (
-              <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase block">
-                  Project Size
-                </span>
-                <span className="text-sm text-gray-700">
-                  {project.projectSize}
-                </span>
+              <div className="flex items-start gap-2">
+                <GiResize className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block">
+                    Project Size
+                  </span>
+                  <span className="text-sm text-gray-700">
+                    {formatProjectSize(project.projectSize)}
+                  </span>
+                </div>
               </div>
             )}
             {project.budgetRange && (
-              <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase block">
-                  Budget Range
-                </span>
-                <span className="text-sm text-orange-600 font-medium">
-                  {project.budgetRange}
-                </span>
+              <div className="flex items-start gap-2">
+                <FaMoneyCheckAlt className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block">
+                    Budget Range
+                  </span>
+                  <span className="text-sm text-orange-600 font-medium">
+                    {formatBudgetRange(project.budgetRange)}
+                  </span>
+                </div>
               </div>
             )}
             {/* {project.preferredArchitecturalStyle && (
@@ -271,13 +367,16 @@ export default function ClientProjectInfoTab({
               </div>
             )}
             {project.siteConstraints && (
-              <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase block">
-                  Site Constraints
-                </span>
-                <span className="text-sm text-gray-700">
-                  {project.siteConstraints}
-                </span>
+              <div className="flex items-start gap-2">
+                <MdOutlineConstruction className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block">
+                    Site Constraints
+                  </span>
+                  <span className="text-sm text-gray-700">
+                    {project.siteConstraints}
+                  </span>
+                </div>
               </div>
             )}
             {project.sustainabilityGoals && (
@@ -363,34 +462,6 @@ export default function ClientProjectInfoTab({
             </div> */}
 
       {/* Progress Overview Card */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50/30 rounded-2xl p-6 mb-8 border border-blue-100/50 shadow-sm relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex justify-between items-end mb-4">
-            <div>
-              <span className="text-[10px] font-black text-blue-900 uppercase tracking-widest block mb-1">
-                Current Progress
-              </span>
-              <span className="text-sm font-medium text-blue-700">
-                Completion rate for all project phases
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-3xl font-black text-blue-600 block leading-none">
-                {progress}%
-              </span>
-            </div>
-          </div>
-          <div className="h-4 bg-white/60 rounded-full p-0.5 border border-blue-200 shadow-inner">
-            <div
-              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-1500 ease-out rounded-full shadow-lg relative"
-              style={{ width: `${progress}%` }}
-            >
-              <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
-            </div>
-          </div>
-        </div>
-        <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
-      </div>
 
       {/* Project Phases */}
       <div className="flex items-center gap-3 mb-6">

@@ -32,8 +32,23 @@ const PHASE_BADGE_CLASSES: Record<string, string> = {
 export default function ProjectFinancialTracking() {
   const { data: projects = [], isLoading } = useGetActiveProjectsQuery();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"ALL" | "ACTIVE" | "IMPLEMENTED">("ALL");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
+  const [activeFilter, setActiveFilter] = useState<
+    "ALL" | "ACTIVE" | "COMPLETED"
+  >("ALL");
+
+  /**
+   * A project counts as completed either because it has been marked so, or
+   * because every one of its phases is done. Both are checked: a project whose
+   * last phase was ticked off but whose status was never advanced is finished
+   * work by any reading, and leaving it out of Completed would hide it.
+   */
+  const isCompleted = (p: any) =>
+    p.status === "COMPLETED" ||
+    (p.phases?.length > 0 &&
+      p.phases.every((ph: any) => ph.status === "COMPLETED"));
 
   const filteredProjects = useMemo(() => {
     let result = projects;
@@ -41,25 +56,28 @@ export default function ProjectFinancialTracking() {
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter((p: any) =>
-        p.projectName.toLowerCase().includes(query) ||
-        p.clientName.toLowerCase().includes(query) ||
-        (p.projectNumber || "").toLowerCase().includes(query)
+      result = result.filter(
+        (p: any) =>
+          p.projectName.toLowerCase().includes(query) ||
+          p.clientName.toLowerCase().includes(query) ||
+          (p.projectNumber || "").toLowerCase().includes(query),
       );
     }
 
     // Apply status filter
     if (activeFilter === "ACTIVE") {
       // Active: Projects that have stages but not all are completed
-      result = result.filter((p: any) =>
-        p.phases && p.phases.length > 0 && p.phases.some((ph: any) => ph.status !== "COMPLETED")
+      result = result.filter(
+        (p: any) =>
+          p.phases &&
+          p.phases.length > 0 &&
+          p.phases.some((ph: any) => ph.status !== "COMPLETED"),
       );
-    } else if (activeFilter === "IMPLEMENTED") {
-      // Implemented: Projects where at least one stage is IN_PROGRESS or COMPLETED
-      // (This distinguishes from projects that haven't started any work yet)
-      result = result.filter((p: any) =>
-        p.phases && p.phases.some((ph: any) => ph.status === "IN_PROGRESS" || ph.status === "COMPLETED")
-      );
+    } else if (activeFilter === "COMPLETED") {
+      // Was "Implemented", which matched any project with a single phase
+      // in progress — so half-finished work sat under a heading that read as
+      // finished. Completed means completed.
+      result = result.filter(isCompleted);
     }
 
     return result;
@@ -83,25 +101,31 @@ export default function ProjectFinancialTracking() {
         <h1 className="text-sm font-bold hidden md:block text-gray-600">
           Project Financial Tracking
         </h1>
-        <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
-          <button
-            onClick={() => setActiveFilter("ALL")}
-            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ALL" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            All Projects
-          </button>
-          <button
-            onClick={() => setActiveFilter("ACTIVE")}
-            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ACTIVE" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            Active Projects
-          </button>
-          <button
-            onClick={() => setActiveFilter("IMPLEMENTED")}
-            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "IMPLEMENTED" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            Implemented
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
+            <button
+              onClick={() => setActiveFilter("ALL")}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ALL" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              All Projects
+            </button>
+            <button
+              onClick={() => setActiveFilter("ACTIVE")}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "ACTIVE" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Active Projects
+            </button>
+            <button
+              onClick={() => setActiveFilter("COMPLETED")}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeFilter === "COMPLETED" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Completed
+            </button>
+          </div>
+
+          {/* Counts what is actually in the table, so it follows both the
+              filter buttons and the search box rather than reporting a total
+              the reader cannot see. */}
         </div>
       </div>
 
@@ -112,7 +136,8 @@ export default function ProjectFinancialTracking() {
             Project Search
           </h2>
           <p className="text-sm text-gray-500 mb-4 font-medium">
-            Find {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects by name, number or client to review their financial status
+            Find {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()}{" "}
+            projects by name, number or client to review their financial status
           </p>
           <div className="flex gap-3">
             <div className="flex-1 relative">
@@ -138,10 +163,25 @@ export default function ProjectFinancialTracking() {
 
         {/* Active Projects */}
         <div className="mb-4">
-          <h2 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full animate-pulse ${activeFilter === "ALL" ? "bg-blue-500" : activeFilter === "ACTIVE" ? "bg-green-500" : "bg-amber-500"}`}></span>
-            {activeFilter === "ALL" ? "All" : activeFilter === "ACTIVE" ? "Active" : "Implemented"} Projects Summary
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full animate-pulse ${activeFilter === "ALL" ? "bg-blue-500" : activeFilter === "ACTIVE" ? "bg-green-500" : "bg-amber-500"}`}
+              ></span>
+              {activeFilter === "ALL"
+                ? "All"
+                : activeFilter === "ACTIVE"
+                  ? "Active"
+                  : "Completed"}{" "}
+              Projects Summary
+            </h2>
+            <div>
+              <span className=" text-sm font-bold text-gray-500">
+                Total Projects:{" "}
+                <span className="text-gray-900">{filteredProjects.length}</span>
+              </span>
+            </div>
+          </div>
           <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
             <table className="w-full text-sm min-w-[820px]">
               <thead>
@@ -178,25 +218,43 @@ export default function ProjectFinancialTracking() {
                   </tr>
                 ) : filteredProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500 font-medium">
-                      No {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()} projects found.
+                    <td
+                      colSpan={7}
+                      className="px-6 py-12 text-center text-sm text-gray-500 font-medium"
+                    >
+                      No{" "}
+                      {activeFilter === "ALL" ? "" : activeFilter.toLowerCase()}{" "}
+                      projects found.
                     </td>
                   </tr>
                 ) : (
                   filteredProjects.map((project: any) => {
                     const phases = project.phases || [];
                     const isCompleted = project.status === "COMPLETED";
-                    const currentPhase = phases.find((ph: any) => ph.status === "IN_PROGRESS" || ph.status === "ACTIVE") || phases[0];
+                    const currentPhase =
+                      phases.find(
+                        (ph: any) =>
+                          ph.status === "IN_PROGRESS" || ph.status === "ACTIVE",
+                      ) || phases[0];
                     // A completed project reads "Completed" in both the Phase
                     // and Phase Running columns.
                     const phaseRunning = isCompleted
                       ? "Completed"
                       : currentPhase?.name || "Initializing";
-                    const completedPhaseCount = phases.filter((ph: any) => ph.status === "COMPLETED").length;
-                    const progress = getProjectProgress(project.status, completedPhaseCount, phases.length);
+                    const completedPhaseCount = phases.filter(
+                      (ph: any) => ph.status === "COMPLETED",
+                    ).length;
+                    const progress = getProjectProgress(
+                      project.status,
+                      completedPhaseCount,
+                      phases.length,
+                    );
 
                     return (
-                      <tr key={project.id} className="hover:bg-gray-50 bg-white transition-colors">
+                      <tr
+                        key={project.id}
+                        className="hover:bg-gray-50 bg-white transition-colors"
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold">
                           {project.clientName}
                         </td>
@@ -208,18 +266,21 @@ export default function ProjectFinancialTracking() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2.5 py-1 rounded-full border font-bold text-[11px] ${PHASE_BADGE_CLASSES[project.status] || "bg-gray-100 text-gray-800 border-gray-300"
-                              }`}
+                            className={`px-2.5 py-1 rounded-full border font-bold text-[11px] ${
+                              PHASE_BADGE_CLASSES[project.status] ||
+                              "bg-gray-100 text-gray-800 border-gray-300"
+                            }`}
                           >
                             {PHASE_LABELS[project.status] || project.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
                           <span
-                            className={`px-2 py-1 rounded-md border uppercase tracking-tighter font-black text-[10px] ${isCompleted
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-blue-50 text-blue-700 border-blue-100"
-                              }`}
+                            className={`px-2 py-1 rounded-md border uppercase tracking-tighter font-black text-[10px] ${
+                              isCompleted
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-blue-50 text-blue-700 border-blue-100"
+                            }`}
                           >
                             {phaseRunning}
                           </span>

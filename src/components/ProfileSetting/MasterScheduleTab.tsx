@@ -34,6 +34,7 @@ import {
   formatSlotLabel,
   startOfWeek,
   toDateInputValue,
+  WEEKDAY_LABELS,
 } from "@/utils/scheduleSlots";
 
 const DAY_LABELS = [
@@ -355,7 +356,11 @@ export default function MasterScheduleTab() {
   });
   const [updateOfficeHours, { isLoading: isSavingHours }] =
     useUpdateOfficeHoursMutation();
-  const [officeHours, setOfficeHours] = useState({ start: "", end: "" });
+  const [officeHours, setOfficeHours] = useState<{
+    start: string;
+    end: string;
+    days: number[];
+  }>({ start: "", end: "", days: [] });
 
   // Seed the inputs once the saved window arrives, without clobbering edits.
   useEffect(() => {
@@ -363,9 +368,20 @@ export default function MasterScheduleTab() {
       setOfficeHours({
         start: officeHoursData.data.start,
         end: officeHoursData.data.end,
+        // A window saved before open days existed has no list; treat that as
+        // open all week rather than closed all week.
+        days: officeHoursData.data.days ?? [0, 1, 2, 3, 4, 5, 6],
       });
     }
   }, [officeHoursData]);
+
+  const toggleOfficeDay = (day: number) =>
+    setOfficeHours((prev) => ({
+      ...prev,
+      days: prev.days.includes(day)
+        ? prev.days.filter((d) => d !== day)
+        : [...prev.days, day].sort((a, b) => a - b),
+    }));
 
   const handleSaveOfficeHours = async () => {
     if (!officeHours.start || !officeHours.end) {
@@ -376,10 +392,24 @@ export default function MasterScheduleTab() {
       toast.error("Office hours have to end after they start.");
       return;
     }
+    // Nothing ticked would take the calendar offline entirely — no slot on any
+    // day — which reads to a client as though booking is broken.
+    if (officeHours.days.length === 0) {
+      toast.error(
+        "Tick at least one day the office is open, or no meeting can be booked at all.",
+      );
+      return;
+    }
     try {
       await updateOfficeHours(officeHours).unwrap();
+      const openDays = WEEKDAY_LABELS.filter((d) =>
+        officeHours.days.includes(d.value),
+      )
+        .map((d) => d.label)
+        .join(", ");
       toast.success(
-        `Office hours set to ${officeHours.start}–${officeHours.end}. Clients can only book inside this window.`,
+        `Open ${officeHours.start}–${officeHours.end} on ${openDays}. Clients can only book then.`,
+        { duration: 6000 },
       );
     } catch (error: any) {
       toast.error(error?.data?.message || "Failed to save office hours");
@@ -422,6 +452,39 @@ export default function MasterScheduleTab() {
               >
                 Office Hours
               </label>
+
+              {/* One box per weekday: ticked is open, unticked is closed, and
+                  the times below apply only to the ticked days. This is what
+                  lets a studio take meetings at weekends only. The same list
+                  governs the New Project wizard and the client's request
+                  modal, so a closed day offers no slot in either. */}
+              <div className="flex items-center gap-1 mb-1.5">
+                {WEEKDAY_LABELS.map((day) => {
+                  const open = officeHours.days.includes(day.value);
+                  return (
+                    <label
+                      key={day.value}
+                      title={`${day.label} — ${open ? "open" : "closed"}`}
+                      className="flex flex-col items-center gap-0.5 cursor-pointer select-none"
+                    >
+                      <span
+                        className={`text-[9px] font-black uppercase ${
+                          open ? "text-gray-700" : "text-gray-300"
+                        }`}
+                      >
+                        {day.short}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={open}
+                        onChange={() => toggleOfficeDay(day.value)}
+                        aria-label={`${day.label} — office open`}
+                        className="h-3.5 w-3.5 rounded border-gray-300 accent-gray-900 cursor-pointer"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
               {/* A select of the same half-hour slots clients book on, rather
                   than <input type="time">: the native picker lists every
                   minute regardless of `step`, which invited office hours that

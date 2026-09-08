@@ -44,6 +44,26 @@ body {
   overflow-x: clip;
 }
 
+/* The same 8px grid GridpatternBg paints, as a background a surface can carry
+   itself.
+
+   That component is a single fixed overlay, so anything opaque drawn above it
+   hides it — which is why the navbar and the floating menu read as flat white
+   against a dotted page. Painting the pattern into those surfaces keeps them
+   identical to the page without putting the overlay back on top of the UI,
+   where it tinted the navbar and every card.
+
+   Both surfaces start on an 8px boundary (the navbar at viewport y=0, the menu
+   panel at 64px) and span from x=0, so the tiles line up with the fixed overlay
+   with no offset. Keep the geometry here in step with GridpatternBg. */
+.dot-grid-surface {
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M 8 0 L 0 0 0 8' fill='none' stroke='rgba(0,0,0,0.1)' stroke-width='0.5'/%3E%3Ccircle cx='4' cy='4' r='0.5' fill='rgba(0,0,0,0.2)'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+  background-repeat: repeat;
+  background-position: 0 0;
+}
+
 .fixed-search-container {
   position: fixed !important;
   transform: translate3d(0, 0, 0) !important;

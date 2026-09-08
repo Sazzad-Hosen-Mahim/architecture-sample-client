@@ -5,15 +5,29 @@ interface ConsultationFeeResponse {
     data: { feeUsd: number };
 }
 
-/** Local 24-hour "HH:MM" times. */
+/** Local 24-hour "HH:MM" times, plus the weekdays the office keeps them. */
 export interface OfficeHours {
     start: string;
     end: string;
+    /** 0 = Sunday … 6 = Saturday. A day not listed is closed. */
+    days: number[];
 }
 
 interface OfficeHoursResponse {
     success: boolean;
     data: OfficeHours;
+}
+
+/** One stretch the consultation calendar is not free, with no detail attached. */
+export interface ConsultationBusyRange {
+    start: string;
+    end: string;
+    allDay: boolean;
+}
+
+interface ConsultationAvailabilityResponse {
+    success: boolean;
+    data: ConsultationBusyRange[];
 }
 
 interface MediaQuickTagsResponse {
@@ -56,7 +70,22 @@ export const siteSettingsApi = baseApi.injectEndpoints({
                 method: "PATCH",
                 body,
             }),
-            invalidatesTags: ["SiteSettings"],
+            invalidatesTags: ["SiteSettings", "Schedule"],
+        }),
+
+        // Time off and confirmed meetings on the consultation calendar. Public,
+        // because the New Project wizard runs before sign-up — which is why
+        // blocked days weren't greying out there.
+        getConsultationAvailability: builder.query<
+            ConsultationAvailabilityResponse,
+            { from: string; to: string }
+        >({
+            query: ({ from, to }) => ({
+                url: "/site-settings/consultation-availability",
+                method: "GET",
+                params: { from, to },
+            }),
+            providesTags: ["Schedule"],
         }),
 
         // Curated "Quick add" tag suggestions on the media form. Independent of
@@ -114,6 +143,7 @@ export const {
     useUpdateConsultationFeeMutation,
     useGetOfficeHoursQuery,
     useUpdateOfficeHoursMutation,
+    useGetConsultationAvailabilityQuery,
     useGetMediaQuickTagsQuery,
     useUpdateMediaQuickTagsMutation,
     useGetYoutubeChannelQuery,

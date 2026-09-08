@@ -6,6 +6,7 @@ import {
   Clock,
   LayoutList,
   MoreHorizontal,
+  UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ClientProjectDetailsModal from "./ClientProjectDetailsModal";
@@ -70,29 +71,38 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
       {/* `table-fixed` plus fractional widths keeps every visible column the
           same width. The fractions step with the breakpoints so they always add
-          up to a whole: 3 columns on a phone, 4 from sm, 5 from md, 6 from lg —
-          matching exactly which columns are revealed below. */}
+          up to a whole: 3 columns on a phone, 4 from sm, 5 from md, 7 from lg —
+          matching exactly which columns are revealed below.
+
+          Assigned Manager is `lg` only, alongside Latest Phase: it is useful
+          context on a desktop and dead weight on a phone, where the row is cut
+          to name/status/action. That is also why lg is 1/7 rather than 1/6 —
+          the fractions have to keep adding up or `table-fixed` distributes the
+          remainder unevenly and the header stops lining up with the cells. */}
       <table className="w-full table-fixed text-sm">
         <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
           <tr>
-            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-left font-semibold">
+            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/7 px-3 sm:px-4 py-4 text-left font-semibold">
               Project Name
             </th>
-            <th className="hidden md:table-cell md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            <th className="hidden lg:table-cell lg:w-1/7 px-3 sm:px-4 py-4 text-center font-semibold">
+              Assigned Manager
+            </th>
+            <th className="hidden md:table-cell md:w-1/5 lg:w-1/7 px-3 sm:px-4 py-4 text-center font-semibold">
               Service
             </th>
-            <th className="hidden sm:table-cell sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            <th className="hidden sm:table-cell sm:w-1/4 md:w-1/5 lg:w-1/7 px-3 sm:px-4 py-4 text-center font-semibold">
               Overall Progress
             </th>
-            <th className="hidden lg:table-cell lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            <th className="hidden lg:table-cell lg:w-1/7 px-3 sm:px-4 py-4 text-center font-semibold">
               Latest Phase
             </th>
             {/* <th className="px-6 py-4 text-center font-semibold">Deliverables</th> */}
             {/* Status takes the middle slot on a phone (where Progress is hidden). */}
-            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/7 px-3 sm:px-4 py-4 text-center font-semibold">
               Status
             </th>
-            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/6 px-3 sm:px-4 py-4 text-center font-semibold">
+            <th className="w-1/3 sm:w-1/4 md:w-1/5 lg:w-1/7 px-3 sm:px-4 py-4 text-center font-semibold">
               Action
             </th>
           </tr>
@@ -126,6 +136,23 @@ const ProjectDataTable = ({ searchQuery = "" }: ProjectDataTableProps) => {
                   <div className="text-[10px] text-gray-400 uppercase tracking-tighter mt-0.5 font-mono">
                     ID: {project.id.split("-")[0]}
                   </div>
+                </td>
+                {/* A project sits unassigned between the inquiry being
+                    accepted and a manager picking it up, so "Unassigned" is a
+                    real state here rather than missing data. */}
+                <td className="hidden lg:table-cell px-3 sm:px-4 py-4 text-center align-middle">
+                  {project.assignedManager?.name ? (
+                    <div className="flex items-center justify-center gap-1.5 min-w-0">
+                      <UserRound className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="truncate text-xs md:text-sm text-gray-900 font-medium">
+                        {project.assignedManager.name}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">
+                      Unassigned
+                    </span>
+                  )}
                 </td>
                 <td className="hidden md:table-cell px-3 sm:px-4 py-4 text-center align-middle">
                   <span className="inline-block max-w-full truncate px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 uppercase">

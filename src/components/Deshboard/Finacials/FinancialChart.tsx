@@ -58,9 +58,22 @@ interface FinancialChartProps {
   scope?: "all" | "year";
   year?: number;
   totals?: FirmTotals;
+  /**
+   * Draw the plot itself. Off leaves the averages below it in place — the
+   * project tracking modal wants those figures without the graph, which on a
+   * single-month project is one dot and a legend and says nothing the cards
+   * don't say better.
+   */
+  showGraph?: boolean;
 }
 
-export function FinancialChart({ projectId, scope, year, totals }: FinancialChartProps) {
+export function FinancialChart({
+  projectId,
+  scope,
+  year,
+  totals,
+  showGraph = true,
+}: FinancialChartProps) {
   // `currentData` is the history for the project/scope being asked for right
   // now; `data` keeps the previous one alive across an arg change, which drew
   // the last project's chart for a moment after switching.
@@ -315,6 +328,9 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
           )}
         </div>
       )}
+      {/* Legend and plot travel together — a legend with nothing to describe
+          is just noise above the averages. */}
+      {showGraph && (
       <div className="flex flex-wrap gap-6 justify-center bg-gray-50/50 p-4 rounded-xl border border-gray-100">
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></div>
@@ -336,7 +352,9 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
           </span>
         </div>
       </div>
+      )}
 
+      {showGraph && (
       <div className="h-[250px] sm:h-[400px] w-full bg-white p-2">
         <Line
           options={options}
@@ -362,7 +380,10 @@ export function FinancialChart({ projectId, scope, year, totals }: FinancialChar
           }}
         />
       </div>
+      )}
 
+      {/* The averages stay whatever `showGraph` is — they are the point of
+          this block, not a caption for the plot. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {

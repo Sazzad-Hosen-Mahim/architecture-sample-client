@@ -72,7 +72,7 @@ function FloatingMenu() {
           menu run to the bottom of the phone, so its content passes under the
           toolbar the way the rest of the site's pages do. */}
       <div
-        className={`fixed top-16 left-0 right-0 h-[calc(100lvh-4rem)] bg-white z-99 dark:bg-white text-black shadow-2xl transform transition-transform duration-300 ease-in-out py-[10px] lg:py-[15px] lg:pb-0 ${
+        className={`fixed top-16 left-0 right-0 h-[calc(100lvh-4rem)] dot-grid-surface z-99 text-black shadow-2xl transform transition-transform duration-300 ease-in-out py-[10px] lg:py-[15px] lg:pb-0 ${
           isMenuOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -186,8 +186,17 @@ function FloatingMenu() {
               cancelling that margin with a negative one pushed the element's
               border box past the container and produced a scrollbar. The footer
               is lowered by trimming the padding beneath it instead — see the
-              `lg:` rules on the panel and on this scroll container. */}
-          <HeroSocialMedia onNavigation={handleNavigation} />
+              `lg:` rules on the panel and on this scroll container.
+
+              Wrapped so the rule it renders and the footer below it count as
+              one flex item. The component returns a fragment, so its `<hr>` and
+              its footer block were landing as two separate children and
+              `justify-between` pushed the rule out into the middle of the empty
+              space instead of leaving it sitting above the footer. The wrapper
+              is unstyled, so nothing else about the footer moves. */}
+          <div>
+            <HeroSocialMedia onNavigation={handleNavigation} />
+          </div>
         </div>
       </div>
       {/* Backdrop overlay */}

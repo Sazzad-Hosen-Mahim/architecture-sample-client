@@ -91,17 +91,66 @@ export function zonedMinutes(date: Date, timeZone = STUDIO_TIME_ZONE): number {
   return valueOf("hour") * 60 + valueOf("minute");
 }
 
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+/** Day of week for `date` read in `timeZone`, 0 = Sunday … 6 = Saturday. */
+export function zonedWeekday(date: Date, timeZone = STUDIO_TIME_ZONE): number {
+  const short = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+  }).format(date);
+  return WEEKDAY_INDEX[short] ?? date.getDay();
+}
+
+/** The shape of the firm-wide booking window, as the settings endpoint returns it. */
+export interface OfficeHoursSetting {
+  start: string;
+  end: string;
+  /** Weekdays the office is open, 0 = Sunday … 6 = Saturday. */
+  days?: number[] | null;
+}
+
+/**
+ * Whether the studio is open on the day `date` falls on.
+ *
+ * Read in the studio's zone, like the hours: an instant that is late Friday in
+ * California is already Saturday for a client in Dhaka, and it is the studio's
+ * week that decides. An absent or empty list means every day is open, so a
+ * setting saved before open days existed never blacks out the calendar.
+ */
+export function isOpenDay(
+  date: Date,
+  officeHours?: OfficeHoursSetting | null,
+): boolean {
+  const days = officeHours?.days;
+  if (!days || days.length === 0) return true;
+  return days.includes(zonedWeekday(date));
+}
+
 /**
  * Whether a slot beginning at `start` and running `durationMinutes` falls
  * inside the studio's opening window. Both ends are compared in studio time,
  * never the viewer's, which is what makes the window mean the same thing from
  * California and from Dhaka.
+ *
+ * The weekday is checked here too, so a closed day is refused by every caller
+ * — the grid, the wizard and the client's request modal — from one place.
  */
 export function isWithinOfficeHours(
   start: Date,
   durationMinutes: number,
-  officeHours?: { start: string; end: string } | null,
+  officeHours?: OfficeHoursSetting | null,
 ): boolean {
+  if (!isOpenDay(start, officeHours)) return false;
+
   const open = parseTimeToMinutes(officeHours?.start);
   const close = parseTimeToMinutes(officeHours?.end);
   // A missing or malformed setting must not black out the whole grid.
@@ -110,6 +159,17 @@ export function isWithinOfficeHours(
   const studioStart = zonedMinutes(start);
   return studioStart >= open && studioStart + durationMinutes <= close;
 }
+
+/** Sunday-first weekday labels, for the office-hours day pickers. */
+export const WEEKDAY_LABELS = [
+  { value: 0, short: "S", label: "Sunday" },
+  { value: 1, short: "M", label: "Monday" },
+  { value: 2, short: "T", label: "Tuesday" },
+  { value: 3, short: "W", label: "Wednesday" },
+  { value: 4, short: "T", label: "Thursday" },
+  { value: 5, short: "F", label: "Friday" },
+  { value: 6, short: "S", label: "Saturday" },
+];
 
 /** "9:00 AM" / "1:30 PM" from minutes-since-midnight. */
 export function formatSlotLabel(minutes: number): string {
@@ -158,12 +218,13 @@ export function buildDaySlots(
   options: {
     now?: Date;
     /**
-     * Firm-wide booking window as "HH:MM" times in the studio's zone. Slots
-     * outside it are marked busy so the grid matches what the server will
-     * accept — a client picking 7am against 8am office hours would otherwise
-     * only find out on submit.
+     * Firm-wide booking window as "HH:MM" times in the studio's zone, plus the
+     * weekdays the office is open. Slots outside either are marked busy so the
+     * grid matches what the server will accept — a client picking 7am against
+     * 8am office hours, or any time on a closed Sunday, would otherwise only
+     * find out on submit.
      */
-    officeHours?: { start: string; end: string } | null;
+    officeHours?: OfficeHoursSetting | null;
   } = {}
 ): DaySlot[] {
   const now = options.now ?? new Date();
@@ -210,7 +271,11 @@ export function buildDaySlots(
       tentative: !blockingHit && Boolean(tentativeHit),
       busyReason: outsideOfficeHours && !blockingHit ? "CLOSED" : hit?.type ?? null,
       busyLabel:
-        outsideOfficeHours && !blockingHit ? "Outside office hours" : hit?.label ?? null,
+        outsideOfficeHours && !blockingHit
+          ? isOpenDay(start, options.officeHours)
+            ? "Outside office hours"
+            : "The office is closed this day"
+          : hit?.label ?? null,
       past: end <= now,
     };
   });

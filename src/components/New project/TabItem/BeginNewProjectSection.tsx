@@ -82,7 +82,7 @@ export default function BeginNewProjectSection({
                     <li>Permit Assistance </li>
                   </ul>
                 </div>
-                <div className="space-y-2 text-[15px]">
+                <div className="space-y-2 text-[15px] mt-6 md:mt-0">
                   <h4 className="font-medium">
                     5. Permit Attainment (PA) - (5% of Total Fee)
                   </h4>
@@ -97,7 +97,7 @@ export default function BeginNewProjectSection({
                     </li>
                     <li>
                       Attain Final Permit for Construction and Transmit To
-                      Client
+                      Client (Client Responsible for Permit Fees)
                     </li>
                   </ul>
                   <h4 className="font-medium mt-6">

@@ -91,7 +91,22 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-white sticky top-0 z-50 border-b border-gray-200">
+    // dot-grid-surface rather than bg-white: white alone made the bar read as a
+    // solid slab against the dotted page. See index.css.
+    //
+    // The translateZ is not a visual effect — it is here to match how the
+    // floating menu is drawn. Both surfaces carry byte-identical CSS, yet the
+    // bar kept reading a shade darker, because the menu's slide `transform`
+    // puts it on its own compositing layer and the navbar had nothing to do the
+    // same. The grid is built from a 0.5px stroke and a 0.5px-radius dot, so
+    // every tile is decided by anti-aliasing, and a composited layer resolves
+    // that sub-pixel coverage differently from an uncomposited one — enough to
+    // shift the tone. Promoting the bar too puts both on the same footing.
+    //
+    // Safe on this element: a transform makes it a containing block for fixed
+    // descendants, and the two popovers it holds both render through a Radix
+    // portal into <body>, so neither is a descendant to re-anchor.
+    <nav className="dot-grid-surface sticky top-0 z-100 [transform:translateZ(0)]">
       <div className=" mx-auto px-4 lg:px-16">
         <div className="grid grid-cols-3 items-center h-16">
           {/* Logo */}
@@ -175,7 +190,9 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200 shadow-sm">
+        // Part of the bar, so it carries the same surface — otherwise opening
+        // the hamburger drops a flat white slab under a dotted navbar.
+        <div className="md:hidden dot-grid-surface border-b border-gray-200 shadow-sm">
           <div className="px-2 pt-2 pb-4 space-y-1 sm:px-3">
             <Link
               to="/"

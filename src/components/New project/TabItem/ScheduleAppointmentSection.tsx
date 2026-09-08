@@ -26,12 +26,18 @@ import {
   type ValidationErrors,
 } from "@/utils/newProjectValidation";
 import { toast } from "sonner";
-import { useGetOfficeHoursQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
+import {
+  useGetConsultationAvailabilityQuery,
+  useGetOfficeHoursQuery,
+} from "@/redux/api/adminDashboard/siteSettingsApi";
 
 import {
   formatSlotLabel,
+  isOpenDay,
   isWithinOfficeHours,
   startOfDay,
+  WEEKDAY_LABELS,
+  type OfficeHoursSetting,
 } from "@/utils/scheduleSlots";
 
 /** Appointments are offered on the hour. */
@@ -49,7 +55,8 @@ const SLOT_STEP_MINUTES = 60;
  */
 const buildSlots = (
   day: Date | undefined,
-  officeHours?: { start: string; end: string } | null,
+  officeHours?: OfficeHoursSetting | null,
+  busy: { start: Date; end: Date }[] = [],
 ): string[] => {
   if (!day) return [];
 
@@ -58,12 +65,21 @@ const buildSlots = (
 
   for (let minutes = 0; minutes < 24 * 60; minutes += SLOT_STEP_MINUTES) {
     const start = new Date(dayStart.getTime() + minutes * 60 * 1000);
+    const end = new Date(start.getTime() + SLOT_STEP_MINUTES * 60 * 1000);
+    // Closed weekday or outside the window.
     if (!isWithinOfficeHours(start, SLOT_STEP_MINUTES, officeHours)) continue;
+    // Time already blocked off in the Master Schedule, or taken by a confirmed
+    // meeting. Previously nothing here consulted the studio's calendar, so a
+    // day the owner had blocked still offered its full set of slots.
+    if (busy.some((b) => b.start < end && b.end > start)) continue;
     slots.push(formatSlotLabel(minutes));
   }
 
   return slots;
 };
+
+/** How far ahead the wizard's calendar looks when fetching blocked time. */
+const AVAILABILITY_WINDOW_DAYS = 120;
 
 export default function ScheduleAppointmentSection({
   formData,
@@ -122,14 +138,64 @@ export default function ScheduleAppointmentSection({
   // to visitors without an account.
   const { data: officeHoursResponse, isLoading: isLoadingOfficeHours } =
     useGetOfficeHoursQuery();
+  const officeHours = officeHoursResponse?.data;
+
+  // Time the studio has blocked off, or already committed. This wizard runs
+  // before sign-up and before a manager is assigned, so it reads the public
+  // consultation calendar rather than the authenticated availability endpoint
+  // — without it, a day blocked in the Master Schedule still offered slots.
+  const availabilityWindow = useMemo(() => {
+    const from = startOfDay(new Date());
+    const to = new Date(from);
+    to.setDate(to.getDate() + AVAILABILITY_WINDOW_DAYS);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, []);
+
+  const { data: busyResponse } = useGetConsultationAvailabilityQuery(
+    availabilityWindow,
+  );
+
+  const busyRanges = useMemo(
+    () =>
+      (busyResponse?.data ?? []).map((r) => ({
+        start: new Date(r.start),
+        end: new Date(r.end),
+      })),
+    [busyResponse],
+  );
 
   // Recomputed per selected day: which local hours fall inside the studio's
   // window shifts with the date, since California and the viewer can cross
   // daylight-saving boundaries on different days.
   const availableTimes = useMemo(
-    () => buildSlots(selectedDate, officeHoursResponse?.data),
-    [selectedDate, officeHoursResponse],
+    () => buildSlots(selectedDate, officeHours, busyRanges),
+    [selectedDate, officeHours, busyRanges],
   );
+
+  /**
+   * A day the calendar must not accept: the office is closed that weekday, or
+   * every slot on it is taken/blocked. Checked with the same `buildSlots` the
+   * time list uses, so a greyed day and an empty time list can never disagree.
+   */
+  const isDayUnavailable = useMemo(
+    () => (date: Date) => {
+      if (!isOpenDay(date, officeHours)) return true;
+      return buildSlots(date, officeHours, busyRanges).length === 0;
+    },
+    [officeHours, busyRanges],
+  );
+
+  // "Saturday and Sunday" — said up front, so someone booking in a week that is
+  // entirely greyed out understands why rather than assuming the form is broken.
+  const openDaysLabel = useMemo(() => {
+    const days = officeHours?.days;
+    if (!days || days.length === 0 || days.length === 7) return "";
+    const names = WEEKDAY_LABELS.filter((d) => days.includes(d.value)).map(
+      (d) => d.label,
+    );
+    if (names.length === 1) return names[0];
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  }, [officeHours]);
 
   const getAvailableTimes = (_date: Date | undefined) => availableTimes;
 
@@ -348,20 +414,28 @@ export default function ScheduleAppointmentSection({
             <Label htmlFor="appointmentDate" className="text-md font-semibold">
               Select Date
             </Label>
+            {/* Three things close a day, and all three are applied here so the
+                calendar can never offer a date whose time list is empty:
+                a weekday the office doesn't open, time blocked off in the
+                Master Schedule, and dates already ruled out upstream. */}
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={handleDateSelect}
-              disabled={unavailableDates}
+              disabled={[...unavailableDates, isDayUnavailable]}
               className="mt-2 border-0 rounded-none"
-              modifiers={{ unavailable: unavailableDates }}
+              modifiers={{
+                unavailable: [...unavailableDates, isDayUnavailable],
+              }}
               modifiersClassNames={{
-                unavailable: "border border-red-500 text-gray-400 opacity-50",
+                unavailable: "text-gray-400 opacity-50 line-through",
               }}
               showOutsideDays={false} // Hide previous/next month dates
             />
             <div className="text-xs text-gray-500 mt-2">
-              Greyed out dates indicate unavailability.
+              {openDaysLabel
+                ? `We take appointments on ${openDaysLabel}. Greyed out dates are closed or fully booked.`
+                : "Greyed out dates indicate unavailability."}
             </div>
             <FieldError message={errors.appointmentDate} />
           </div>

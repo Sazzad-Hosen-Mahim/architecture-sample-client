@@ -229,12 +229,24 @@ export default function ProjectFinancialDetailsModal({
   const yearOptions: number[] = details.availableYears || [];
   const runYears = (details.yearlyBreakdown || []) as any[];
 
+  // The amendment total in the header is tax-inclusive; the work it paid for
+  // is not. Split out so the header can show both instead of only the sum.
+  const amendmentRows = (details.amendments || []) as any[];
+  const amendmentWorkTotal = amendmentRows.reduce(
+    (sum, a) => sum + Number(a.servicesSubtotal || 0),
+    0,
+  );
+  const amendmentTaxTotal = amendmentRows.reduce(
+    (sum, a) => sum + Number(a.taxAmount || 0),
+    0,
+  );
+
   //   const profitMargin =
   //     details.projectCost > 0 ? (details.profit / details.projectCost) * 100 : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-[900px] max-h-[90vh] flex flex-col bg-white text-black p-0 border-none overflow-hidden font-semibold">
+      <DialogContent className="w-[95vw] sm:w-full max-w-[100vw] sm:max-w-[1000px] max-h-[90vh] flex flex-col bg-white text-black p-0 border-none overflow-hidden font-semibold">
         <div
           id="project-financial-content"
           className="w-full max-w-full overflow-x-hidden flex flex-col flex-1 min-h-0"
@@ -266,6 +278,18 @@ export default function ProjectFinancialDetailsModal({
                     <div className="text-xs font-bold text-amber-600">
                       Amendments: +
                       {formatCurrency(details.totalAmendmentAmount)}
+                      {/* Where that figure comes from, said here rather than
+                          left to be pieced together from the amendments table
+                          further down: the amendment work and the tax on it
+                          are different numbers, and showing only the sum makes
+                          a $6,500 amendment read as $7,020 for no visible
+                          reason. */}
+                      {amendmentTaxTotal > 0 && (
+                        <div className="text-[10px] font-bold text-amber-500/80 normal-case">
+                          {formatCurrency(amendmentWorkTotal)} work +{" "}
+                          {formatCurrency(amendmentTaxTotal)} tax
+                        </div>
+                      )}
                     </div>
                   )}
                   {details.totalProjectRefunds > 0 && (
@@ -286,7 +310,7 @@ export default function ProjectFinancialDetailsModal({
 
           <div className="p-4 sm:p-8 overflow-y-auto overflow-x-hidden w-full max-w-full space-y-6 sm:space-y-10 flex-1 min-h-0">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 cursor-crosshair gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 cursor-crosshair gap-3 sm:gap-4">
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 group hover:bg-black hover:text-white transition-all duration-300 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-500">
                   <Clock size={14} className="group-hover:text-blue-400" />
@@ -401,7 +425,7 @@ export default function ProjectFinancialDetailsModal({
                     <div className="text-sm font-black mt-1">
                       {details.projectCompletedAt
                         ? formatDate(details.projectCompletedAt)
-                        : "In progress"}
+                        : "In Progress"}
                     </div>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
@@ -568,6 +592,65 @@ export default function ProjectFinancialDetailsModal({
                         );
                       });
                     })()}
+
+                    {/* Hours logged against a phase that is no longer on the
+                        contract. They are already inside the Grand Total, so
+                        showing them here is what makes the columns add up —
+                        previously they were counted but never displayed, and
+                        the rows looked as though they were missing time. */}
+                    {details.unassignedPhaseRow && (
+                      <>
+                        <tr className="bg-amber-50/70">
+                          <td
+                            colSpan={7}
+                            className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-700"
+                          >
+                            Unassigned
+                          </td>
+                        </tr>
+                        <tr className="bg-amber-50/30">
+                          <td className="px-4 py-4">
+                            <div className="font-bold text-sm text-gray-900">
+                              {details.unassignedPhaseRow.name}
+                            </div>
+                            <div className="text-[10px] text-amber-700 font-medium mt-0.5">
+                              {details.unassignedPhaseRow.note}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-gray-400">—</td>
+                          <td className="px-4 py-4 font-bold text-gray-900">
+                            {formatHrs(
+                              details.unassignedPhaseRow.billableHours,
+                            )}
+                          </td>
+                          <td className="px-4 py-4 font-bold text-gray-900">
+                            {formatCurrency(
+                              details.unassignedPhaseRow.laborBurned,
+                            )}
+                          </td>
+                          <td className="px-4 py-4 font-bold text-gray-900">
+                            {formatHrs(
+                              details.unassignedPhaseRow.nonBillableHours,
+                            )}
+                          </td>
+                          <td className="px-4 py-4 font-bold text-gray-900">
+                            {formatCurrency(
+                              details.unassignedPhaseRow.overheadBurned,
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <div className="font-black text-sm text-red-600">
+                              {formatCurrency(
+                                details.unassignedPhaseRow.profit,
+                              )}
+                            </div>
+                            <div className="text-[9px] font-bold text-gray-400 uppercase">
+                              No fee
+                            </div>
+                          </td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                   {details.grandTotals && (
                     <tfoot className="bg-gray-900 text-white">
@@ -659,6 +742,65 @@ export default function ProjectFinancialDetailsModal({
                   )}
                 </table>
               </div>
+
+              {/* Why the Contract Fee column doesn't equal the valuation at the
+                  top of the card: phase fees are net of tax, the valuation is
+                  tax-inclusive and net of refunds. Shown rather than left for
+                  the reader to work out — a $6,500 amendment displayed as
+                  "+$7,020" up top reads as an arithmetic error otherwise. */}
+              {details.feeReconciliation &&
+                (details.feeReconciliation.contractTaxAmount > 0 ||
+                  details.feeReconciliation.approvedRefunds > 0) && (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                      Contract fee reconciliation
+                    </p>
+                    <dl className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">
+                          Phase fees (net of tax)
+                        </dt>
+                        <dd className="font-bold text-gray-900">
+                          {formatCurrency(
+                            details.feeReconciliation.phaseFeeTotal,
+                          )}
+                        </dd>
+                      </div>
+                      {details.feeReconciliation.contractTaxAmount > 0 && (
+                        <div className="flex justify-between">
+                          <dt className="text-gray-600">Contract tax</dt>
+                          <dd className="font-bold text-gray-900">
+                            +{" "}
+                            {formatCurrency(
+                              details.feeReconciliation.contractTaxAmount,
+                            )}
+                          </dd>
+                        </div>
+                      )}
+                      {details.feeReconciliation.approvedRefunds > 0 && (
+                        <div className="flex justify-between">
+                          <dt className="text-gray-600">Approved refunds</dt>
+                          <dd className="font-bold text-red-600">
+                            −{" "}
+                            {formatCurrency(
+                              details.feeReconciliation.approvedRefunds,
+                            )}
+                          </dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t border-gray-300 pt-1 mt-1">
+                        <dt className="font-bold text-gray-900">
+                          Net project valuation
+                        </dt>
+                        <dd className="font-black text-gray-900">
+                          {formatCurrency(
+                            details.feeReconciliation.netValuation,
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
             </div>
 
             {/* Employee Labor Breakdown */}
@@ -884,10 +1026,42 @@ export default function ProjectFinancialDetailsModal({
                                   </span>
                                 </div>
                               ))}
+
+                              {/* The service lines are net of tax. Without
+                                  these two rows they simply don't add up to
+                                  the amount beside them, which reads as a
+                                  miscalculation rather than as tax. */}
+                              {amendment.taxAmount > 0 && (
+                                <>
+                                  <div className="flex items-center justify-between gap-4 pt-1 border-t border-gray-200">
+                                    <span className="text-gray-500">
+                                      Subtotal
+                                    </span>
+                                    <span className="text-gray-700 font-bold whitespace-nowrap">
+                                      {formatCurrency(
+                                        amendment.servicesSubtotal,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-gray-500">Tax</span>
+                                    <span className="text-gray-700 font-bold whitespace-nowrap">
+                                      + {formatCurrency(amendment.taxAmount)}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-amber-600 font-black">
-                            {formatCurrency(amendment.amount)}
+                          <td className="px-4 py-4">
+                            <div className="text-amber-600 font-black">
+                              {formatCurrency(amendment.amount)}
+                            </div>
+                            {amendment.taxAmount > 0 && (
+                              <div className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">
+                                incl. tax
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-4 text-right">
                             {amendment.paid ? (
@@ -910,6 +1084,28 @@ export default function ProjectFinancialDetailsModal({
                           colSpan={2}
                         >
                           Total Amendments
+                          {details.amendments.some(
+                            (a: any) => a.taxAmount > 0,
+                          ) && (
+                            <div className="text-[9px] font-bold text-amber-200/70 normal-case tracking-normal mt-0.5">
+                              {formatCurrency(
+                                details.amendments.reduce(
+                                  (s: number, a: any) =>
+                                    s + Number(a.servicesSubtotal || 0),
+                                  0,
+                                ),
+                              )}{" "}
+                              of work +{" "}
+                              {formatCurrency(
+                                details.amendments.reduce(
+                                  (s: number, a: any) =>
+                                    s + Number(a.taxAmount || 0),
+                                  0,
+                                ),
+                              )}{" "}
+                              tax
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 font-black text-amber-200">
                           {formatCurrency(details.totalAmendmentAmount)}
@@ -954,13 +1150,15 @@ export default function ProjectFinancialDetailsModal({
                             </div>
                         </div> */}
 
-            {/* Project Performance Chart */}
+            {/* Project averages. The plot itself is off here — see
+                `showGraph` — so the heading names what is actually shown
+                rather than promising a history chart that isn't there. */}
             <div className="space-y-4 no-pdf" data-html2canvas-ignore="true">
               <h4 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-                Financial Performance History
+                Financial Performance Summary
               </h4>
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <FinancialChart projectId={projectId} />
+                <FinancialChart projectId={projectId} showGraph={false} />
               </div>
             </div>
 
