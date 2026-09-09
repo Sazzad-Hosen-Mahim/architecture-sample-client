@@ -96,6 +96,33 @@ function Hero() {
     setCurrentSlide((prev) => (prev + 1) % images.length);
   }, [images.length]);
 
+  /**
+   * The white sliver along the bottom edge on iPhone.
+   *
+   * It is not a gap in the page. The hero already runs past the bottom of the
+   * screen (see HERO_MOBILE_OVERSHOOT), so the photograph is behind that strip
+   * — Safari just doesn't draw it there. The band around the home indicator,
+   * and the ground behind Safari's own toolbar, are painted from the
+   * *document's* background colour rather than from whatever the page rendered
+   * at that position, and with none set that colour is white. Android has no
+   * such chrome, which is why it never showed the band.
+   *
+   * So the photo itself cannot reach it, only a colour can. Black is the one
+   * that disappears against a full-bleed photograph, the way a letterbox does.
+   *
+   * Set on the element and undone on the way out rather than written into the
+   * stylesheet: every other page is a white document, where the default is
+   * already right and a black canvas would be the bug.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.backgroundColor;
+    root.style.backgroundColor = "#000000";
+    return () => {
+      root.style.backgroundColor = previous;
+    };
+  }, []);
+
   // const toggleMenu = () => {
   //   setIsMenuOpen(!isMenuOpen);
   // };
