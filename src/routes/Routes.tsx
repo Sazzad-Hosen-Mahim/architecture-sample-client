@@ -32,6 +32,7 @@ const Media = lazy(() => import("@/pages/Dashboard/Media"));
 const Financials = lazy(() => import("@/pages/Dashboard/Financials"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const CreatePassword = lazy(() => import("@/pages/CreatePassword"));
 const NewsFeedDetails = lazy(() => import("@/pages/NewsFeedDetails"));
 const WorldProjectDetails = lazy(() => import("@/pages/WorldProjectDetails"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
@@ -208,6 +209,15 @@ const routes = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <ResetPassword />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        // Where the welcome email's setup link lands a new staff member.
+        path: "/create-password",
+        element: (
+          <SuspenseWrapper>
+            <CreatePassword />
           </SuspenseWrapper>
         ),
       },

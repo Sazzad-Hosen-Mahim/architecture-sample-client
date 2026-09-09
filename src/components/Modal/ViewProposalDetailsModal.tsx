@@ -13,6 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatBudgetRange, formatProjectSize } from "@/utils/projectFormat";
+import { serviceScopeOrder } from "@/lib/serviceDescriptions";
 
 interface ViewProposalDetailsModalProps {
   proposal: any;
@@ -146,10 +147,13 @@ const ViewProposalDetailsModal = ({
 
           scrollbar-hide keeps the wheel/touch scrolling but drops the visible
           track, which is what was cutting into the right edge of the panel. */}
-      <DialogContent className="sm:max-w-6xl xl:max-w-7xl max-h-[95vh] overflow-y-auto scrollbar-hide bg-white p-0 border-none shadow-2xl">
-        <DialogHeader className="sticky top-0 bg-white border-b border-gray-300 px-6 py-4 flex items-center justify-between z-10 shadow-sm">
-          <div>
-            <DialogTitle className="text-2xl font-bold text-center text-gray-800">
+      {/* overflow-x-hidden so the panel itself can never scroll sideways — the
+          services table keeps its own overflow-x-auto, so it still scrolls
+          within the dialog rather than dragging the dialog with it. */}
+      <DialogContent className="sm:max-w-6xl xl:max-w-7xl max-h-[95vh] overflow-y-auto overflow-x-hidden scrollbar-hide bg-white p-0 border-none shadow-2xl">
+        <DialogHeader className="sticky top-0 bg-white border-b border-gray-300 px-4 sm:px-6 py-4 flex items-center justify-between z-10 shadow-sm">
+          <div className="min-w-0">
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-center text-gray-800">
               Proposal Details
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
@@ -158,13 +162,16 @@ const ViewProposalDetailsModal = ({
           </div>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6">
           {/* Proposal Information */}
           <section>
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Proposal Information
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            {/* One column on a phone. Two fixed columns left each field about
+                half of a 390px screen, so an email or a street address had
+                nowhere to go and pushed the whole dialog sideways. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoField
                 label="Proposal Number"
                 value={proposal.proposalNumber}
@@ -191,7 +198,10 @@ const ViewProposalDetailsModal = ({
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Client Information
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            {/* One column on a phone. Two fixed columns left each field about
+                half of a 390px screen, so an email or a street address had
+                nowhere to go and pushed the whole dialog sideways. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoField label="Client Name" value={proposal.clientName} />
               <InfoField
                 label="Company"
@@ -207,7 +217,10 @@ const ViewProposalDetailsModal = ({
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Project Information
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            {/* One column on a phone. Two fixed columns left each field about
+                half of a 390px screen, so an email or a street address had
+                nowhere to go and pushed the whole dialog sideways. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoField label="Project Name" value={proposal.projectName} />
               <InfoField label="Location" value={proposal.projectLocation} />
               <InfoField
@@ -272,7 +285,18 @@ const ViewProposalDetailsModal = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-300">
-                    {proposal.services.map((service: ProposalService) => (
+                    {/* Sorted into scope order rather than shown as stored:
+                        the eight standard phases in contract sequence, then
+                        anything added on top of them, each keeping its own
+                        position. `order` is the tiebreak, so two custom phases
+                        stay in the order the PM gave them. */}
+                    {[...proposal.services]
+                      .sort(
+                        (a: ProposalService, b: ProposalService) =>
+                          serviceScopeOrder(a.name) - serviceScopeOrder(b.name) ||
+                          (a.order ?? 0) - (b.order ?? 0),
+                      )
+                      .map((service: ProposalService) => (
                       <tr key={service.id}>
                         <td className="px-4 py-2 text-sm">
                           <div>
@@ -341,7 +365,10 @@ const ViewProposalDetailsModal = ({
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
               Created By
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            {/* One column on a phone. Two fixed columns left each field about
+                half of a 390px screen, so an email or a street address had
+                nowhere to go and pushed the whole dialog sideways. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoField label="Name" value={proposal.createdBy?.name} />
               <InfoField label="Email" value={proposal.createdBy?.email} />
             </div>
@@ -473,7 +500,7 @@ const ViewProposalDetailsModal = ({
                         {p.status}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3 text-sm">
                       <div>
                         <span className="text-gray-500">Budget:</span>{" "}
                         <span className="font-medium">
@@ -503,7 +530,7 @@ const ViewProposalDetailsModal = ({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-300 flex justify-end">
+        <div className="sticky bottom-0 bg-gray-50 px-4 sm:px-6 py-4 border-t border-gray-300 flex justify-end">
           <button
             onClick={onClose}
             className="px-6 py-2 bg-black text-white rounded hover:bg-gray-900 transition-colors cursor-pointer font-medium"
@@ -528,9 +555,14 @@ interface InfoFieldProps {
 
 const InfoField = ({ label, value, fullWidth = false }: InfoFieldProps) => {
   return (
-    <div className={fullWidth ? "col-span-2" : ""}>
+    // `sm:` on the span because the grid is a single column on a phone, where
+    // an unprefixed col-span-2 would conjure a second column and put the field
+    // half off-screen. min-w-0 with break-words is what stops a long email or
+    // address from setting the column's width and widening the whole dialog —
+    // a grid item's default min-width is its content, not zero.
+    <div className={`min-w-0 ${fullWidth ? "sm:col-span-2" : ""}`}>
       <dt className="text-xs font-medium text-gray-500 mb-1">{label}</dt>
-      <dd className="text-sm text-gray-900">{value || "N/A"}</dd>
+      <dd className="text-sm text-gray-900 break-words">{value || "N/A"}</dd>
     </div>
   );
 };

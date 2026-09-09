@@ -3,9 +3,9 @@ export default function Terms() {
     <div>
       <div className="max-w-4xl mx-auto px-4 py-10 sm:px-6 lg:px-8 pb-20">
         {/* Page Title */}
-        <h1 className="text-xl font-semibold mb-10 text-center">
+        {/* <h1 className="text-xl font-semibold mb-10 text-center">
           Terms of Service
-        </h1>
+        </h1> */}
 
         <div className="text-gray-700">
           {/* Effective Date */}

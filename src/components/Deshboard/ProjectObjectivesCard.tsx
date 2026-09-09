@@ -17,9 +17,21 @@ export default function ProjectObjectivesCard() {
 
   const cards = [
     { title: "Assigned", value: assigned.total || 0, color: "text-orange-800" },
-    { title: "Complete", value: assigned.complete || 0, color: "text-pink-800" },
-    { title: "In Progress", value: assigned.inProgress || 0, color: "text-yellow-500" },
-    { title: "Not Started", value: assigned.notStarted || 0, color: "text-green-800" },
+    {
+      title: "Not Started",
+      value: assigned.notStarted || 0,
+      color: "text-green-800",
+    },
+    {
+      title: "In Progress",
+      value: assigned.inProgress || 0,
+      color: "text-yellow-500",
+    },
+    {
+      title: "Complete",
+      value: assigned.complete || 0,
+      color: "text-pink-800",
+    },
     { title: "Tasks", value: assigned.tasks || 0, color: "text-gray-700" },
   ];
 

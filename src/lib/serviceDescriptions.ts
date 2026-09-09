@@ -180,6 +180,25 @@ export function sectionLetter(index: number): string {
 }
 
 /**
+ * Where a service sits in the standard scope of services.
+ *
+ * The scope runs in a fixed sequence — Assemble Information first through to
+ * Project Closeout — and the proposal builder, the contract and anything
+ * listing services all have to read the same way round. Rows come back from the
+ * API in whatever order they were stored, which is not that sequence, so this
+ * is what puts them back into it.
+ *
+ * A service that is not one of the standard phases — the ones a PM adds by
+ * hand, "Flat Reconstruction", "Parking Modification" — sorts after every one
+ * that is, keeping its own relative position among them.
+ */
+export function serviceScopeOrder(serviceName: string): number {
+    const name = (serviceName ?? "").toLowerCase().trim();
+    const index = SERVICE_SCOPES.findIndex((scope) => scope.matches(name));
+    return index === -1 ? SERVICE_SCOPES.length : index;
+}
+
+/**
  * Returns the scope description for a given service name.
  * Matching is case-insensitive and uses "includes" logic.
  */

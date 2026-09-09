@@ -23,6 +23,7 @@ import {
   useUpdateMediaMutation,
 } from "@/redux/features/Media/mediaApi";
 import EditMediaModal from "./EditMediaModal";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
 
 // Only World Project and Portfolio media can be featured on the home hero.
 type MediaFilterType = "WORLD_PROJECT" | "PORTFOLIO";
@@ -33,6 +34,9 @@ const MEDIA_TYPE_OPTIONS: { label: string; value: MediaFilterType }[] = [
 ];
 
 export default function HomeMediaManager() {
+  // A view-only account reads the panel — which project is on the home page is
+  // worth seeing — but every control here writes, so none of them are offered.
+  const canEdit = useCanEdit();
   const [updateMedia, { isLoading: isSavingFeatured }] = useUpdateMediaMutation();
 
   // Fetch featured items (isFeatured=true across all types)
@@ -132,6 +136,7 @@ export default function HomeMediaManager() {
           <p className="text-xs text-gray-500 mt-1">Control the main hero section of the website</p>
         </div>
         <div className="flex gap-2">
+          {canEdit && (
           <Button
             size="sm"
             variant={isEditMode ? "default" : "outline"}
@@ -140,7 +145,8 @@ export default function HomeMediaManager() {
           >
             {isEditMode ? "Close" : "Edit"}
           </Button>
-          {isEditMode && (
+          )}
+          {canEdit && isEditMode && (
             <Button
               size="sm"
               onClick={() => {
@@ -165,16 +171,21 @@ export default function HomeMediaManager() {
           ) : sortedFeatured.length === 0 ? (
             <div className="text-center py-8 border-2 border-dashed border-gray-100 rounded-lg">
               <p className="text-sm text-gray-400">No projects featured on the home page yet</p>
-              <Button
-                variant="link"
-                onClick={() => {
-                  setIsEditMode(true);
-                  setIsDialogOpen(true);
-                }}
-                className="text-blue-600 mt-2 cursor-pointer"
-              >
-                Add your first featured project
-              </Button>
+              {/* The other way into the add dialog, so it needs the same gate
+                  as the Edit toggle above — otherwise a view-only account can
+                  still open it from the empty state. */}
+              {canEdit && (
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    setIsEditMode(true);
+                    setIsDialogOpen(true);
+                  }}
+                  className="text-blue-600 mt-2 cursor-pointer"
+                >
+                  Add your first featured project
+                </Button>
+              )}
             </div>
           ) : (
             <>

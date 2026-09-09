@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Play, MoreVertical, Globe, Pencil, Trash2, Archive, RotateCcw, ChevronLeft, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
 import { useGetAllMediaAdminQuery, useUpdateMediaMutation, useDeleteMediaMutation } from "@/redux/features/Media/mediaApi";
+import { useCanEdit } from "@/hooks/useDashboardAccess";
 import {
   useGetYoutubeChannelQuery,
   useUpdateYoutubeChannelMutation,
@@ -73,6 +74,7 @@ export default function RecentActivity() {
     limit: PAGE_SIZE,
   });
 
+  const canEdit = useCanEdit();
   const [updateMedia] = useUpdateMediaMutation();
   const [deleteMedia] = useDeleteMediaMutation();
 
@@ -176,6 +178,12 @@ export default function RecentActivity() {
                       <Play className="mr-2 h-4 w-4 text-gray-600" />
                       <span>View</span>
                     </DropdownMenuItem>
+                    {/* View is the whole menu for a view-only account: an
+                        employee given the media area browses the library and
+                        changes nothing, and the endpoints behind these refuse
+                        them anyway. */}
+                    {canEdit && (
+                      <>
                     {activity.status !== "PUBLISHED" && (
                       <DropdownMenuItem onClick={() => handlePublish(activity.id)} className="cursor-pointer">
                         <Globe className="mr-2 h-4 w-4 text-green-600" />
@@ -216,6 +224,8 @@ export default function RecentActivity() {
                       <Trash2 className="mr-2 h-4 w-4" />
                       <span>Delete</span>
                     </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

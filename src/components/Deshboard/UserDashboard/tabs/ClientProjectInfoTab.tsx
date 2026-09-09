@@ -280,14 +280,14 @@ export default function ClientProjectInfoTab({
                       </a>
                     </div>
                   )}
-                  {assignedManager.phoneNumber && (
+                  {/* {assignedManager.phoneNumber && (
                     <div className="flex items-center gap-2">
                       <Phone className="w-3.5 h-3.5 text-gray-400" />
                       <span className="text-sm text-gray-700">
                         {assignedManager.phoneNumber}
                       </span>
                     </div>
-                  )}
+                  )} */}
                 </>
               ) : (
                 <div className="flex items-center gap-2">

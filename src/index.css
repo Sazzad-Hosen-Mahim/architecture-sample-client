@@ -25,6 +25,22 @@
   }
 }
 
+/* Edge draws its own reveal button inside every password field, which left two
+   eyes side by side wherever a form has a show/hide toggle of its own — the
+   browser's sitting inside the field's `pr-10` gutter, ours pinned to the right
+   of it.
+   Ours is the one that stays in step with the field: it switches to a crossed
+   out eye while the password is showing, and it is the one the form's own state
+   follows. So the browser's is the one to go.
+   `::-ms-clear` is the matching X that Edge puts on text inputs, dropped here
+   for the same reason. Declared for every input rather than per page, since the
+   duplicate turns up on any field with a toggle — signup, reset, the password
+   confirmations in settings. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
 /* Nothing may push the document sideways: one over-wide table or badge would
    otherwise make every page scroll horizontally and read as "cropped" on a
    phone. `clip` rather than `hidden` because `hidden` turns the element into a

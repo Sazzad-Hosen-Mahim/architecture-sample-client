@@ -178,8 +178,17 @@ const UserDashboard = () => {
           ))}
         </nav>
 
+        {/* `backTo` asks the navbar for a way back to this dashboard, which
+            /new-project has none of on its own — it is a main page, so Back is
+            normally hidden there. Carried in the navigation state rather than
+            set on the route, so the same page opened from the floating menu
+            stays as it was. */}
         <Button
-          onClick={() => navigate("/new-project")}
+          onClick={() =>
+            navigate("/new-project", {
+              state: { backTo: "/user-dashboard", backLabel: "Back to dashboard" },
+            })
+          }
           className="bg-black cursor-pointer my-2 text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"
         >
           <span className="text-white">

@@ -11,9 +11,19 @@ function FloatingMenu() {
 
   // Close the panel on any route change — e.g. clicking "Login" in the navbar,
   // which navigates without touching this component's handlers.
+  //
+  // Unless the navigation asked for it open. The New Project wizard hides this
+  // component's button (see hideFloatingButton), so its Back button is the only
+  // way out, and it returns to the home page with the menu showing — which is
+  // the state the visitor left, rather than a home page they then have to
+  // reopen the menu on.
   useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location.pathname]);
+    const wantsOpen = Boolean(
+      (location.state as { openMenu?: boolean } | null)?.openMenu,
+    );
+    if (wantsOpen) setIsCloseArrowRotated(false);
+    setIsMenuOpen(wantsOpen);
+  }, [location.pathname, location.state]);
 
   const openMenu = () => {
     setIsCloseArrowRotated(false);

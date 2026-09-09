@@ -362,7 +362,13 @@ export function FinancialChart({
             ...chartData,
             datasets: chartData.datasets.map((dataset) => ({
               ...dataset,
-              tension: 0.4,
+              // Monotone rather than `tension`, which drew a Bézier that
+              // overshoots between points: a utilization series topping out at
+              // 77% arced to nearly 90% between two months, and the chart was
+              // read as the number. Monotone keeps the curve smooth but never
+              // takes it past the values it joins, so the line cannot claim a
+              // figure that was never recorded. It supersedes `tension`.
+              cubicInterpolationMode: "monotone" as const,
               // Dashed = reads off the Utilization (%) axis, not dollars.
               borderDash: dataset.yAxisID === "y1" ? [6, 4] : undefined,
               pointRadius: 4,

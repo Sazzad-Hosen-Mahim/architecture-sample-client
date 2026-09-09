@@ -1,5 +1,6 @@
 import {
   useCreateStaffMutation,
+  useUpdateHiringDocumentsMutation,
   useUpdateUserMutation,
 } from "@/redux/api/userApi";
 import {
@@ -9,7 +10,7 @@ import {
 import { useUpdateEmployeeProfileMutation } from "@/redux/api/financialApi";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Plus, X, Eye, EyeOff } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import type { DashboardSection } from "@/utils/dashboardAccess";
 
 /** The dashboard tabs an employee can be given, in the order they're shown. */
@@ -54,7 +55,7 @@ const emptyForm = {
   name: "",
   username: "",
   email: "",
-  password: "",
+  hiringDocumentsUrl: "",
   role: "EMPLOYEE",
   startingDate: "",
   hourlyRate: "",
@@ -80,7 +81,32 @@ const AddEmployeeModal = ({
     useUpdateEmployeeProfileMutation();
 
   const [form, setForm] = useState(emptyForm);
-  const [showPassword, setShowPassword] = useState(false);
+  const [updateHiringDocuments, { isLoading: isSavingHiringDocs }] =
+    useUpdateHiringDocumentsMutation();
+
+  /**
+   * Saves just the hiring-documents link against an existing member.
+   *
+   * Deliberately not part of the form submit: the shared folder is usually
+   * made after the account is, and making someone re-submit their whole record
+   * to attach a link invites saving stale figures alongside it.
+   */
+  const handleSaveHiringDocuments = async () => {
+    if (!member?.id) return;
+    try {
+      await updateHiringDocuments({
+        id: member.id,
+        hiringDocumentsUrl: form.hiringDocumentsUrl.trim() || null,
+      }).unwrap();
+      toast.success(
+        form.hiringDocumentsUrl.trim()
+          ? "Hiring documents link saved"
+          : "Hiring documents link removed",
+      );
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Could not save the link");
+    }
+  };
 
   // Kept beside the form rather than inside it: it's a list, and only ever
   // read when the role is EMPLOYEE.
@@ -113,7 +139,7 @@ const AddEmployeeModal = ({
       name: member.name || "",
       username: member.username || "",
       email: member.email || "",
-      password: "",
+      hiringDocumentsUrl: member.hiringDocumentsUrl || "",
       role: member.role || "EMPLOYEE",
       startingDate: profile?.startingDate
         ? new Date(profile.startingDate).toISOString().split("T")[0]
@@ -235,7 +261,9 @@ const AddEmployeeModal = ({
           name: form.name,
           username: form.username.trim() || undefined,
           email: form.email,
-          password: form.password,
+          // Carried in on creation when it is already known. There is no
+          // password: the member sets their own from the welcome email.
+          hiringDocumentsUrl: form.hiringDocumentsUrl.trim() || undefined,
           role: form.role,
           phone: form.phone || undefined,
           dashboardSections,
@@ -532,45 +560,44 @@ const AddEmployeeModal = ({
                 </div>
               </div>
 
+              {/* Hiring Documents URL — saved on its own, not with the form.
+                  The shared folder is usually created after the person is, so
+                  this can be attached later without reopening and resubmitting
+                  everything else about them. On a new member it is carried in
+                  with the create request; on an existing one it saves alone. */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Hiring Documents URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/…"
+                    className="flex-1 min-w-0 border border-gray-300 rounded-md p-2.5 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
+                    value={form.hiringDocumentsUrl}
+                    onChange={(e) =>
+                      setForm({ ...form, hiringDocumentsUrl: e.target.value })
+                    }
+                    disabled={readOnly}
+                  />
+                  {isEdit && !readOnly && (
+                    <button
+                      type="button"
+                      onClick={handleSaveHiringDocuments}
+                      disabled={isSavingHiringDocs}
+                      className="shrink-0 px-4 rounded-md bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-60 cursor-pointer"
+                    >
+                      {isSavingHiringDocs ? "Saving…" : "Save"}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Drive, Dropbox or Mega folder holding their tax forms. Linked
+                  from their welcome email; can be added later.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                {/* Password is only set at creation time */}
-                {!isEdit && (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Initial Password
-                    </label>
-                    {/* No capital/number rule here on purpose: this is a
-                        throwaway the manager hands over, and the employee is
-                        held to the full rule when they set their own. */}
-                    <div className="relative">
-                      <input
-                        placeholder="Min 8 characters"
-                        type={showPassword ? "text" : "password"}
-                        className="w-full border border-gray-300 rounded-md p-2.5 pr-10 text-sm focus:ring-1 focus:ring-black focus:border-black outline-none bg-gray-50/50"
-                        value={form.password}
-                        onChange={(e) =>
-                          setForm({ ...form, password: e.target.value })
-                        }
-                        required
-                        minLength={8}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        aria-label={
-                          showPassword ? "Hide password" : "Show password"
-                        }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
-                      >
-                        {showPassword ? (
-                          <EyeOff size={16} strokeWidth={1.8} />
-                        ) : (
-                          <Eye size={16} strokeWidth={1.8} />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Starting Date

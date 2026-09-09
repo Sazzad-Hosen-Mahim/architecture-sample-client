@@ -41,6 +41,10 @@ function useStates(country?: string) {
   useEffect(() => {
     if (!country) {
       setStates([]);
+      // Clearing the country while a request was still in flight used to leave
+      // `loading` true for good, so the field sat on "Loading states…" with no
+      // country selected and nothing on its way.
+      setLoading(false);
       return;
     }
 
@@ -128,8 +132,20 @@ export function StateSelect({
 }: FieldProps & { country?: string }) {
   const { states, loading } = useStates(country);
 
-  if (loading) {
-    return <p className="text-sm text-gray-500">Loading states…</p>;
+  // Before a country is picked there is nothing to offer, and while the list is
+  // on its way there is nothing yet. Both render the same control as the
+  // country picker beside them — disabled, because it cannot be used yet — so
+  // the row keeps its shape instead of collapsing to a line of grey text where
+  // a field should be.
+  if (!country || loading) {
+    return (
+      <Select disabled>
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue placeholder={loading ? "Loading states…" : placeholder} />
+        </SelectTrigger>
+        <SelectContent className="max-h-[300px] bg-white border-gray-300" />
+      </Select>
+    );
   }
 
   if (states.length === 0) {

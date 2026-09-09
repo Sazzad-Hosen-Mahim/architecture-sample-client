@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
 // import { logout } from "@/store/Slices/AuthSlice/authSlice";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-3.png";
 import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { signOut } from "@/redux/features/auth/authActions";
 import NotificationPopover from "@/components/Deshboard/NotificationPopover";
@@ -22,6 +22,21 @@ import { LayoutDashboard, Settings, LogOut } from "lucide-react";
  * does the client dashboard, which is reached from the avatar menu rather than
  * the floating one.
  */
+/**
+ * Main pages that need a way out anyway, and where it leads.
+ *
+ * The floating menu is what makes Back unnecessary on a main page — but it
+ * hides its own button on the New Project wizard, so once someone is inside
+ * that page there is no route out of it at all. Back returns them to the home
+ * page with the menu open, which is where they opened the wizard from.
+ */
+const MAIN_PAGE_BACK: Record<
+  string,
+  { to: string; label: string; state?: Record<string, unknown> }
+> = {
+  "/new-project": { to: "/", label: "Back", state: { openMenu: true } },
+};
+
 const MAIN_PAGES = new Set([
   "/",
   "/world-project",
@@ -44,6 +59,33 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname.replace(/\/+$/, "") || "/";
   const isMainPage = MAIN_PAGES.has(currentPath);
+
+  /**
+   * A main page normally offers no way back, because the floating menu already
+   * reaches it in one tap. But the same page can also be opened from somewhere
+   * that does want a way back — the client dashboard's New Project button opens
+   * /new-project, and from there the dashboard is otherwise unreachable.
+   *
+   * Whoever navigates says so, by putting `backTo` in the navigation state.
+   * That keeps it to the one route that asked: /new-project reached from the
+   * floating menu carries no state and still shows nothing, which is what
+   * separates the two ways into the same page.
+   */
+  const backNav = location.state as {
+    backTo?: string;
+    backLabel?: string;
+  } | null;
+
+  // A caller that asked for a particular destination wins over the page's own
+  // rule: the client dashboard sends people into the same wizard and wants them
+  // returned to the dashboard rather than to the home page. Failing that, a main
+  // page uses its entry above if it has one, and otherwise offers nothing —
+  // every ordinary sub-page just steps back through history as before.
+  const back: { to?: string; label: string; state?: Record<string, unknown> } | null =
+    backNav?.backTo
+      ? { to: backNav.backTo, label: backNav.backLabel ?? "Back" }
+      : (MAIN_PAGE_BACK[currentPath] ??
+        (isMainPage ? null : { label: "Back" }));
 
   // const toggleMenu = () => {
   //   setIsOpen(!isOpen);
@@ -110,7 +152,11 @@ const Navbar: React.FC = () => {
       <div className=" mx-auto px-4 lg:px-16">
         <div className="grid grid-cols-3 items-center h-16">
           {/* Logo */}
-          <div className="">{!isMainPage && <Backbutton />}</div>
+          <div className="">
+            {back && (
+              <Backbutton to={back.to} label={back.label} state={back.state} />
+            )}
+          </div>
           <div className="flex justify-center">
             <Link to="/" className="text-black text-2xl">
               <div className="flex items-center gap-2">

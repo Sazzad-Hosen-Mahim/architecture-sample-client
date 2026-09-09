@@ -67,7 +67,12 @@ export default function ClientInfoSection({
   // Fetch the state list when the country changes. A cache hit renders the
   // dropdown immediately (e.g. when the user navigates back to this step).
   useEffect(() => {
-    if (!selectedCountry) return;
+    // Also drops the loading flag: clearing the country mid-request used to
+    // leave it true for good, stranding the field on "Loading states…".
+    if (!selectedCountry) {
+      setLoadingStates(false);
+      return;
+    }
 
     const cached = statesCache.get(selectedCountry);
     if (cached) {
@@ -287,8 +292,20 @@ export default function ClientInfoSection({
               State / Province{" "}
               <span className="text-red-500 font-semibold">*</span>
             </Label>
-            {loadingStates ? (
-              <p className="text-sm text-gray-500">Loading states...</p>
+            {/* With no country picked there is nothing to offer, and while the
+                list is on its way there is nothing yet. Both keep the field's
+                shape rather than collapsing to a line of grey text. */}
+            {!selectedCountry || loadingStates ? (
+              <Select disabled>
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      loadingStates ? "Loading states…" : "Select a state"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-[300px] border-gray-300" />
+              </Select>
             ) : states.length > 0 ? (
               <Select
                 value={localFormData.state}

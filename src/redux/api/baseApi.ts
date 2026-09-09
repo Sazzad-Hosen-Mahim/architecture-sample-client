@@ -95,5 +95,5 @@ export const baseApi = createApi({
   reducerPath: "baseApi", // or just "api" if you prefer
   baseQuery: baseQueryWithViewOnlyGuard,
   endpoints: () => ({}),
-  tagTypes: ["User", "Project", "Amendment", "MasterContract", "AmendmentContract", "Media", "Notification", "OverheadExpense", "Timecard", "FinancialOverview", "BillingRate", "Team", "MercuryAccount", "BankDetails", "PaymentStatus", "SiteSettings", "Attachment", "ProjectDocument", "PayrollSettings", "Refund", "Schedule"],
+  tagTypes: ["User", "Project", "Amendment", "MasterContract", "AmendmentContract", "Media", "Notification", "OverheadExpense", "Timecard", "FinancialOverview", "BillingRate", "Team", "MercuryAccount", "BankDetails", "PaymentStatus", "SiteSettings", "Attachment", "ProjectDocument", "PayrollSettings", "Refund", "Schedule", "Invoice"],
 });

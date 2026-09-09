@@ -1,10 +1,10 @@
 export default function Privacy() {
   return (
     <div>
-      <div className="max-w-4xl mx-auto px-4 py-5 sm:px-6 lg:px-8 pb-10">
-        <h1 className="text-xl font-semibold mb-10 text-center">
+      <div className="max-w-4xl mx-auto px-4 py-2 sm:px-6 lg:px-8 pb-10">
+        {/* <h1 className="text-xl font-semibold mb-10 text-center">
           Privacy Policy
-        </h1>
+        </h1> */}
 
         {/* Effective Date */}
         <p className="text-sm mb-6">

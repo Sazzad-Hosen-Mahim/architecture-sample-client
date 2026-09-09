@@ -23,6 +23,7 @@ import ContractReviewModal from "@/components/Deshboard/ContractReviewModal";
 import ClientProjectInfoTab from "./tabs/ClientProjectInfoTab";
 import ClientProposalsTab from "./tabs/ClientProposalsTab";
 import ClientMeetingPaymentTab from "./tabs/ClientMeetingPaymentTab";
+import ClientInvoicesTab from "./tabs/ClientInvoicesTab";
 import ClientAttachmentsTab from "./tabs/ClientAttachmentsTab";
 
 interface ClientProjectDetailsModalProps {
@@ -369,6 +370,11 @@ export default function ClientProjectDetailsModal({
             {activeTab === "contracts" && (
               <div className="space-y-10">
                 <ClientProposalsTab project={project} amendments={amendments} />
+                {/* Bills outside the contract, between the paperwork they
+                    extend and the meetings below. Renders nothing when the
+                    project has no invoices, so the divider would otherwise
+                    leave a gap — hence it living inside the block. */}
+                <ClientInvoicesTab projectId={project.id} />
                 <div className="border-t border-gray-100" />
                 <ClientMeetingPaymentTab
                   project={project}

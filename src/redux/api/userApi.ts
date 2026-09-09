@@ -38,6 +38,25 @@ export const userApi = baseApi.injectEndpoints({
       invalidatesTags: ["User"],
     }),
 
+    /**
+     * Attach or clear a staff member's hiring-documents folder.
+     *
+     * Its own call rather than part of the member's form: the folder is
+     * usually created after the person is, so this can be saved on an account
+     * that already exists without touching anything else on it.
+     */
+    updateHiringDocuments: builder.mutation<
+      any,
+      { id: string; hiringDocumentsUrl: string | null }
+    >({
+      query: ({ id, hiringDocumentsUrl }) => ({
+        url: `/auth/staff/${id}/hiring-documents`,
+        method: "PATCH",
+        body: { hiringDocumentsUrl },
+      }),
+      invalidatesTags: ["User"],
+    }),
+
     // A client closing their own account. No id — the server takes the account
     // from the session, so this can only ever close the caller's own.
     deleteOwnAccount: builder.mutation<
@@ -77,7 +96,8 @@ export const userApi = baseApi.injectEndpoints({
 export const {
   useGetMeQuery,
   useGetAllUsersQuery,
-  useCreateStaffMutation, 
+  useCreateStaffMutation,
+  useUpdateHiringDocumentsMutation,
   useDeleteUserMutation,
   useDeleteOwnAccountMutation,
   useUpdateUserMutation

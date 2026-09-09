@@ -345,6 +345,16 @@ export default function MeetingSlotPicker({
                         are already booked or blocked off.
                     </p>
 
+                    {/* The grid is drawn in the studio's own timezone, not the
+                        viewer's — see scheduleSlots, where the office window is
+                        Californian. Said out loud so a client booking from
+                        another timezone knows which clock these times are on,
+                        rather than turning up an hour or a day out. */}
+                    <p className="text-[11px] font-medium text-gray-600 mb-2">
+                        Please note that all appointment times shown are in the Pacific
+                        Standard Time (PST) zone.
+                    </p>
+
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-56 overflow-y-auto pr-1 border border-gray-200 rounded-lg p-2 bg-white">
                         {slots.map((slot) => {
                             const unavailable = slot.busy || slot.past;

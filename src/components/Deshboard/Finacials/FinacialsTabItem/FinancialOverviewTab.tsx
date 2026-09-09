@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import {
   BarChart,
+  ChevronRight,
   DollarSign,
   TrendingUp,
   Users, //Archive, Loader2
@@ -77,8 +78,16 @@ export default function FinancialOverviewTab() {
     firmBillingRate: 0,
   };
   const profit = overview?.profit || { total: 0, margin: 0 };
+  const reimbursable = overview?.reimbursable || {
+    total: 0,
+    billed: 0,
+    clientPaid: 0,
+  };
 
-  const totalCosts = labor.total + overhead.total;
+  // Reimbursables are a third cost beside labour and overhead: money laid out
+  // on a client's behalf and not yet repaid. It falls back to zero on its own
+  // once they settle, which is why the repayment is not counted as revenue.
+  const totalCosts = labor.total + overhead.total + reimbursable.total;
 
   return (
     <div className="px-3 sm:px-6">
@@ -119,28 +128,83 @@ export default function FinancialOverviewTab() {
                   </span>
                 </div>
                 <div className="space-y-2">
+                  {/* Gross Revenue is money received, not money contracted.
+                      Every line beneath it is a part of that sum, so the panel
+                      adds up on its face — and it matches the monthly chart,
+                      which counts the same payments. */}
                   <div className="flex justify-between text-sm">
                     <span>Gross Revenue</span>
                     <span className="font-medium">
                       {formatCurrency(revenue.grossRevenue || revenue.total)}
                     </span>
                   </div>
-                  {(revenue.amendmentRevenue || 0) > 0 && (
-                    <>
-                      <div className="flex justify-between text-sm text-gray-500 pl-3 border-l-2 border-gray-200">
-                        <span>Original Contracts</span>
-                        <span className="font-medium">
-                          {formatCurrency(revenue.originalRevenue)}
+
+                  {/* Original contract: what was signed, and what has been
+                      paid against it. Consultation fees sit inside the paid
+                      figure and can be broken out below. */}
+                  <div className="flex justify-between text-sm text-gray-500 pl-3 border-l-2 border-gray-200">
+                    <span>Original Contracts</span>
+                    <span className="font-medium">
+                      {formatCurrency(revenue.contractedOriginal)}
+                    </span>
+                  </div>
+                  <details className="pl-3 border-l-2 border-gray-200 group">
+                    <summary className="flex justify-between text-sm cursor-pointer list-none marker:hidden">
+                      <span className="flex items-center gap-1">
+                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                        Client Paid
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(revenue.originalClientPaid)}
+                      </span>
+                    </summary>
+                    <div className="mt-1 space-y-1 pl-4">
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Contract payments</span>
+                        <span>
+                          {formatCurrency(
+                            (revenue.originalClientPaid || 0) -
+                              (revenue.consultationFees || 0),
+                          )}
                         </span>
                       </div>
-                      <div className="flex justify-between text-sm text-amber-600 pl-3 border-l-2 border-amber-200">
-                        <span>Amendments ({revenue.amendmentCount || 0})</span>
-                        <span className="font-medium">
-                          +{formatCurrency(revenue.amendmentRevenue)}
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>
+                          Consultation fees ({revenue.consultationsPaid || 0})
                         </span>
+                        <span>{formatCurrency(revenue.consultationFees)}</span>
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </details>
+
+                  {/* Amendments */}
+                  <div className="flex justify-between text-sm text-amber-600 pl-3 border-l-2 border-amber-200">
+                    <span>Amendments ({revenue.amendmentCount || 0})</span>
+                    <span className="font-medium">
+                      {formatCurrency(revenue.contractedAmendments)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-amber-600 pl-7">
+                    <span>Client Paid</span>
+                    <span className="font-medium">
+                      {formatCurrency(revenue.amendmentClientPaid)}
+                    </span>
+                  </div>
+
+                  {/* Invoices — bills outside the contract. Billed raises the
+                      amount owed; only what has been paid reaches revenue. */}
+                  <div className="flex justify-between text-sm text-sky-700 pl-3 border-l-2 border-sky-200">
+                    <span>Invoice Total</span>
+                    <span className="font-medium">
+                      {formatCurrency(revenue.invoiceBilled)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-sky-700 pl-7">
+                    <span>Client Paid</span>
+                    <span className="font-medium">
+                      {formatCurrency(revenue.invoiceClientPaid)}
+                    </span>
+                  </div>
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Approved Refunds</span>
                     <span className="font-medium">
@@ -211,6 +275,51 @@ export default function FinancialOverviewTab() {
                         }}
                       ></div>
                     </div>
+
+                    {/* Shown only while the firm is actually out of pocket.
+                        A reimbursable is money laid out for a client, not a
+                        cost of running the firm — it returns to zero the
+                        moment they repay, and a permanent £0 row here would
+                        suggest an expense that does not exist. */}
+                    {(reimbursable.total || 0) > 0 && (
+                      <details className="group">
+                        <summary className="flex justify-between text-xs cursor-pointer list-none marker:hidden">
+                          <span className="flex items-center gap-1">
+                            <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                            Reimbursables
+                          </span>
+                          <span>{formatCurrency(reimbursable.total)}</span>
+                        </summary>
+                        <div className="mt-1 space-y-1 pl-4">
+                          <div className="flex justify-between text-[11px] text-gray-500">
+                            <span>Paid on client's behalf</span>
+                            <span>{formatCurrency(reimbursable.billed)}</span>
+                          </div>
+                          <div className="flex justify-between text-[11px] text-gray-500">
+                            <span>Repaid by client</span>
+                            <span>
+                              -{formatCurrency(reimbursable.clientPaid)}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 pt-0.5">
+                            Outstanding only — clears once the client repays.
+                          </p>
+                        </div>
+                      </details>
+                    )}
+                    {(reimbursable.total || 0) > 0 && (
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-purple-500 h-1.5 rounded-full"
+                          style={{
+                            width:
+                              (totalCosts || 0) > 0
+                                ? `${((reimbursable.total || 0) / (totalCosts || 1)) * 100}%`
+                                : "0%",
+                          }}
+                        ></div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -504,6 +613,11 @@ export default function FinancialOverviewTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
         <Card className="col-span-1 md:col-span-3 border-gray-50">
           <CardHeader>
+            {/* No scope picker here. It drove the same `scope`/`scopeYear` as
+                the one on Financial Summary above, so the two always moved
+                together — two controls for one setting, which reads as though
+                the chart could be scoped independently of the totals it is
+                meant to reconcile with. */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle>Financial Performance</CardTitle>
@@ -511,15 +625,6 @@ export default function FinancialOverviewTab() {
                   Monthly breakdown of key financial metrics
                 </CardDescription>
               </div>
-              <ScopeSelect
-                scope={scope}
-                year={scopeYear}
-                startYear={overview?.scope?.firmStartYear}
-                onChange={(nextScope, nextYear) => {
-                  setScope(nextScope);
-                  setScopeYear(nextYear);
-                }}
-              />
             </div>
           </CardHeader>
           <CardContent>

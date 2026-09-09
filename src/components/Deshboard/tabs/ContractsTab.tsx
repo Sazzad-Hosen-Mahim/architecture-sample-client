@@ -16,11 +16,14 @@ import {
   Clock,
   AlertCircle,
   FileCheck,
+  ReceiptText,
   Trash2,
   Eye,
   EyeOff,
 } from "lucide-react";
 import ContractReviewModal from "../ContractReviewModal";
+import NewInvoiceModal from "@/components/Modal/NewInvoiceModal";
+import InvoiceList from "./InvoiceList";
 import {
   Amendment,
   useGetAmendmentsByProjectQuery,
@@ -109,6 +112,7 @@ export default function ContractsTab({ project }: ContractsTabProps) {
   // it from their own panel. Same form and same endpoint the client uses — the
   // API already accepts a manager as the requester.
   const [isNewAmendmentOpen, setIsNewAmendmentOpen] = useState(false);
+  const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
   const [createAmendment, { isLoading: isCreatingAmendment }] =
     useCreateAmendmentMutation();
 
@@ -415,6 +419,18 @@ export default function ContractsTab({ project }: ContractsTabProps) {
               paperwork are theirs to see the results of, not to press. */}
           <div className={`flex-wrap items-center gap-2 ${canEdit ? "flex" : "hidden"}`}>
             {/* Raised for a client who can't do it from their own panel. */}
+            {/* A bill outside the contract — reimbursed expenses, or work
+                beyond the agreed scope. Not gated on an accepted proposal:
+                money can be laid out on a client's behalf before anything is
+                signed, and that still has to be billed back. */}
+            <button
+              onClick={() => setIsNewInvoiceOpen(true)}
+              title="Raise a bill against this project outside the contract"
+              className="inline-flex items-center gap-2 bg-sky-700 hover:bg-sky-800 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors cursor-pointer"
+            >
+              <ReceiptText className="w-4 h-4" />
+              New Invoice
+            </button>
             <button
               onClick={() => setIsNewAmendmentOpen(true)}
               disabled={!acceptedBaseProposal}
@@ -722,11 +738,28 @@ export default function ContractsTab({ project }: ContractsTabProps) {
         </div>
       )}
 
+      {/* Invoices raised on this project, under the contracts they extend. */}
+      <InvoiceList projectId={project.id} canEdit={canEdit} />
+
       {/* Contract Review Modal */}
       <ContractReviewModal
         isOpen={isContractModalOpen}
         onClose={() => setIsContractModalOpen(false)}
         proposalId={contractProposalId}
+      />
+
+      {/* Bills outside the contract, offered the accepted ones to attach to. */}
+      <NewInvoiceModal
+        open={isNewInvoiceOpen}
+        onClose={() => setIsNewInvoiceOpen(false)}
+        projectId={project.id}
+        contracts={allProposals
+          .filter((p: any) => p.status === "ACCEPTED")
+          .map((p: any) => ({
+            id: p.id,
+            proposalNumber: p.proposalNumber,
+            proposalType: p.proposalType === "AMENDMENT" ? "AMENDMENT" : "NORMAL",
+          }))}
       />
 
       {/* Raise an amendment request for the client */}

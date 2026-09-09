@@ -81,6 +81,13 @@ export default function LeafletMapSearch({
   function LocationMarker() {
     useMapEvents({
       click(e) {
+        // A click on the tooltip's own controls is not a click on the map.
+        // The tooltip is rendered inside the map's panes, so Leaflet reports
+        // it as a map click all the same — which set a brand-new filter at
+        // that point, undoing the clear the moment it happened.
+        const target = e.originalEvent.target as HTMLElement | null;
+        if (target?.closest(".leaflet-tooltip")) return;
+
         const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
         if (selected && selected.lat === coords.lat && selected.lng === coords.lng) {
           setSelected(null);
@@ -94,12 +101,16 @@ export default function LeafletMapSearch({
 
     return selected ? (
       <Marker position={selected}>
-        <Tooltip permanent>
+        {/* `interactive` is what lets the button be clicked at all: a Leaflet
+            tooltip is pointer-events:none by default, so the click passed
+            straight through it to the map underneath and the button never saw
+            it. Without this the onClick below simply never ran. */}
+        <Tooltip permanent interactive>
           📍 Filtering projects near this area
           <br />
           <button
             onClick={() => { setSelected(null); onLocationSelect?.(null); }}
-            className="text-blue-500 underline mt-1"
+            className="text-blue-500 underline mt-1 cursor-pointer"
           >
             Clear map filter
           </button>
