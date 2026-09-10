@@ -110,6 +110,13 @@ function Hero() {
    * So the photo itself cannot reach it, only a colour can. Black is the one
    * that disappears against a full-bleed photograph, the way a letterbox does.
    *
+   * But only while there is a photograph to disappear against. Until the hero
+   * loads, the page is the site's white grid and the same black covered the
+   * whole screen — a wait that read as a crash rather than as loading. So the
+   * canvas follows what the hero is showing: white under the grid and the
+   * spinner, black under the photo. Either way it reaches the bottom edge, so
+   * neither state leaves a strip that disagrees with the page above it.
+   *
    * Set on the element and undone on the way out rather than written into the
    * stylesheet: every other page is a white document, where the default is
    * already right and a black canvas would be the bug.
@@ -117,11 +124,11 @@ function Hero() {
   useEffect(() => {
     const root = document.documentElement;
     const previous = root.style.backgroundColor;
-    root.style.backgroundColor = "#000000";
+    root.style.backgroundColor = isLoading ? "#ffffff" : "#000000";
     return () => {
       root.style.backgroundColor = previous;
     };
-  }, []);
+  }, [isLoading]);
 
   // const toggleMenu = () => {
   //   setIsMenuOpen(!isMenuOpen);

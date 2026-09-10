@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ProposalService } from "@/redux/api/adminDashboard/proposalApi";
 import {
   useGetAmendmentsQuery,
@@ -18,11 +19,18 @@ import { serviceScopeOrder } from "@/lib/serviceDescriptions";
 interface ViewProposalDetailsModalProps {
   proposal: any;
   onClose: () => void;
+  /**
+   * The project's payment status, as the Payments tab already receives it.
+   * Optional: without it the Payment column simply does not render, rather
+   * than every phase claiming to be unpaid.
+   */
+  paymentInfo?: any;
 }
 
 const ViewProposalDetailsModal = ({
   proposal,
   onClose,
+  paymentInfo,
 }: ViewProposalDetailsModalProps) => {
   // Amendment queries
   const { data: amendmentsData, isLoading: isLoadingAmendments } =
@@ -39,6 +47,65 @@ const ViewProposalDetailsModal = ({
   //   )
   //     ? allProposalsData.data.amendmentProposals
   //     : [];
+
+  /**
+   * The lines on this contract the client has actually paid for.
+   *
+   * The two contract kinds report a settled phase differently, because they
+   * are billed differently. An amendment bills each service line directly, so
+   * its entry already carries a per-service flag. The base contract bills
+   * ProjectStages, which are separate records from the services that price
+   * them — those are matched back by name, falling back to position, which is
+   * the same pairing the backend prices a stage with.
+   *
+   * Undefined (not an empty set) when there is no payment status to read, so
+   * the column can be hidden rather than showing everything as unpaid.
+   */
+  const paidServiceIds = useMemo<Set<string> | undefined>(() => {
+    const services: ProposalService[] = proposal?.services || [];
+    if (!paymentInfo || services.length === 0) return undefined;
+
+    const paid = new Set<string>();
+    const markAll = () => {
+      services.forEach((s) => paid.add(s.id));
+      return paid;
+    };
+    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+    if (proposal.proposalType === "AMENDMENT") {
+      const entry = (paymentInfo.amendmentPayments || []).find(
+        (ap: { proposalId?: string }) => ap.proposalId === proposal.id,
+      );
+      if (!entry) return undefined;
+      if (entry.paid && entry.paymentMethod === "LUMP_SUM") return markAll();
+      (entry.services || []).forEach(
+        (s: { serviceId: string; paid?: boolean }) => {
+          if (s.paid) paid.add(s.serviceId);
+        },
+      );
+      return paid;
+    }
+
+    // A lump sum is one payment for the whole contract, so settling it settles
+    // every line on it.
+    if (paymentInfo.lumpSumPaid) return markAll();
+
+    const stages = paymentInfo.stages || [];
+    const paidStageNames = new Set<string>(
+      stages
+        .filter((s: { paid?: boolean }) => s.paid)
+        .map((s: { stageName?: string }) => norm(s.stageName)),
+    );
+    // Position pairing reads both sides in contract order, not the order the
+    // API happened to return them in.
+    const ordered = [...services].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    ordered.forEach((service, idx) => {
+      if (paidStageNames.has(norm(service.name)) || stages[idx]?.paid) {
+        paid.add(service.id);
+      }
+    });
+    return paid;
+  }, [paymentInfo, proposal]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
@@ -150,9 +217,20 @@ const ViewProposalDetailsModal = ({
       {/* overflow-x-hidden so the panel itself can never scroll sideways — the
           services table keeps its own overflow-x-auto, so it still scrolls
           within the dialog rather than dragging the dialog with it. */}
-      <DialogContent className="sm:max-w-6xl xl:max-w-7xl max-h-[95vh] overflow-y-auto overflow-x-hidden scrollbar-hide bg-white p-0 border-none shadow-2xl">
-        <DialogHeader className="sticky top-0 bg-white border-b border-gray-300 px-4 sm:px-6 py-4 flex items-center justify-between z-10 shadow-sm">
-          <div className="min-w-0">
+      {/* `[&>*]:min-w-0` because DialogContent is a grid: a grid item's default
+          minimum size is its own content, so one stubborn child — a wide table,
+          an unbroken address — can size the whole column and push the panel
+          past its max-width. Letting the children shrink leaves the wrapping,
+          and the table's own scroller, to do that job. */}
+      <DialogContent className="sm:max-w-6xl xl:max-w-7xl max-h-[95vh] overflow-y-auto overflow-x-hidden scrollbar-hide bg-white p-0 border-none shadow-2xl [&>*]:min-w-0">
+        {/* No `items-center`. DialogHeader's base is `flex flex-col`, and
+            centring on a column flex stops the child stretching and sizes it to
+            its own content instead — so the description was laid out as one
+            unwrapped line and ran off the side of the panel on a phone. Left to
+            stretch, it fills the header and wraps; the title keeps its own
+            `text-center`, so nothing moves on a wide screen. */}
+        <DialogHeader className="sticky top-0 bg-white border-b border-gray-300 px-4 sm:px-6 py-4 z-10 shadow-sm">
+          <div className="min-w-0 w-full">
             <DialogTitle className="text-xl sm:text-2xl font-bold text-center text-gray-800">
               Proposal Details
             </DialogTitle>
@@ -282,6 +360,11 @@ const ViewProposalDetailsModal = ({
                       <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">
                         Status
                       </th>
+                      {paidServiceIds && (
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">
+                          Payment
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-300">
@@ -329,6 +412,23 @@ const ViewProposalDetailsModal = ({
                               </div>
                             )}
                         </td>
+                        {paidServiceIds && (
+                          <td className="px-4 py-2 text-sm text-center">
+                            {/* Both states are shown: an absent badge would
+                                read the same as a phase nobody has billed. */}
+                            <span
+                              className={`text-xs font-semibold px-2 py-1 rounded border whitespace-nowrap ${
+                                paidServiceIds.has(service.id)
+                                  ? "bg-green-100 text-green-800 border-green-200"
+                                  : "bg-gray-50 text-gray-500 border-gray-200"
+                              }`}
+                            >
+                              {paidServiceIds.has(service.id)
+                                ? "Paid"
+                                : "Unpaid"}
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -347,15 +447,19 @@ const ViewProposalDetailsModal = ({
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-medium">${proposal.subtotal}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tax Amount:</span>
-                <span className="font-medium">
-                  ${proposal.taxAmount || "0"}
-                </span>
-              </div>
+              {/* No tax line. Nothing charges tax, so showing one here quoted
+                  the client a total they would never be billed. Older
+                  proposals still carry a stored taxAmount, so it is taken back
+                  off rather than trusted — which also leaves credits intact. */}
               <div className="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
                 <span>Total Amount:</span>
-                <span className="text-green-600">${proposal.totalAmount}</span>
+                <span className="text-green-600">
+                  $
+                  {(
+                    Number(proposal.totalAmount || 0) -
+                    Number(proposal.taxAmount || 0)
+                  ).toLocaleString()}
+                </span>
               </div>
             </div>
           </section>

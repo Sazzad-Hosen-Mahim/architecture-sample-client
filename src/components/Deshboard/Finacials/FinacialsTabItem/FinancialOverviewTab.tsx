@@ -72,7 +72,6 @@ export default function FinancialOverviewTab() {
   };
   const projectFinancials = overview?.projectFinancials || {
     totalBurned: 0,
-    totalLabor: 0,
     totalProjectOverhead: 0,
     totalStudioOverhead: 0,
     firmBillingRate: 0,
@@ -522,12 +521,6 @@ export default function FinancialOverviewTab() {
                     <span>Total Burned</span>
                     <span className="font-bold text-amber-600">
                       {formatCurrency(projectFinancials?.totalBurned)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total Project Labor</span>
-                    <span className="font-bold text-blue-600">
-                      {formatCurrency(projectFinancials?.totalLabor)}
                     </span>
                   </div>
                 </div>

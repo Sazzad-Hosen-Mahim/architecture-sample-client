@@ -113,10 +113,34 @@ export function ProfileSettings() {
   // Country and State/Region rendered blank on a record that had both stored.
   const { data: freshUser } = useGetMeQuery();
 
+  /**
+   * Which copy the form has already been filled from, so it is filled once per
+   * account and not on every emission.
+   *
+   * `freshUser` is a new object each time the query refetches, and `user`
+   * changes the moment a save writes back to Redux — so this effect re-ran
+   * straight after Save and overwrote the fields with whichever copy answered
+   * first. That is the reset being seen: the values were saved correctly, but
+   * the form was being repopulated from a copy that had not caught up, so
+   * Country and State/Region blanked. Country blanking then took State with
+   * it, since the state list is keyed on the country.
+   *
+   * Seeded from the session so the form is not empty on arrival, then filled
+   * once more when the server's copy lands — and left alone after that.
+   */
+  const filledFromRef = useRef<string | null>(null);
+
   useEffect(() => {
     const source = freshUser ?? user;
     if (source) {
       const u = source as any;
+
+      // Refilling after this point would be overwriting the person's own
+      // typing with a round-trip they did not ask for.
+      const filledFrom = `${u.id ?? u.email ?? ""}:${freshUser ? "server" : "session"}`;
+      if (filledFromRef.current === filledFrom) return;
+      filledFromRef.current = filledFrom;
+
       // Fall back to splitting the legacy single `name` for pre-migration rows.
       const nameParts = (u.name || "").trim().split(/\s+/);
       setProfileData({

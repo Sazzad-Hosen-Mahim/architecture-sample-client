@@ -369,7 +369,11 @@ export default function ClientProjectDetailsModal({
             {/* Merged tab: contracts first, then meetings & payment below. */}
             {activeTab === "contracts" && (
               <div className="space-y-10">
-                <ClientProposalsTab project={project} amendments={amendments} />
+                <ClientProposalsTab
+                  project={project}
+                  amendments={amendments}
+                  paymentInfo={paymentInfo}
+                />
                 {/* Bills outside the contract, between the paperwork they
                     extend and the meetings below. Renders nothing when the
                     project has no invoices, so the divider would otherwise

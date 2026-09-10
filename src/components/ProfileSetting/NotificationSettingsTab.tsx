@@ -90,7 +90,11 @@ export function NotificationSettingsTab() {
       role="switch"
       aria-checked={checked}
       onClick={() => onCheckedChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+      // shrink-0 because this sits in a flex row: `w-11` is only a preferred
+      // width, and a flex item shrinks by default. Beside a description long
+      // enough to wrap, the track was squeezed down to about the width of its
+      // own knob and read as a black blob rather than a switch.
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
         checked ? "bg-gray-800" : "bg-gray-200"
       }`}
     >
@@ -115,7 +119,10 @@ export function NotificationSettingsTab() {
           {PREFERENCES.map((item, idx) => (
             <div key={item.id}>
               <div className="flex items-center justify-between gap-4">
-                <div>
+                {/* min-w-0 so the description wraps instead of holding the row
+                    open: a flex item's default min-width is its content, which
+                    is what left no room for the switch. */}
+                <div className="min-w-0">
                   <p className="font-medium text-gray-900">{item.title}</p>
                   <p className="text-sm text-gray-600">{item.description}</p>
                 </div>

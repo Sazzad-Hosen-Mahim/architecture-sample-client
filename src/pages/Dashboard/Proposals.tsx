@@ -23,6 +23,9 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Filter,
   CalendarRange,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -33,7 +36,26 @@ import { selectCurrentUser } from "@/redux/features/auth/authSlice";
 import { formatCurrency } from "@/utils/money";
 import { projectRun, runDaysLabel, shareOfYear } from "@/utils/contractYears";
 
-type SortOption = "active" | "newest" | "oldest" | "manager" | "status";
+/**
+ * Which proposals the table shows. Purely a filter now — everything that used
+ * to be a sort here (Newest, Oldest, Project Manager, Status) is an arrow on
+ * the column itself, so one control no longer does two unrelated jobs.
+ */
+type StatusFilter = "all" | "active" | "accepted";
+
+/** Columns the table can be ordered by. */
+type SortKey =
+  | "client"
+  | "status"
+  | "startDate"
+  | "endDate"
+  | "originalTotal"
+  | "originalPaid"
+  | "amendmentTotal"
+  | "amendmentPaid"
+  | "created";
+
+type SortDir = "asc" | "desc";
 import { Loader } from "@/components/ui/loader";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -61,8 +83,23 @@ const Proposals = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [search, setSearch] = useState("");
-  // Opens on the work in flight rather than the whole archive.
-  const [sortBy, setSortBy] = useState<SortOption>("active");
+  // Opens on everything. It used to default to active projects only, which
+  // quietly hid most of the archive — and the totals underneath along with it.
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("created");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  /** Click a column to sort by it; click it again to flip the direction. */
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      // Money and dates are nearly always wanted largest/newest first.
+      setSortDir(key === "client" || key === "status" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
   const [amendmentsOnly, setAmendmentsOnly] = useState(false);
   // "All Time" shows each contract in full; a year shows only the slice of it
   // that belongs to that year, so the column totals reconcile with the
@@ -77,6 +114,48 @@ const Proposals = () => {
     () => proposalsData?.data ?? [],
     [proposalsData],
   );
+
+  /**
+   * A column header that can be ordered by. Shows a faint neutral arrow until
+   * it is the active column, then the direction it is actually sorted in — so
+   * the table always says which column is driving the order.
+   */
+  const SortableTh = ({
+    label,
+    sortKey: key,
+    align = "left",
+  }: {
+    label: string;
+    sortKey: SortKey;
+    align?: "left" | "right";
+  }) => {
+    const active = sortKey === key;
+    return (
+      <th
+        className={`px-2 py-2 text-${align} text-[10px] font-semibold text-gray-700 uppercase tracking-tight`}
+      >
+        <button
+          type="button"
+          onClick={() => toggleSort(key)}
+          title={`Sort by ${label}`}
+          className={`inline-flex items-center gap-1 uppercase tracking-tight cursor-pointer hover:text-blue-600 ${
+            align === "right" ? "flex-row-reverse" : ""
+          } ${active ? "text-blue-600" : ""}`}
+        >
+          <span>{label}</span>
+          {active ? (
+            sortDir === "asc" ? (
+              <ArrowUp size={11} />
+            ) : (
+              <ArrowDown size={11} />
+            )
+          ) : (
+            <ArrowUpDown size={11} className="text-gray-300" />
+          )}
+        </button>
+      </th>
+    );
+  };
 
   /** "City, State, Country" for the Location column. */
   const locationOf = (proposal: any) => {
@@ -152,6 +231,16 @@ const Proposals = () => {
             0,
           );
 
+          // What the client has actually handed over, against what they signed
+          // for. `paidAmount` is the sum of that contract's completed payments,
+          // the same basis as the Financial Summary's Client Paid — so a row
+          // here can be reconciled against the dashboard.
+          const originalPaid = Number(p.paidAmount || 0);
+          const amendmentPaid = amendments.reduce(
+            (sum: number, a: any) => sum + Number(a.paidAmount || 0),
+            0,
+          );
+
           // On a year, a contract contributes only the portion earned in that
           // year. A project with no run yet has no year to attribute to.
           const share =
@@ -164,6 +253,11 @@ const Proposals = () => {
             share,
             originalTotal: originalTotal * share,
             amendmentTotal: amendmentTotal * share,
+            // Paid rides the same year share as the contract it settles, so a
+            // project spanning two years splits both columns the same way and
+            // the pair stays comparable.
+            originalPaid: originalPaid * share,
+            amendmentPaid: amendmentPaid * share,
             rowTotal: (originalTotal + amendmentTotal) * share,
           };
         })
@@ -172,32 +266,54 @@ const Proposals = () => {
         // Only projects that were actually running in the selected year.
         .filter((p: any) => selectedYear === null || p.share > 0)
         .filter((p: any) => !amendmentsOnly || p.amendments.length > 0)
-        .filter(
-          (p: any) =>
-            sortBy !== "active" || p.projectRequest?.status === "ACTIVE",
-        )
+        .filter((p) => {
+          if (statusFilter === "active")
+            return p.projectRequest?.status === "ACTIVE";
+          if (statusFilter === "accepted") return p.status === "ACCEPTED";
+          return true;
+        })
         .sort((a: any, b: any) => {
-          switch (sortBy) {
-            case "manager":
-              return managerNameOf(a).localeCompare(managerNameOf(b));
+          const dir = sortDir === "asc" ? 1 : -1;
+          const time = (v: string | number | Date | null | undefined) =>
+            v ? new Date(v).getTime() : 0;
+
+          switch (sortKey) {
+            case "client":
+              return (
+                dir * (a.clientName || "").localeCompare(b.clientName || "")
+              );
             case "status":
-              return (a.status || "").localeCompare(b.status || "");
-            case "oldest":
-              return (
-                new Date(a.createdAt).getTime() -
-                new Date(b.createdAt).getTime()
-              );
-            case "active":
-            case "newest":
+              return dir * (a.status || "").localeCompare(b.status || "");
+            // A project with no start or end date sorts as 0, which parks the
+            // not-yet-started ones together at one end rather than scattering
+            // them through the list.
+            case "startDate":
+              return dir * (time(a.run?.start) - time(b.run?.start));
+            case "endDate":
+              return dir * (time(a.run?.end) - time(b.run?.end));
+            case "originalTotal":
+              return dir * (a.originalTotal - b.originalTotal);
+            case "originalPaid":
+              return dir * (a.originalPaid - b.originalPaid);
+            case "amendmentTotal":
+              return dir * (a.amendmentTotal - b.amendmentTotal);
+            case "amendmentPaid":
+              return dir * (a.amendmentPaid - b.amendmentPaid);
+            case "created":
             default:
-              return (
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
-              );
+              return dir * (time(a.createdAt) - time(b.createdAt));
           }
         })
     );
-  }, [proposals, search, sortBy, amendmentsOnly, yearFilter]);
+  }, [
+    proposals,
+    search,
+    statusFilter,
+    sortKey,
+    sortDir,
+    amendmentsOnly,
+    yearFilter,
+  ]);
 
   /**
    * The years the filter offers: every year any project has run through, plus
@@ -220,10 +336,18 @@ const Proposals = () => {
       groupedProposals.reduce(
         (acc: any, p: any) => ({
           original: acc.original + p.originalTotal,
+          originalPaid: acc.originalPaid + p.originalPaid,
           amendment: acc.amendment + p.amendmentTotal,
+          amendmentPaid: acc.amendmentPaid + p.amendmentPaid,
           total: acc.total + p.rowTotal,
         }),
-        { original: 0, amendment: 0, total: 0 },
+        {
+          original: 0,
+          originalPaid: 0,
+          amendment: 0,
+          amendmentPaid: 0,
+          total: 0,
+        },
       ),
     [groupedProposals],
   );
@@ -238,7 +362,9 @@ const Proposals = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sortBy, pageSize, amendmentsOnly, yearFilter]);
+    // Sorting is not here: reordering the same rows should not throw you back
+    // to page one. The filters change which rows exist, so they do.
+  }, [search, statusFilter, pageSize, amendmentsOnly, yearFilter]);
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -328,18 +454,22 @@ const Proposals = () => {
           />
         </div>
 
+        {/* A filter, not a sort. Ordering lives on the column headers now, so
+            this only decides which proposals are in the table — and it opens on
+            All, rather than silently showing active projects alone. */}
         <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-xl">
-          <ArrowUpDown size={14} className="text-gray-400" />
+          <Filter size={14} className="text-gray-400" />
           <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as StatusFilter);
+              setPage(1);
+            }}
             className="text-sm bg-transparent outline-none font-bold text-gray-700 cursor-pointer"
           >
+            <option value="all">All Proposals</option>
+            <option value="accepted">Accepted</option>
             <option value="active">Active Projects</option>
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="manager">Project Manager</option>
-            <option value="status">Status</option>
           </select>
         </div>
 
@@ -380,13 +510,19 @@ const Proposals = () => {
           <p>No proposals found.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
+        // Bounded height rather than growing down the page. `overflow-x-auto`
+        // alone already made this the scroll container for sticky cells inside
+        // it, but it had no height to scroll against, so they never moved.
+        <div className="overflow-auto max-h-[70vh] bg-white rounded-lg shadow">
           {/* `w-full` rather than `min-w-full`: with the wide columns free to
               wrap, the table should settle into the container instead of being
               pushed out to whatever its widest row demands. `overflow-x-auto`
               on the wrapper stays as the fallback for very narrow screens. */}
           <table className="w-full table-auto divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            {/* Sticky on each `th`, not on the `thead`: browser support for a
+                sticky thead is patchy, and every cell needs its own background
+                anyway or the rows show through as they scroll beneath it. */}
+            <thead className="bg-gray-50 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-gray-50 [&_th]:border-b [&_th]:border-gray-200">
               <tr>
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Proposal #
@@ -394,9 +530,7 @@ const Proposals = () => {
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Amendment Total #
                 </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Client
-                </th>
+                <SortableTh label="Client" sortKey="client" />
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Project
                 </th>
@@ -406,27 +540,33 @@ const Proposals = () => {
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Project Manager
                 </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Status
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Start Date
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  End Date
-                </th>
+                <SortableTh label="Status" sortKey="status" />
+                <SortableTh label="Start Date" sortKey="startDate" />
+                <SortableTh label="End Date" sortKey="endDate" />
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Total Days
                 </th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Original Contract Total
-                </th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Amendment Contract Total
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Created
-                </th>
+                <SortableTh
+                  label="Original Contract Total"
+                  sortKey="originalTotal"
+                  align="right"
+                />
+                <SortableTh
+                  label="Original Contract Paid"
+                  sortKey="originalPaid"
+                  align="right"
+                />
+                <SortableTh
+                  label="Amendment Contract Total"
+                  sortKey="amendmentTotal"
+                  align="right"
+                />
+                <SortableTh
+                  label="Amendment Contract Paid"
+                  sortKey="amendmentPaid"
+                  align="right"
+                />
+                <SortableTh label="Created" sortKey="created" />
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Actions
                 </th>
@@ -436,7 +576,7 @@ const Proposals = () => {
               {pageProposals.length === 0 && (
                 <tr>
                   <td
-                    colSpan={14}
+                    colSpan={16}
                     className="px-4 py-12 text-center text-sm text-gray-500"
                   >
                     No proposals match these filters.
@@ -554,8 +694,31 @@ const Proposals = () => {
                       <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-gray-700">
                         {formatCurrency(proposal.originalTotal)}
                       </td>
+                      {/* Green once the contract is settled in full, so a row
+                          that still owes money is visible at a glance rather
+                          than needing the two figures compared. */}
+                      <td
+                        className={`px-2 py-2 whitespace-nowrap text-xs text-right font-semibold ${
+                          proposal.originalPaid >= proposal.originalTotal &&
+                          proposal.originalTotal > 0
+                            ? "text-green-600"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {formatCurrency(proposal.originalPaid)}
+                      </td>
                       <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-purple-700">
                         {formatCurrency(proposal.amendmentTotal)}
+                      </td>
+                      <td
+                        className={`px-2 py-2 whitespace-nowrap text-xs text-right font-semibold ${
+                          proposal.amendmentPaid >= proposal.amendmentTotal &&
+                          proposal.amendmentTotal > 0
+                            ? "text-green-600"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {formatCurrency(proposal.amendmentPaid)}
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                         {formatDate(proposal.createdAt)}
@@ -614,12 +777,31 @@ const Proposals = () => {
                           {/* An amendment inherits its project's run, so the
                               date columns belong to the parent row only. */}
                           <td className="px-2 py-2" colSpan={3} />
+                          {/* The two original-contract columns belong to the
+                              parent row; an amendment has no share of them. */}
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-400">
+                            —
+                          </td>
                           <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-400">
                             —
                           </td>
                           <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-purple-700">
                             {formatCurrency(
                               Number(amendment.totalAmount || 0) *
+                                proposal.share,
+                            )}
+                          </td>
+                          <td
+                            className={`px-2 py-2 whitespace-nowrap text-xs text-right font-semibold ${
+                              Number(amendment.paidAmount || 0) >=
+                                Number(amendment.totalAmount || 0) &&
+                              Number(amendment.totalAmount || 0) > 0
+                                ? "text-green-600"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {formatCurrency(
+                              Number(amendment.paidAmount || 0) *
                                 proposal.share,
                             )}
                           </td>
@@ -642,7 +824,7 @@ const Proposals = () => {
             </tbody>
             {/* Column sums over every filtered row — not just this page — so
                 the figures line up with the Financial Dashboard's year. */}
-            <tfoot className="bg-gray-900 text-white">
+            <tfoot className="bg-gray-900 text-white [&_td]:sticky [&_td]:bottom-0 [&_td]:z-20 [&_td]:bg-gray-900">
               <tr>
                 <td
                   colSpan={10}
@@ -655,8 +837,14 @@ const Proposals = () => {
                 <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold">
                   {formatCurrency(columnTotals.original)}
                 </td>
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-green-300">
+                  {formatCurrency(columnTotals.originalPaid)}
+                </td>
                 <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-purple-300">
                   {formatCurrency(columnTotals.amendment)}
+                </td>
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-green-300">
+                  {formatCurrency(columnTotals.amendmentPaid)}
                 </td>
                 <td
                   className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold"
@@ -768,6 +956,15 @@ const ServiceGroup = ({
         card: "border-gray-200",
       };
 
+  // What the client has settled on this contract: the value of the phases
+  // marked paid, not the receipts. Read this way it cannot run past the
+  // contract total however many times a phase was charged.
+  const paidTotal = services.reduce(
+    (sum: number, s) => sum + (s.paid ? Number(s.amount || 0) : 0),
+    0,
+  );
+  const paidCount = services.filter((s) => s.paid).length;
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -783,9 +980,21 @@ const ServiceGroup = ({
         <span className="text-xs text-gray-400">
           {services.length} service{services.length === 1 ? "" : "s"}
         </span>
+        {paidCount > 0 && (
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-green-50 text-green-700 border-green-100">
+            {paidCount === services.length
+              ? "Paid in full"
+              : `${paidCount} of ${services.length} paid`}
+          </span>
+        )}
         {total !== undefined && total !== null && (
-          <span className="ml-auto text-sm font-semibold text-gray-700">
+          <span className="ml-auto text-sm font-semibold text-gray-700 text-right">
             ${total}
+            {/* The signed value against what has actually come in, so the two
+                figures the client's statement has to reconcile sit together. */}
+            <span className="block text-xs font-medium text-green-600">
+              Client paid ${paidTotal.toLocaleString()}
+            </span>
           </span>
         )}
       </div>
@@ -823,13 +1032,25 @@ const ServiceGroup = ({
                   {service.description}
                 </p>
               )}
-              <div className="mt-2 pt-2 border-t border-gray-100">
+              <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
                 <h1 className="text-lg font-semibold ">
                   Price:{" "}
                   <span className="text-green-600 font-bold">
                     ${service.amount}
                   </span>
                 </h1>
+                {/* Both states are shown, not just the paid one: an absent
+                    badge would read the same as a phase nobody has billed
+                    yet. */}
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded whitespace-nowrap border ${
+                    service.paid
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : "bg-gray-50 text-gray-500 border-gray-200"
+                  }`}
+                >
+                  {service.paid ? "Paid" : "Unpaid"}
+                </span>
               </div>
             </div>
           ))}
@@ -913,12 +1134,16 @@ const ProposalDetailsModal = ({
     useState(false);
   const [creatingForAmendment, setCreatingForAmendment] =
     useState<Amendment | null>(null);
+  // No taxRate. It defaulted to 8 here and nowhere else — the New Proposal
+  // wizard never sends one — so whether a client was charged 8% on identical
+  // work depended only on which screen the proposal happened to be raised
+  // from. The tax was then added to the contract total while every Pay button
+  // charged the untaxed service lines, so it was quoted but never collected.
   const [proposalForm, setProposalForm] = useState({
     name: "",
     description: "",
     budgetRange: "",
     expectedTimeline: "",
-    taxRate: 8,
     notes: "",
   });
 
@@ -1072,7 +1297,6 @@ const ProposalDetailsModal = ({
       description: "",
       budgetRange: "",
       expectedTimeline: "",
-      taxRate: 8,
       notes: "",
     });
     setIsCreateProposalModalOpen(true);
@@ -1446,22 +1670,23 @@ const ProposalDetailsModal = ({
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="font-medium">${proposal.subtotal}</span>
                 </div>
-                {proposal.taxRate && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tax Rate:</span>
-                    <span className="font-medium">{proposal.taxRate}%</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax Amount:</span>
-                  <span className="font-medium">
-                    ${proposal.taxAmount || "0"}
-                  </span>
-                </div>
+                {/* No tax rows. Nothing charges tax — every Pay button bills
+                    the service lines — so quoting a rate and an amount that are
+                    never collected made this page disagree with what the client
+                    is actually billed.
+
+                    Proposals raised before this still carry a stored taxAmount,
+                    so it is taken back off the total rather than trusted. Doing
+                    it this way round keeps any credits intact, which subtotal
+                    alone would drop. */}
                 <div className="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
                   <span>Total Amount:</span>
                   <span className="text-green-600">
-                    ${proposal.totalAmount}
+                    $
+                    {(
+                      Number(proposal.totalAmount || 0) -
+                      Number(proposal.taxAmount || 0)
+                    ).toLocaleString()}
                   </span>
                 </div>
                 {/* {proposal.paymentMethod && (
@@ -1976,23 +2201,11 @@ const ProposalDetailsModal = ({
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tax Rate (%)
-                </label>
-                <input
-                  type="number"
-                  value={proposalForm.taxRate}
-                  onChange={(e) =>
-                    setProposalForm((prev) => ({
-                      ...prev,
-                      taxRate: Number(e.target.value),
-                    }))
-                  }
-                  placeholder="e.g. 8"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {/* Tax Rate removed with the 8% default above. Nothing charges
+                  tax — every Pay button bills the service lines — so a rate
+                  entered here would have been added to the quoted total and
+                  then never collected. Offering the field would invite exactly
+                  the mismatch this change removes. */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Notes

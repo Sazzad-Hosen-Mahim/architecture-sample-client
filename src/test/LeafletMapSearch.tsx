@@ -31,16 +31,43 @@ interface LeafletMapSearchProps {
   onLocationSelect?: (coords: { lat: number; lng: number } | null) => void;
   onProjectClick?: (id: string) => void;
   projects?: any[];
+  /**
+   * The location filter as the page holds it, so the pin follows it.
+   *
+   * The map used to own this outright, which meant clearing the filters from
+   * the bar above dropped the filter but left the pin sitting there with
+   * nothing to remove it — the pin's own Clear link was the only way, and that
+   * is gone now.
+   */
+  selectedLocation?: { lat: number; lng: number } | null;
 }
 
 export default function LeafletMapSearch({
   onLocationSelect,
   onProjectClick,
   projects = [],
+  selectedLocation,
 }: LeafletMapSearchProps) {
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
-    null
+    selectedLocation ?? null
   );
+
+  // Follow the page's filter. Clicking the map still sets the pin immediately —
+  // the page is told at the same moment, so the two agree — but a clear from
+  // the filter bar now takes the pin with it.
+  //
+  // Tracked as two numbers rather than the object: a parent that built the
+  // value inline would hand over a new object every render, and setting state
+  // from it would re-render and do it again.
+  const filterLat = selectedLocation?.lat ?? null;
+  const filterLng = selectedLocation?.lng ?? null;
+  useEffect(() => {
+    setSelected(
+      filterLat !== null && filterLng !== null
+        ? { lat: filterLat, lng: filterLng }
+        : null,
+    );
+  }, [filterLat, filterLng]);
   const mapRef = useRef<L.Map | null>(null);
 
   // Leaflet measures the container once on mount. If the page is still laying out
@@ -81,13 +108,6 @@ export default function LeafletMapSearch({
   function LocationMarker() {
     useMapEvents({
       click(e) {
-        // A click on the tooltip's own controls is not a click on the map.
-        // The tooltip is rendered inside the map's panes, so Leaflet reports
-        // it as a map click all the same — which set a brand-new filter at
-        // that point, undoing the clear the moment it happened.
-        const target = e.originalEvent.target as HTMLElement | null;
-        if (target?.closest(".leaflet-tooltip")) return;
-
         const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
         if (selected && selected.lat === coords.lat && selected.lng === coords.lng) {
           setSelected(null);
@@ -99,24 +119,12 @@ export default function LeafletMapSearch({
       },
     });
 
-    return selected ? (
-      <Marker position={selected}>
-        {/* `interactive` is what lets the button be clicked at all: a Leaflet
-            tooltip is pointer-events:none by default, so the click passed
-            straight through it to the map underneath and the button never saw
-            it. Without this the onClick below simply never ran. */}
-        <Tooltip permanent interactive>
-          📍 Filtering projects near this area
-          <br />
-          <button
-            onClick={() => { setSelected(null); onLocationSelect?.(null); }}
-            className="text-blue-500 underline mt-1 cursor-pointer"
-          >
-            Clear map filter
-          </button>
-        </Tooltip>
-      </Marker>
-    ) : null;
+    // Just the pin. It carried a permanent tooltip — "Filtering projects near
+    // this area" with a Clear link — which sat over the map as a white card on
+    // a phone and covered the very pins it was describing. The filter bar above
+    // already says a location filter is on and already clears it, so the card
+    // was a second control for something the page states plainly elsewhere.
+    return selected ? <Marker position={selected} /> : null;
   }
 
   return (

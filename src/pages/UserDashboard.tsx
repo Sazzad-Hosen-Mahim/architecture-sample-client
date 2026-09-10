@@ -186,7 +186,10 @@ const UserDashboard = () => {
         <Button
           onClick={() =>
             navigate("/new-project", {
-              state: { backTo: "/user-dashboard", backLabel: "Back to dashboard" },
+              state: {
+                backTo: "/user-dashboard",
+                backLabel: "Back",
+              },
             })
           }
           className="bg-black cursor-pointer my-2 text-white hover:bg-gray-800 shrink-0 font-medium rounded-lg"

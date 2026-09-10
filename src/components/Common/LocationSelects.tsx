@@ -137,11 +137,17 @@ export function StateSelect({
   // country picker beside them — disabled, because it cannot be used yet — so
   // the row keeps its shape instead of collapsing to a line of grey text where
   // a field should be.
+  // Whatever is already stored stays on screen while the list loads. Rendering
+  // the placeholder instead made a saved state vanish and reappear on every
+  // refetch: there are no items yet for the value to match against, so the
+  // control had nothing to show and fell through to the loading text.
   if (!country || loading) {
     return (
       <Select disabled>
         <SelectTrigger id={id} className="w-full">
-          <SelectValue placeholder={loading ? "Loading states…" : placeholder} />
+          <span className="truncate">
+            {value || (loading ? "Loading states…" : placeholder)}
+          </span>
         </SelectTrigger>
         <SelectContent className="max-h-[300px] bg-white border-gray-300" />
       </Select>

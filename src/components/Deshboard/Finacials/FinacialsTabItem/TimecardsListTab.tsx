@@ -577,9 +577,15 @@ const TimecardsListTab = () => {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+      {/* Bounded height rather than growing down the page. `overflow-x-auto`
+          alone already made this the scroll container for sticky cells inside
+          it, but it had no height to scroll against, so they never moved. */}
+      <div className="bg-white border border-gray-100 rounded-2xl overflow-auto max-h-[70vh] shadow-sm">
         <table className="w-full text-sm min-w-[1800px]">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          {/* Sticky per `th`, not on the `thead`: support for a sticky thead is
+              patchy, and each cell needs its own background or the rows show
+              through as they pass beneath it. */}
+          <thead className="bg-gray-50 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-gray-50 [&_th]:border-b [&_th]:border-gray-100">
             <tr className="[&>th]:p-4 [&>th]:text-left [&>th]:font-black [&>th]:text-gray-400 [&>th]:uppercase [&>th]:tracking-widest [&>th]:text-[10px] [&>th]:whitespace-nowrap">
               <th className="w-12">
                 <input
@@ -848,7 +854,7 @@ const TimecardsListTab = () => {
           </tbody>
 
           {payrollItems.length > 0 && (
-            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+            <tfoot className="bg-gray-50 [&_td]:sticky [&_td]:bottom-0 [&_td]:z-20 [&_td]:bg-gray-50 [&_td]:border-t-2 [&_td]:border-gray-200">
               <tr className="[&>td]:p-4 [&>td]:whitespace-nowrap">
                 <td />
                 <td className="text-[10px] font-black uppercase tracking-widest text-gray-500">

@@ -1,7 +1,7 @@
 export default function Terms() {
   return (
     <div>
-      <div className="max-w-4xl mx-auto px-4 py-10 sm:px-6 lg:px-8 pb-20">
+      <div className="max-w-4xl mx-auto px-4 py-2 sm:px-6 lg:px-8 pb-20">
         {/* Page Title */}
         {/* <h1 className="text-xl font-semibold mb-10 text-center">
           Terms of Service

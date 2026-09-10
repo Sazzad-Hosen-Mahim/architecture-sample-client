@@ -11,6 +11,8 @@ import { useCreateAmendmentMutation } from "@/redux/api/amendmentApi";
 interface ClientProposalsTabProps {
     project: any;
     amendments: any[];
+    /** Passed through to the details modal so it can mark phases as paid. */
+    paymentInfo?: any;
 }
 
 const StatusPill = ({ status }: { status: string }) => {
@@ -46,7 +48,7 @@ const amendmentLabel = (parentNumber: string | undefined, ownNumber: string, ind
     return `${parentNumber}-AMD-${String(index + 1).padStart(3, "0")}`;
 };
 
-export default function ClientProposalsTab({ project, amendments }: ClientProposalsTabProps) {
+export default function ClientProposalsTab({ project, amendments, paymentInfo }: ClientProposalsTabProps) {
     const [detailsProposal, setDetailsProposal] = useState<any>(null);
     const [contractProposalId, setContractProposalId] = useState<string>("");
     const [isAmendmentOpen, setIsAmendmentOpen] = useState(false);
@@ -246,6 +248,7 @@ export default function ClientProposalsTab({ project, amendments }: ClientPropos
             {detailsProposal && (
                 <ViewProposalDetailsModal
                     proposal={detailsProposal}
+                    paymentInfo={paymentInfo}
                     onClose={() => setDetailsProposal(null)}
                 />
             )}

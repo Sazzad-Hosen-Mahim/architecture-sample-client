@@ -531,10 +531,21 @@ function WorldProject() {
 
         <div className="py-6 mb-10">
           <LeafletMapSearch
+            selectedLocation={selectedLocation}
             onLocationSelect={setSelectedLocation}
             projects={displayedProjects}
             onProjectClick={(id) => navigate(`/world-project/${id}`)}
           />
+          {/* Once a filter is on, the map shows only the pins that survived it
+              — but nothing on the map says so, and the control that undoes it
+              is the X back up in the filter row. Said only while there is
+              something to reset, so it reads as an answer to what just
+              happened rather than as standing instructions. */}
+          {!!hasActiveFilters && (
+            <p className="mt-2 text-right text-xs text-gray-400">
+              Click the X in the top right to reset the map
+            </p>
+          )}
         </div>
 
         {/* Projects grid */}
