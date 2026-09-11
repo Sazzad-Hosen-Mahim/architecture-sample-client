@@ -95,6 +95,33 @@ body {
   display: none;
 }
 
+/* The same thing for the page's own scrollbar, toggled by the home page.
+
+   `.scrollbar-hide` above is for an element that scrolls. This one is for the
+   viewport, which takes its scrolling from `body` — so the rules go on the root
+   and on `body`, not on a div.
+
+   The home page is a single full-bleed photograph and is deliberately sized a
+   little taller than the screen. That overshoot is not decoration: Safari
+   retracts its address bar only when a page can scroll, and only once it
+   retracts does page content reach the strip the bar was covering. So the
+   scroll is what lets the photo reach the bottom edge of the phone — but there
+   is nothing under the fold to scroll *to*, which makes the scrollbar itself
+   pure noise. Hidden, while the scrolling it advertises stays exactly as it is.
+
+   Scoped to a class the hero adds and removes, never global: every other page
+   has real content below the fold, where the scrollbar is telling the truth. */
+html.hero-no-scrollbar,
+html.hero-no-scrollbar body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+
+html.hero-no-scrollbar::-webkit-scrollbar,
+html.hero-no-scrollbar body::-webkit-scrollbar {
+  display: none; /* WebKit, Blink */
+}
+
 /* The shadcn Calendar marks the selected day with `bg-primary` /
    `text-primary-foreground`, but this project's Tailwind theme doesn't define
    `--color-primary`, so that styling never appears — only a focus ring that

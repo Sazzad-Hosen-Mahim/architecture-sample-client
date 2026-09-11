@@ -20,6 +20,26 @@ import { toProjectImages, type ProjectImage } from "@/utils/projectImage";
  */
 const HERO_FILL = "flex-1 w-full";
 
+/**
+ * On a phone the hero is pushed 3rem past the height the layout gives it, so
+ * the photo runs beyond the bottom edge of the screen rather than ending level
+ * with it.
+ *
+ * The overshoot leaves the page slightly scrollable, and that is the whole
+ * mechanism: Safari retracts its address bar only on a scroll, and only once it
+ * retracts does page content reach the strip the bar was covering. A hero sized
+ * to exactly what is visible can never fill that strip — the bar never moves,
+ * so the band below the photo stays whatever colour the document canvas is.
+ *
+ * The scrollbar this creates is hidden while this page is open; see the effect
+ * below. Scrolling still works, there is simply no bar drawn for a page with
+ * nothing under the fold.
+ *
+ * `max-md:` keeps it to small screens; a desktop hero still ends exactly at the
+ * fold. The 4rem is the navbar (`h-16`).
+ */
+const HERO_MOBILE_OVERSHOOT = "max-md:min-h-[calc(100lvh_-_4rem_+_3rem)]";
+
 /** Shown only until the first featured project is published. */
 const FALLBACK_IMAGE: ProjectImage = {
   url: "https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2400&q=80",
@@ -118,6 +138,25 @@ function Hero() {
     };
   }, [isLoading]);
 
+  /**
+   * Hide the page's scrollbar for as long as this page is open.
+   *
+   * The overshoot above makes the page taller than the screen on purpose, to
+   * buy the scroll that makes Safari retract its bar. Nothing lives below the
+   * fold, though, so the scrollbar that comes with the extra height points at
+   * nothing. Only the bar is hidden — the scrolling it advertises has to keep
+   * working, since that is what the whole arrangement rests on.
+   *
+   * A class rather than inline style, because hiding a scrollbar needs a
+   * pseudo-element rule (see index.css), and removed on the way out: every
+   * other page has real content down there.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("hero-no-scrollbar");
+    return () => root.classList.remove("hero-no-scrollbar");
+  }, []);
+
   // const toggleMenu = () => {
   //   setIsMenuOpen(!isMenuOpen);
   // };
@@ -148,28 +187,19 @@ function Hero() {
   const detailPath = detailPathFor(latestMedia);
 
   return (
-    <div className={`relative overflow-hidden ${HERO_FILL}`}>
+    <div
+      className={`relative overflow-hidden ${HERO_FILL} ${HERO_MOBILE_OVERSHOOT}`}
+    >
       {/* Background photos with transition. Real <img> elements rather than
           CSS `background-image` so each one carries a `srcset` — a background
           can only ever name a single file, which is what left the hero
           upscaling one mid-size render on large displays.
 
-          Fixed to the screen rather than filling this box, and measured in
-          `lvh` rather than taking the box's height.
-
-          Those are the two halves of one problem. The page is `dvh` tall so it
-          does not scroll, and `dvh` stops at the top of Safari's toolbar — so a
-          photo that filled this box stopped there too, and the strip the
-          toolbar sits in showed the bare document canvas instead. `lvh` is that
-          same viewport measured with the browser UI retracted, i.e. the whole
-          screen, so it reaches under the toolbar; the safe-area inset covers
-          the home-indicator band past it.
-
-          Fixed is what makes that free: an out-of-flow element adds nothing to
-          the document's height, so the picture can be taller than the viewport
-          without the page becoming scrollable again. `top-16` is the navbar
-          (`h-16`), so the photo still starts where this box does, and on a
-          desktop — where `lvh` is just the window — the two are identical. */}
+          Filling this box, not pinned to the screen. A `fixed` photo was tried
+          here to reach under Safari's bar without the page growing: it cannot.
+          Safari lays fixed elements out inside the viewport the bar leaves,
+          so the picture stopped in exactly the same place — the height has to
+          come from the page, and the page has to be able to scroll. */}
       {slides.map((image, index) => (
         <ProjectPhoto
           key={image.url}
@@ -177,7 +207,7 @@ function Hero() {
           alt={latestMedia?.title || "Featured project"}
           sizes="100vw"
           priority={index === 0}
-          className="fixed inset-x-0 top-16 h-[calc(100lvh_-_4rem_+_env(safe-area-inset-bottom))] transition-opacity duration-1000 ease-in-out"
+          className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
           style={{
             opacity: index === currentSlide ? 1 : 0,
             zIndex: index === currentSlide ? 1 : 0,
