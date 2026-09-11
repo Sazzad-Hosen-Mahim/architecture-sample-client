@@ -20,20 +20,6 @@ import { toProjectImages, type ProjectImage } from "@/utils/projectImage";
  */
 const HERO_FILL = "flex-1 w-full";
 
-/**
- * On a phone the hero is pushed 3rem past the height the layout gives it, so
- * the photo runs beyond the bottom edge of the screen rather than ending level
- * with it. Anything of that bottom strip that belongs to the page — as opposed
- * to Safari's own toolbar chrome — is then covered by the picture.
- *
- * The overshoot also leaves the page slightly scrollable, and a scroll is what
- * makes Safari collapse its toolbar, so the photo gets the taller viewport too.
- *
- * `max-md:` keeps it to small screens; a desktop hero still ends exactly at the
- * fold with no scrollbar. The 4rem is the navbar (`h-16`).
- */
-const HERO_MOBILE_OVERSHOOT = "max-md:min-h-[calc(100lvh_-_4rem_+_3rem)]";
-
 /** Shown only until the first featured project is published. */
 const FALLBACK_IMAGE: ProjectImage = {
   url: "https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2400&q=80",
@@ -99,16 +85,18 @@ function Hero() {
   /**
    * The white sliver along the bottom edge on iPhone.
    *
-   * It is not a gap in the page. The hero already runs past the bottom of the
-   * screen (see HERO_MOBILE_OVERSHOOT), so the photograph is behind that strip
-   * — Safari just doesn't draw it there. The band around the home indicator,
-   * and the ground behind Safari's own toolbar, are painted from the
-   * *document's* background colour rather than from whatever the page rendered
-   * at that position, and with none set that colour is white. Android has no
-   * such chrome, which is why it never showed the band.
+   * It is not a gap in the page, and no amount of page height closes it. The
+   * band around the home indicator, and the ground behind Safari's own
+   * toolbar, are painted from the *document's* background colour rather than
+   * from whatever the page rendered at that position — and with none set, that
+   * colour is white. Android has no such chrome, which is why it never showed
+   * the band.
    *
-   * So the photo itself cannot reach it, only a colour can. Black is the one
-   * that disappears against a full-bleed photograph, the way a letterbox does.
+   * The hero used to be stretched past the bottom of the screen to cover it,
+   * which did not work for that reason and left the page permanently
+   * scrollable as its only effect. So: the photo cannot reach that strip, only
+   * a colour can. Black is the one that disappears against a full-bleed
+   * photograph, the way a letterbox does.
    *
    * But only while there is a photograph to disappear against. Until the hero
    * loads, the page is the site's white grid and the same black covered the
@@ -160,9 +148,7 @@ function Hero() {
   const detailPath = detailPathFor(latestMedia);
 
   return (
-    <div
-      className={`relative overflow-hidden ${HERO_FILL} ${HERO_MOBILE_OVERSHOOT}`}
-    >
+    <div className={`relative overflow-hidden ${HERO_FILL}`}>
       {/* Background photos with transition. Real <img> elements rather than
           CSS `background-image` so each one carries a `srcset` — a background
           can only ever name a single file, which is what left the hero

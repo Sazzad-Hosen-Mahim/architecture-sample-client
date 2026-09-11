@@ -36,7 +36,7 @@ import {
   isOpenDay,
   isWithinOfficeHours,
   startOfDay,
-  WEEKDAY_LABELS,
+  // WEEKDAY_LABELS,
   type OfficeHoursSetting,
 } from "@/utils/scheduleSlots";
 
@@ -151,9 +151,8 @@ export default function ScheduleAppointmentSection({
     return { from: from.toISOString(), to: to.toISOString() };
   }, []);
 
-  const { data: busyResponse } = useGetConsultationAvailabilityQuery(
-    availabilityWindow,
-  );
+  const { data: busyResponse } =
+    useGetConsultationAvailabilityQuery(availabilityWindow);
 
   const busyRanges = useMemo(
     () =>
@@ -187,15 +186,15 @@ export default function ScheduleAppointmentSection({
 
   // "Saturday and Sunday" — said up front, so someone booking in a week that is
   // entirely greyed out understands why rather than assuming the form is broken.
-  const openDaysLabel = useMemo(() => {
-    const days = officeHours?.days;
-    if (!days || days.length === 0 || days.length === 7) return "";
-    const names = WEEKDAY_LABELS.filter((d) => days.includes(d.value)).map(
-      (d) => d.label,
-    );
-    if (names.length === 1) return names[0];
-    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  }, [officeHours]);
+  // const openDaysLabel = useMemo(() => {
+  //   const days = officeHours?.days;
+  //   if (!days || days.length === 0 || days.length === 7) return "";
+  //   const names = WEEKDAY_LABELS.filter((d) => days.includes(d.value)).map(
+  //     (d) => d.label,
+  //   );
+  //   if (names.length === 1) return names[0];
+  //   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  // }, [officeHours]);
 
   const getAvailableTimes = (_date: Date | undefined) => availableTimes;
 
@@ -255,7 +254,9 @@ export default function ScheduleAppointmentSection({
     setErrors(validationErrors);
 
     if (hasErrors(validationErrors)) {
-      toast.error("Please complete your appointment details before continuing.");
+      toast.error(
+        "Please complete your appointment details before continuing.",
+      );
       return;
     }
 
@@ -270,7 +271,8 @@ export default function ScheduleAppointmentSection({
             first would mean showing fields that may not apply. */}
         <div>
           <Label htmlFor="appointmentType" className="text-md font-semibold">
-            Appointment Type <span className="text-red-500 font-semibold">*</span>
+            Appointment Type{" "}
+            <span className="text-red-500 font-semibold">*</span>
           </Label>
           <Select
             name="appointmentType"
@@ -379,7 +381,9 @@ export default function ScheduleAppointmentSection({
                   <CitySelect
                     id="meetingCity"
                     value={formData.meetingCity || ""}
-                    onChange={(value) => handleMeetingField("meetingCity", value)}
+                    onChange={(value) =>
+                      handleMeetingField("meetingCity", value)
+                    }
                   />
                 </div>
                 <FieldError message={errors.meetingCity} />
@@ -410,76 +414,83 @@ export default function ScheduleAppointmentSection({
           </div>
         ) : (
           <div className="space-y-6">
-          <div>
-            <Label htmlFor="appointmentDate" className="text-md font-semibold">
-              Select Date
-            </Label>
-            {/* Three things close a day, and all three are applied here so the
+            <div>
+              <Label
+                htmlFor="appointmentDate"
+                className="text-md font-semibold"
+              >
+                Select Date
+              </Label>
+              {/* Three things close a day, and all three are applied here so the
                 calendar can never offer a date whose time list is empty:
                 a weekday the office doesn't open, time blocked off in the
                 Master Schedule, and dates already ruled out upstream. */}
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              disabled={[...unavailableDates, isDayUnavailable]}
-              className="mt-2 border-0 rounded-none"
-              modifiers={{
-                unavailable: [...unavailableDates, isDayUnavailable],
-              }}
-              modifiersClassNames={{
-                unavailable: "text-gray-400 opacity-50 line-through",
-              }}
-              showOutsideDays={false} // Hide previous/next month dates
-            />
-            <div className="text-xs text-gray-500 mt-2">
-              {openDaysLabel
-                ? `We take appointments on ${openDaysLabel}. Greyed out dates are closed or fully booked.`
-                : "Greyed out dates indicate unavailability."}
-            </div>
-            <FieldError message={errors.appointmentDate} />
-          </div>
-
-          <div>
-            <Label htmlFor="appointmentTime" className="text-md font-semibold">
-              Select Time
-            </Label>
-            {!selectedDate ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Available times will appear here once you select a date.
-              </p>
-            ) : isLoadingOfficeHours ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Loading available times…
-              </p>
-            ) : getAvailableTimes(selectedDate).length === 0 ? (
-              // The window can legitimately be too narrow for a whole hour, and
-              // an empty grid would read as a broken form.
-              <p className="text-sm text-muted-foreground mt-2">
-                No appointment times are open at the moment. Please contact us to
-                arrange a consultation.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-                {getAvailableTimes(selectedDate).map((time) => (
-                  <button
-                    key={time}
-                    type="button"
-                    onClick={() => handleTimeSelect(time)}
-                    className={cn(
-                      "relative rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
-                      selectedTime === time
-                        ? "border-gray-900 bg-gray-900 text-white shadow-lg"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-500 hover:bg-gray-50 hover:shadow-sm",
-                    )}
-                  >
-                    {time}
-                  </button>
-                ))}
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                disabled={[...unavailableDates, isDayUnavailable]}
+                className="mt-2 border-0 rounded-none"
+                modifiers={{
+                  unavailable: [...unavailableDates, isDayUnavailable],
+                }}
+                modifiersClassNames={{
+                  unavailable: "text-gray-400 opacity-50 line-through",
+                }}
+                showOutsideDays={false} // Hide previous/next month dates
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                Greyed out dates are closed or fully booked.
+                {/* {openDaysLabel
+                  ? `Greyed out dates are closed or fully booked.`
+                  : "Greyed out dates indicate unavailability."} */}
               </div>
-            )}
-            <FieldError message={errors.appointmentTime} />
-          </div>
+              <FieldError message={errors.appointmentDate} />
+            </div>
+
+            <div>
+              <Label
+                htmlFor="appointmentTime"
+                className="text-md font-semibold"
+              >
+                Select Time
+              </Label>
+              {!selectedDate ? (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Available times will appear here once you select a date.
+                </p>
+              ) : isLoadingOfficeHours ? (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Loading available times…
+                </p>
+              ) : getAvailableTimes(selectedDate).length === 0 ? (
+                // The window can legitimately be too narrow for a whole hour, and
+                // an empty grid would read as a broken form.
+                <p className="text-sm text-muted-foreground mt-2">
+                  No appointment times are open at the moment. Please contact us
+                  to arrange a consultation.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+                  {getAvailableTimes(selectedDate).map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => handleTimeSelect(time)}
+                      className={cn(
+                        "relative rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+                        selectedTime === time
+                          ? "border-gray-900 bg-gray-900 text-white shadow-lg"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-500 hover:bg-gray-50 hover:shadow-sm",
+                      )}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <FieldError message={errors.appointmentTime} />
+            </div>
 
             {selectedDate && selectedTime && (
               <div>

@@ -7,7 +7,7 @@ export default function Terms() {
           Terms of Service
         </h1> */}
 
-        <div className="text-gray-700">
+        <div className="text-black">
           {/* Effective Date */}
           <p className="text-sm mb-8">
             <span className="font-semibold">Effective Date:</span> August 8,

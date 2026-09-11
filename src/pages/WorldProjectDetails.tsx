@@ -10,6 +10,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import { useGetMediaByIdOrSlugQuery } from "@/redux/features/Media/mediaApi";
 import HeroSocialMedia from "@/components/homeComponent/HeroSocialMedia";
@@ -25,6 +26,36 @@ import {
 const GALLERY_SIZES = "(min-width: 1088px) 1024px, calc(100vw - 2rem)";
 
 const PLACEHOLDER: ProjectImage = { url: "/placeholder.svg" };
+
+/**
+ * One labelled fact in the Project Details grid.
+ *
+ * The `min-w-0`s are the load-bearing part. Grid and flex items size to their
+ * content by default, so a two-part value like "Los Rios, Ecuador" made its
+ * column wider than the share of the row it was given, and the far column was
+ * pushed out of the card. The icon needs the opposite treatment: without
+ * `shrink-0` the squeeze came out of the circle instead and flattened it into
+ * an oval.
+ */
+const DetailItem = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex min-w-0 items-center gap-3">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white">
+      <Icon size={18} className="text-gray-600" />
+    </div>
+    <div className="min-w-0">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-sm font-medium break-words">{value}</p>
+    </div>
+  </div>
+);
 
 // "NORTH_AMERICA" -> "North America", "TROPICAL" -> "Tropical"
 const toTitleCase = (value: string) =>
@@ -167,19 +198,24 @@ function WorldProjectDetails() {
           `contents` so all three are direct flex children again, with explicit
           orders restoring the original left/centre/right row. */}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
-        <h1 className="flex-1 text-base md:text-lg font-semibold text-center order-first md:order-2">
+        <h1 className="min-w-0 flex-1 break-words text-base md:text-lg font-semibold text-center order-first md:order-2">
           {project.name}
         </h1>
 
-        <div className="flex items-center justify-between gap-3 md:contents">
-          <div className="md:w-1/4 shrink-0 md:order-1">
+        {/* The fixed widths and `shrink-0` below only apply from md. On a
+            narrow phone the type and the date together are wider than the
+            line, and items that cannot shrink do not wrap — they just run off
+            the right edge, which is what clipped "Published". Here they shrink,
+            and wrap to their own lines if even that is not enough. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 md:contents">
+          <div className="min-w-0 md:w-1/4 md:shrink-0 md:order-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
               {isPortfolio ? "Portfolio" : "World Project"}
             </p>
           </div>
 
-          <div className="md:w-1/4 shrink-0 md:text-right md:order-3">
-            <span className="text-sm text-gray-500">
+          <div className="min-w-0 md:w-1/4 md:shrink-0 md:text-right md:order-3">
+            <span className="text-xs sm:text-sm text-gray-500">
               Published: {project.PublishedDate}
             </span>
           </div>
@@ -187,7 +223,10 @@ function WorldProjectDetails() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        <div className="flex-1">
+        {/* `min-w-0`: from lg this is a flex item in a row, where the default
+            `min-width: auto` would let wide content set the column's floor
+            instead of the column constraining the content. */}
+        <div className="min-w-0 flex-1">
           {/* Image gallery */}
           <div className="mb-6">
             <div className="relative w-full h-[300px] md:h-[430px] rounded-xl overflow-hidden mb-4 bg-gray-100">
@@ -234,23 +273,38 @@ function WorldProjectDetails() {
               )}
             </div>
 
-            {/* Thumbnails */}
+            {/* Thumbnails.
+
+                A wrapping grid, not a row that scrolls sideways. As a flex row
+                of `w-20` items that were each `flex-shrink-0`, the strip's
+                width was the sum of its thumbnails — so it grew with every
+                photo added to the project and could not shrink back on a
+                narrow screen. That is what was widening the page and pulling
+                the navbar off its edges.
+
+                A grid takes its width from the container instead, so the strip
+                is always exactly as wide as the photo above it however many
+                images there are: four across on a phone, more as the column
+                gets wider, wrapping onto new rows once they no longer fit. */}
             {images.length > 1 && (
-              <div className="flex gap-3 overflow-x-auto pb-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3 pb-2">
                 {images.map((img: ProjectImage, idx: number) => (
                   <button
                     key={img.url}
                     onClick={() => setSelectedImage(idx)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                    className={`aspect-square w-full rounded-lg overflow-hidden border-2 transition-all ${
                       activeIndex === idx
                         ? "border-black"
                         : "border-transparent opacity-70 hover:opacity-100"
                     }`}
                   >
-                    {/* 160px covers the 80px box at 2x — no reason to pull the
-                        full-size photo down for a thumbnail strip. */}
+                    {/* The box is no longer a fixed 80px — it is a share of the
+                        column, up to ~115px on a wide screen — so 160px would
+                        now be soft on a retina display. 320 covers that at 3x
+                        and is still far short of pulling the full-size photo
+                        down for a thumbnail. */}
                     <img
-                      src={projectImageUrl(img.url, 160)}
+                      src={projectImageUrl(img.url, 320)}
                       alt={`thumb-${idx}`}
                       loading="lazy"
                       decoding="async"
@@ -278,101 +332,64 @@ function WorldProjectDetails() {
               <div className="bg-gray-50 rounded-xl p-3 mb-6">
                 <h2 className="text-lg font-semibold mb-4">Project Details</h2>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {/* One column on the narrowest phones. Two columns of a 40px
+                    circle plus a label leaves ~70px for the value there, which
+                    is not enough for a name or a two-part location. `sm` is
+                    640px and would hold the single column far too long, so the
+                    switch is at the width where two columns actually work. */}
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-3 gap-4">
                   {/* Portfolio has no architect — it shows Project Type in that slot. */}
                   {isPortfolio ? (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                        <Building2 size={18} className="text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Project Type</p>
-                        <p className="text-sm font-medium">
-                          {project.projectType}
-                        </p>
-                      </div>
-                    </div>
+                    <DetailItem
+                      icon={Building2}
+                      label="Project Type"
+                      value={project.projectType}
+                    />
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                        <User size={18} className="text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Architect</p>
-                        <p className="text-sm font-medium">
-                          {project.Architect}
-                        </p>
-                      </div>
-                    </div>
+                    <DetailItem
+                      icon={User}
+                      label="Architect"
+                      value={project.Architect}
+                    />
                   )}
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <Camera size={18} className="text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Photographer</p>
-                      <p className="text-sm font-medium">
-                        {project.Photographer}
-                      </p>
-                    </div>
-                  </div>
+                  <DetailItem
+                    icon={Camera}
+                    label="Photographer"
+                    value={project.Photographer}
+                  />
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <Earth size={18} className="text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Continent</p>
-                      <p className="text-sm font-medium">{project.continent}</p>
-                    </div>
-                  </div>
+                  <DetailItem
+                    icon={Earth}
+                    label="Continent"
+                    value={project.continent}
+                  />
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <MapPin size={18} className="text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Location</p>
-                      <p className="text-sm font-medium">
-                        {project.locationName}
-                      </p>
-                    </div>
-                  </div>
+                  <DetailItem
+                    icon={MapPin}
+                    label="Location"
+                    value={project.locationName}
+                  />
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <Calendar size={18} className="text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Year</p>
-                      <p className="text-sm font-medium">{project.year}</p>
-                    </div>
-                  </div>
+                  <DetailItem
+                    icon={Calendar}
+                    label="Year"
+                    value={project.year}
+                  />
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                      <Sun size={18} className="text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Climate</p>
-                      <p className="text-sm font-medium">{project.climate}</p>
-                    </div>
-                  </div>
+                  <DetailItem
+                    icon={Sun}
+                    label="Climate"
+                    value={project.climate}
+                  />
 
                   {/* World projects still list their type, alongside the architect. */}
                   {!isPortfolio && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                        <Building2 size={18} className="text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Project Type</p>
-                        <p className="text-sm font-medium">
-                          {project.projectType}
-                        </p>
-                      </div>
-                    </div>
+                    <DetailItem
+                      icon={Building2}
+                      label="Project Type"
+                      value={project.projectType}
+                    />
                   )}
                 </div>
               </div>
@@ -396,7 +413,10 @@ function WorldProjectDetails() {
           {/* Description */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-3">Description</h2>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+            {/* `break-words` alongside `whitespace-pre-wrap`: the latter keeps
+                the author's line breaks but will not break inside a long
+                unspaced run, so a pasted URL ran past the right edge. */}
+            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words">
               {project.description}
             </p>
           </div>

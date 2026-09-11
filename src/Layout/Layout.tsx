@@ -6,29 +6,31 @@ import GridpatternBg from "@/components/GridpatternBg/GridpatternBg";
 import ScrollToTop from "@/components/Common/ScrollToTop";
 
 /**
- * `lvh` rather than `dvh`: `dvh` is the viewport *above* iOS Safari's address
- * bar, so a page sized to it stops short and leaves the bar sitting on a strip
- * of blank page — which Safari then tints, and that was the white bar under the
- * hero. `lvh` is the same viewport measured with the browser UI retracted, so
- * the page runs the full height of the phone and the photo continues under the
- * bar instead of stopping above it.
+ * `dvh` is the viewport as it currently stands — between the top of the screen
+ * and the browser's own bar — so a page with nothing to scroll ends exactly
+ * where the visible area does, and no scrollbar appears.
  *
- * The two units are identical wherever there is no retractable browser UI, so
- * desktop and Android are unaffected. On iOS the page gains the bar's height,
- * which is what makes it scroll away on the first swipe.
+ * This was `100lvh` plus the bottom safe-area inset. `lvh` measures the
+ * viewport with the browser UI *retracted*, so on a phone it is taller than
+ * what you can actually see by the height of the address bar, and the inset
+ * added ~34px more. Both were there to push the hero under Safari's chrome
+ * rather than stopping above it and leaving a strip of page for Safari to
+ * tint. The cost was that every page was taller than the screen by design —
+ * the home page scrolled, and showed a scrollbar, with nothing below the fold
+ * to scroll to.
  *
- * The safe-area inset is added on top because `lvh` does not reliably include
- * the strip around the home indicator: falling ~34px short there left a band of
- * page background below the hero, right at the bottom edge of the phone. Where
- * the inset is already counted the page simply runs that much longer, which
- * costs nothing — the hero grows to fill it either way. The inset is 0 on every
- * device without a cutout.
+ * That strip no longer needs page content to cover it: the hero paints the
+ * document canvas behind the chrome instead (see Hero), which reaches where
+ * page content cannot. So the page can size to what is visible.
+ *
+ * `min-h`, not `h`: a page with real content still grows past the fold and
+ * scrolls normally. It is only the pages that fit that now stop cleanly.
  */
 const Layout: React.FC = () => {
   return (
-    <div className="relative min-h-[calc(100lvh_+_env(safe-area-inset-bottom))]">
+    <div className="relative min-h-[100dvh]">
       <ScrollToTop />
-      <div className="relative z-10 flex min-h-[calc(100lvh_+_env(safe-area-inset-bottom))] flex-col">
+      <div className="relative z-10 flex min-h-[100dvh] flex-col">
         {/* Background grid pattern.
 
             It used to sit outside this wrapper at z-50. The wrapper is z-10 and

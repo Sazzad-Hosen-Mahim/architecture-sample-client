@@ -81,11 +81,13 @@ const Navbar: React.FC = () => {
   // returned to the dashboard rather than to the home page. Failing that, a main
   // page uses its entry above if it has one, and otherwise offers nothing —
   // every ordinary sub-page just steps back through history as before.
-  const back: { to?: string; label: string; state?: Record<string, unknown> } | null =
-    backNav?.backTo
-      ? { to: backNav.backTo, label: backNav.backLabel ?? "Back" }
-      : (MAIN_PAGE_BACK[currentPath] ??
-        (isMainPage ? null : { label: "Back" }));
+  const back: {
+    to?: string;
+    label: string;
+    state?: Record<string, unknown>;
+  } | null = backNav?.backTo
+    ? { to: backNav.backTo, label: backNav.backLabel ?? "Back" }
+    : (MAIN_PAGE_BACK[currentPath] ?? (isMainPage ? null : { label: "Back" }));
 
   // const toggleMenu = () => {
   //   setIsOpen(!isOpen);
@@ -150,17 +152,36 @@ const Navbar: React.FC = () => {
     // portal into <body>, so neither is a descendant to re-anchor.
     <nav className="dot-grid-surface sticky top-0 z-100 [transform:translateZ(0)]">
       <div className=" mx-auto px-4 lg:px-16">
-        <div className="grid grid-cols-3 items-center h-16">
-          {/* Logo */}
-          <div className="">
+        {/* Three children, always — one flex row rather than a grid.
+
+            This was a three-column grid holding four cells: one for the logo,
+            one for Back, and two more for the right-hand side that swapped on
+            `md` via `display`. Which column the visible right-hand cell landed
+            in was therefore decided by auto-placement, from whether its sibling
+            was being displayed — and a cell that lands short of the last column
+            right-aligns to the middle of the bar rather than to its edge, which
+            is where Login kept ending up on a phone.
+
+            So the two right-hand cells are now one (they differed only in
+            avatar size), and the row holds exactly three children at every
+            width, in fixed order. Nothing to auto-place, nothing to mis-place.
+
+            `flex-1 basis-0` on both sides, not `w-1/3`: the two sides stay
+            equal to each other — which is what centres the logo, whatever the
+            logo measures — while the middle takes only the room it needs. The
+            left cell keeps its share even with no Back button, so the logo
+            does not jump between pages that have one and pages that do not. */}
+        <div className="flex items-center gap-2 h-16">
+          {/* Back — its share of the bar is held whether or not it renders */}
+          <div className="flex min-w-0 flex-1 basis-0 justify-start">
             {back && (
               <Backbutton to={back.to} label={back.label} state={back.state} />
             )}
           </div>
-          <div className="flex justify-center">
+          <div className="flex shrink-0 justify-center">
             <Link to="/" className="text-black text-2xl">
               <div className="flex items-center gap-2">
-                <img src={logo} alt="" className="w-12 h-12" />
+                <img src={logo} alt="" className="w-16 h-16" />
                 <span className="hidden md:block lg:text-xl text-lg font-light tracking-wide">
                   Architecture Simple
                 </span>
@@ -168,32 +189,21 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center justify-end gap-3">
+          {/* Account — one cell for every width.
+
+              This was two cells swapping on `md`, identical but for the avatar
+              being a notch smaller on a phone. That difference is a class, not
+              a reason to render the block twice, and the duplicate is what gave
+              auto-placement a fourth cell to reason about. */}
+          <div className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-3">
             {/* Notifications sit beside the avatar for signed-in clients */}
             {user && <NotificationPopover />}
             {user ? (
-              <AvatarMenu actions={avatarActions} />
+              <AvatarMenu
+                actions={avatarActions}
+                avatarClassName="h-8 w-8 md:h-9 md:w-9"
+              />
             ) : (
-              <>
-                <Button
-                  onClick={() => navigate("/login")}
-                  className=" text-black border-2 hover:bg-black transition-all hover:text-white w-fit cursor-pointer rounded-lg text-xs"
-                >
-                  Login
-                </Button>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu Button & Avatar */}
-          <div className="md:hidden flex items-center gap-3 justify-end">
-            {user && <NotificationPopover />}
-            {user && (
-              <AvatarMenu actions={avatarActions} avatarClassName="h-8 w-8" />
-            )}
-
-            {!user && (
               <Button
                 onClick={() => navigate("/login")}
                 className=" text-black border-2 hover:bg-black transition-all hover:text-white w-fit cursor-pointer rounded-lg text-xs"
@@ -201,35 +211,6 @@ const Navbar: React.FC = () => {
                 Login
               </Button>
             )}
-
-            {/* <button
-              onClick={toggleMenu}
-              type="button"
-              className="text-black hover:text-gray-600 focus:outline-none"
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                {isOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16m-7 6h7"
-                  />
-                )}
-              </svg>
-            </button> */}
           </div>
         </div>
       </div>
