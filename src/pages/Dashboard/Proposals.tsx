@@ -53,6 +53,7 @@ type SortKey =
   | "originalPaid"
   | "amendmentTotal"
   | "amendmentPaid"
+  | "contractedTotal"
   | "created";
 
 type SortDir = "asc" | "desc";
@@ -122,27 +123,65 @@ const Proposals = () => {
    */
   const SortableTh = ({
     label,
+    group,
     sortKey: key,
     align = "left",
   }: {
     label: string;
+    /**
+     * Which contract the column belongs to, set on its own line above the
+     * label. Four headers otherwise read as four unrelated phrases that each
+     * have to be parsed to the end before it is clear which pair they are —
+     * stacked, the eye reads "Original" once and then the two measures under
+     * it.
+     */
+    group?: string;
     sortKey: SortKey;
-    align?: "left" | "right";
+    align?: "left" | "center" | "right";
   }) => {
     const active = sortKey === key;
+
+    // Written out rather than interpolated into `text-${align}`. Tailwind
+    // finds classes by scanning the source for whole names, so a template
+    // hole generates no CSS at all — the old form only rendered because
+    // `text-right` happened to be written literally somewhere else in the app.
+    const cellAlign =
+      align === "right"
+        ? "text-right"
+        : align === "center"
+          ? "text-center"
+          : "text-left";
+
+    // The stacked group and label line up with each other, and the button as a
+    // whole lines up with the column beneath it — a header centred over
+    // right-aligned figures reads as crooked whichever of the two moved.
+    const stackAlign =
+      align === "right"
+        ? "items-end"
+        : align === "center"
+          ? "items-center"
+          : "items-start";
+
     return (
       <th
-        className={`px-2 py-2 text-${align} text-[10px] font-semibold text-gray-700 uppercase tracking-tight`}
+        className={`px-2 py-2 ${cellAlign} text-[10px] font-semibold text-gray-700 uppercase tracking-tight`}
       >
         <button
           type="button"
           onClick={() => toggleSort(key)}
-          title={`Sort by ${label}`}
+          title={`Sort by ${group ? `${group} ${label}` : label}`}
           className={`inline-flex items-center gap-1 uppercase tracking-tight cursor-pointer hover:text-blue-600 ${
             align === "right" ? "flex-row-reverse" : ""
           } ${active ? "text-blue-600" : ""}`}
         >
-          <span>{label}</span>
+          <span className={`flex flex-col leading-tight ${stackAlign}`}>
+            {group && (
+              <span className="text-[9px] font-bold text-gray-400">
+                {group}
+              </span>
+            )}
+            <span>{label}</span>
+          </span>
           {active ? (
             sortDir === "asc" ? (
               <ArrowUp size={11} />
@@ -231,6 +270,24 @@ const Proposals = () => {
             0,
           );
 
+          // What of the above is actually under contract.
+          //
+          // A DRAFT has not been sent to anyone and a SENT one has not been
+          // signed: both are quotes, and the Financial Overview counts neither
+          // — it reads only ACCEPTED proposals. Summing every row here
+          // regardless is what put the two screens $9 apart on amendments,
+          // which was three draft amendments ($5 + $4 + $0) being totalled as
+          // though the clients had agreed to them.
+          //
+          // The rows still show their own figures, quoted or signed. It is the
+          // grand total that is contracted, and it says so.
+          const isSigned = (x: { status?: string } | null | undefined) =>
+            x?.status === "ACCEPTED";
+          const contractedOriginal = isSigned(p) ? originalTotal : 0;
+          const contractedAmendment = amendments
+            .filter(isSigned)
+            .reduce((sum: number, a) => sum + Number(a.totalAmount || 0), 0);
+
           // What the client has actually handed over, against what they signed
           // for. `paidAmount` is the sum of that contract's completed payments,
           // the same basis as the Financial Summary's Client Paid — so a row
@@ -258,7 +315,12 @@ const Proposals = () => {
             // the pair stays comparable.
             originalPaid: originalPaid * share,
             amendmentPaid: amendmentPaid * share,
-            rowTotal: (originalTotal + amendmentTotal) * share,
+            contractedOriginal: contractedOriginal * share,
+            contractedAmendment: contractedAmendment * share,
+            // The Contracted Total column, and what the grand total sums. A row
+            // with nothing signed contributes nothing and shows a dash.
+            rowTotal: (contractedOriginal + contractedAmendment) * share,
+            isContracted: isSigned(p) || amendments.some(isSigned),
           };
         })
         // Keep a contract when it matches, or when any of its amendments do.
@@ -299,6 +361,8 @@ const Proposals = () => {
               return dir * (a.amendmentTotal - b.amendmentTotal);
             case "amendmentPaid":
               return dir * (a.amendmentPaid - b.amendmentPaid);
+            case "contractedTotal":
+              return dir * (a.rowTotal - b.rowTotal);
             case "created":
             default:
               return dir * (time(a.createdAt) - time(b.createdAt));
@@ -330,14 +394,25 @@ const Proposals = () => {
     return Array.from(years).sort((a, b) => b - a);
   }, [proposals]);
 
-  /** Column sums for the two contract columns, over every filtered row. */
+  /**
+   * Column sums over every filtered row.
+   *
+   * The two *total* columns count signed contracts only, which is what makes
+   * this row reconcile with the Financial Overview — see the note where
+   * `contractedOriginal` is worked out.
+   *
+   * The two *paid* columns are not filtered the same way, and deliberately:
+   * money received is money received whatever state the paperwork is in, and
+   * the dashboard counts every completed payment regardless of its contract's
+   * status. Filtering here would reintroduce the gap at the other end.
+   */
   const columnTotals = React.useMemo(
     () =>
       groupedProposals.reduce(
         (acc: any, p: any) => ({
-          original: acc.original + p.originalTotal,
+          original: acc.original + p.contractedOriginal,
           originalPaid: acc.originalPaid + p.originalPaid,
-          amendment: acc.amendment + p.amendmentTotal,
+          amendment: acc.amendment + p.contractedAmendment,
           amendmentPaid: acc.amendmentPaid + p.amendmentPaid,
           total: acc.total + p.rowTotal,
         }),
@@ -546,25 +621,39 @@ const Proposals = () => {
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Total Days
                 </th>
+                {/* Centred, not right-aligned: every figure in these five
+                    columns — rows, amendment sub-rows and the totals row — is
+                    `text-center`, so a right-aligned header sat off to one side
+                    of its own numbers. */}
                 <SortableTh
-                  label="Original Contract Total"
+                  group="Original"
+                  label="Contract Total"
                   sortKey="originalTotal"
-                  align="right"
+                  align="center"
                 />
                 <SortableTh
-                  label="Original Contract Paid"
+                  group="Original"
+                  label="Contract Paid"
                   sortKey="originalPaid"
-                  align="right"
+                  align="center"
                 />
                 <SortableTh
-                  label="Amendment Contract Total"
+                  group="Amendment"
+                  label="Contract Total"
                   sortKey="amendmentTotal"
-                  align="right"
+                  align="center"
                 />
                 <SortableTh
-                  label="Amendment Contract Paid"
+                  group="Amendment"
+                  label="Contract Paid"
                   sortKey="amendmentPaid"
-                  align="right"
+                  align="center"
+                />
+                <SortableTh
+                  group="Contracted"
+                  label="Total"
+                  sortKey="contractedTotal"
+                  align="center"
                 />
                 <SortableTh label="Created" sortKey="created" />
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
@@ -576,7 +665,7 @@ const Proposals = () => {
               {pageProposals.length === 0 && (
                 <tr>
                   <td
-                    colSpan={16}
+                    colSpan={17}
                     className="px-4 py-12 text-center text-sm text-gray-500"
                   >
                     No proposals match these filters.
@@ -691,14 +780,14 @@ const Proposals = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-gray-700">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-semibold text-gray-700">
                         {formatCurrency(proposal.originalTotal)}
                       </td>
                       {/* Green once the contract is settled in full, so a row
                           that still owes money is visible at a glance rather
                           than needing the two figures compared. */}
                       <td
-                        className={`px-2 py-2 whitespace-nowrap text-xs text-right font-semibold ${
+                        className={`px-2 py-2 whitespace-nowrap text-xs text-center font-semibold ${
                           proposal.originalPaid >= proposal.originalTotal &&
                           proposal.originalTotal > 0
                             ? "text-green-600"
@@ -707,11 +796,11 @@ const Proposals = () => {
                       >
                         {formatCurrency(proposal.originalPaid)}
                       </td>
-                      <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-purple-700">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-semibold text-purple-700">
                         {formatCurrency(proposal.amendmentTotal)}
                       </td>
                       <td
-                        className={`px-2 py-2 whitespace-nowrap text-xs text-right font-semibold ${
+                        className={`px-2 py-2 whitespace-nowrap text-xs text-center font-semibold ${
                           proposal.amendmentPaid >= proposal.amendmentTotal &&
                           proposal.amendmentTotal > 0
                             ? "text-green-600"
@@ -719,6 +808,24 @@ const Proposals = () => {
                         }`}
                       >
                         {formatCurrency(proposal.amendmentPaid)}
+                      </td>
+                      {/* Original + amendment, counting only what is signed.
+                          A row with nothing accepted shows a dash rather than
+                          $0.00 — the figures to its left are real quotes, and
+                          zero would read as one of them being wrong. */}
+                      <td
+                        className="px-2 py-2 whitespace-nowrap text-xs text-center font-bold text-gray-900"
+                        title={
+                          proposal.isContracted
+                            ? undefined
+                            : "Nothing signed on this project yet, so it adds nothing to the contracted total"
+                        }
+                      >
+                        {proposal.isContracted ? (
+                          formatCurrency(proposal.rowTotal)
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                         {formatDate(proposal.createdAt)}
@@ -778,21 +885,25 @@ const Proposals = () => {
                               date columns belong to the parent row only. */}
                           <td className="px-2 py-2" colSpan={3} />
                           {/* The two original-contract columns belong to the
-                              parent row; an amendment has no share of them. */}
-                          <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-400">
+                              parent row; an amendment has no share of them.
+
+                              Centred like every other cell in these columns —
+                              these four were right-aligned, so a sub-row's
+                              figures did not line up under the parent's. */}
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-center text-gray-400">
                             —
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap text-xs text-right text-gray-400">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-center text-gray-400">
                             —
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-semibold text-purple-700">
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-semibold text-purple-700">
                             {formatCurrency(
                               Number(amendment.totalAmount || 0) *
                                 proposal.share,
                             )}
                           </td>
                           <td
-                            className={`px-2 py-2 whitespace-nowrap text-xs text-right font-semibold ${
+                            className={`px-2 py-2 whitespace-nowrap text-xs text-center font-semibold ${
                               Number(amendment.paidAmount || 0) >=
                                 Number(amendment.totalAmount || 0) &&
                               Number(amendment.totalAmount || 0) > 0
@@ -804,6 +915,11 @@ const Proposals = () => {
                               Number(amendment.paidAmount || 0) *
                                 proposal.share,
                             )}
+                          </td>
+                          {/* The contracted total is struck at project level on
+                              the parent row; a sub-row has no separate one. */}
+                          <td className="px-2 py-2 whitespace-nowrap text-xs text-center text-gray-300">
+                            —
                           </td>
                           <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                             {formatDate(amendment.createdAt)}
@@ -823,35 +939,39 @@ const Proposals = () => {
               })}
             </tbody>
             {/* Column sums over every filtered row — not just this page — so
-                the figures line up with the Financial Dashboard's year. */}
+                the figures line up with the Financial Dashboard's year.
+
+                The two contract totals count signed contracts only, which is
+                what makes this row reconcile with the Financial Overview's
+                Original Contracts and Amendments. The paid columns count every
+                completed payment, on the same basis the dashboard uses. */}
             <tfoot className="bg-gray-900 text-white [&_td]:sticky [&_td]:bottom-0 [&_td]:z-20 [&_td]:bg-gray-900">
               <tr>
                 <td
                   colSpan={10}
                   className="px-2 py-2 text-[10px] font-bold uppercase tracking-tight"
+                  title="Signed contracts only. Drafts and unsigned proposals are quotes, and are left out of the totals — the rows still show what they are quoted at."
                 >
-                  Total · {groupedProposals.length} project
+                  Contracted Grand Total · {groupedProposals.length} project
                   {groupedProposals.length === 1 ? "" : "s"}
                   {yearFilter !== ALL_TIME && ` · ${yearFilter} portion`}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold">
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-bold">
                   {formatCurrency(columnTotals.original)}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-green-300">
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-bold text-green-300">
                   {formatCurrency(columnTotals.originalPaid)}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-purple-300">
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-bold text-purple-300">
                   {formatCurrency(columnTotals.amendment)}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold text-green-300">
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-bold text-green-300">
                   {formatCurrency(columnTotals.amendmentPaid)}
                 </td>
-                <td
-                  className="px-2 py-2 whitespace-nowrap text-xs text-right font-bold"
-                  colSpan={2}
-                >
+                <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-bold">
                   {formatCurrency(columnTotals.total)}
                 </td>
+                <td className="px-2 py-2" colSpan={2} />
               </tr>
             </tfoot>
           </table>

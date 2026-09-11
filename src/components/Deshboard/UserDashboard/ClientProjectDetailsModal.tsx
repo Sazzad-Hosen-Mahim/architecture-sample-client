@@ -24,6 +24,7 @@ import ClientProjectInfoTab from "./tabs/ClientProjectInfoTab";
 import ClientProposalsTab from "./tabs/ClientProposalsTab";
 import ClientMeetingPaymentTab from "./tabs/ClientMeetingPaymentTab";
 import ClientInvoicesTab from "./tabs/ClientInvoicesTab";
+import { useConfirmInvoicePaymentMutation } from "@/redux/api/invoiceApi";
 import ClientAttachmentsTab from "./tabs/ClientAttachmentsTab";
 
 interface ClientProjectDetailsModalProps {
@@ -113,6 +114,7 @@ export default function ClientProjectDetailsModal({
     useCreateCheckoutSessionMutation();
   const [createRefund, { isLoading: isSubmittingRefund }] =
     useCreateRefundRequestMutation();
+  const [confirmInvoicePayment] = useConfirmInvoicePaymentMutation();
 
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [refundModalOpen, setRefundModalOpen] = useState(false);
@@ -157,6 +159,45 @@ export default function ClientProjectDetailsModal({
       setSearchParams(newParams);
     }
   }, [paymentResult]);
+
+  /**
+   * Settle an invoice the client has just paid for.
+   *
+   * Stripe sends them back to `?invoice=<id>&paid=1`, and that return is the
+   * moment to confirm. The webhook is still the primary path, but it is a call
+   * into the API server: late sometimes, and never at all on a machine Stripe
+   * cannot reach — which left a paid invoice reading unpaid. Asking Stripe
+   * here settles it, and doing both is harmless because settling is idempotent.
+   *
+   * The params are cleared first so a refresh cannot fire this twice.
+   */
+  useEffect(() => {
+    const invoiceId = searchParams.get("invoice");
+    if (!invoiceId || searchParams.get("paid") !== "1" || !project?.id) return;
+
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("invoice");
+    newParams.delete("paid");
+    setSearchParams(newParams, { replace: true });
+
+    confirmInvoicePayment({ projectId: project.id, invoiceId })
+      .unwrap()
+      .then((invoice) => {
+        if (invoice?.status === "PAID") {
+          toast.success("Payment received — this invoice is settled.");
+        } else {
+          // Stripe has the money but has not reported it settled yet. Saying
+          // "paid" here would be a guess; the webhook will finish the job.
+          toast.info("Payment received. This invoice will update shortly.");
+        }
+      })
+      .catch(() => {
+        toast.error(
+          "We could not confirm that payment. Please refresh in a moment.",
+        );
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, project?.id]);
 
   const handlePay = async (
     stageId?: string,

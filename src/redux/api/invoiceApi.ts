@@ -99,6 +99,29 @@ export const invoiceApi = baseApi.injectEndpoints({
         data: { sessionId: string; checkoutUrl: string };
       }) => response.data,
     }),
+
+    /**
+     * Settles an invoice the client has just paid, on their return from Stripe.
+     *
+     * The webhook is the primary path, but it is a call into the API server —
+     * it is late sometimes and, on a machine Stripe cannot reach, never comes
+     * at all. This asks Stripe directly, and settling is idempotent, so
+     * whichever arrives second changes nothing.
+     */
+    confirmInvoicePayment: builder.mutation<
+      Invoice,
+      { projectId: string; invoiceId: string }
+    >({
+      query: ({ projectId, invoiceId }) => ({
+        url: `/projects/${projectId}/invoices/${invoiceId}/confirm`,
+        method: "POST",
+      }),
+      transformResponse: (response: { data: Invoice }) => response.data,
+      invalidatesTags: (_result, _error, { projectId }) => [
+        { type: "Invoice" as const, id: projectId },
+        "FinancialOverview",
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -108,4 +131,5 @@ export const {
   useCreateInvoiceMutation,
   useCancelInvoiceMutation,
   usePayInvoiceMutation,
+  useConfirmInvoicePaymentMutation,
 } = invoiceApi;

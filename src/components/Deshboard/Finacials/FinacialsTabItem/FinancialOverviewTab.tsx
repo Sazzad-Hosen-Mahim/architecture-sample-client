@@ -168,8 +168,18 @@ export default function FinancialOverviewTab() {
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>
-                          Consultation fees ({revenue.consultationsPaid || 0})
+                        {/* The net count, not the number collected: fees since
+                            refunded are not in the figure beside it, and a
+                            count that disagrees with the money invites the
+                            division that does not come out. */}
+                        <span
+                          title={`${revenue.consultationsPaid || 0} collected${
+                            revenue.consultationsRefunded
+                              ? `, ${revenue.consultationsRefunded} refunded`
+                              : ""
+                          } × ${formatCurrency(revenue.consultationFeeUsd)}`}
+                        >
+                          Consultation fees ({revenue.consultationsNet ?? 0})
                         </span>
                         <span>{formatCurrency(revenue.consultationFees)}</span>
                       </div>
@@ -284,7 +294,7 @@ export default function FinancialOverviewTab() {
                       <details className="group">
                         <summary className="flex justify-between text-xs cursor-pointer list-none marker:hidden">
                           <span className="flex items-center gap-1">
-                            <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                            {/* <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" /> */}
                             Reimbursables
                           </span>
                           <span>{formatCurrency(reimbursable.total)}</span>
