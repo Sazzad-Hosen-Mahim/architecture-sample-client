@@ -152,7 +152,24 @@ function Hero() {
       {/* Background photos with transition. Real <img> elements rather than
           CSS `background-image` so each one carries a `srcset` — a background
           can only ever name a single file, which is what left the hero
-          upscaling one mid-size render on large displays. */}
+          upscaling one mid-size render on large displays.
+
+          Fixed to the screen rather than filling this box, and measured in
+          `lvh` rather than taking the box's height.
+
+          Those are the two halves of one problem. The page is `dvh` tall so it
+          does not scroll, and `dvh` stops at the top of Safari's toolbar — so a
+          photo that filled this box stopped there too, and the strip the
+          toolbar sits in showed the bare document canvas instead. `lvh` is that
+          same viewport measured with the browser UI retracted, i.e. the whole
+          screen, so it reaches under the toolbar; the safe-area inset covers
+          the home-indicator band past it.
+
+          Fixed is what makes that free: an out-of-flow element adds nothing to
+          the document's height, so the picture can be taller than the viewport
+          without the page becoming scrollable again. `top-16` is the navbar
+          (`h-16`), so the photo still starts where this box does, and on a
+          desktop — where `lvh` is just the window — the two are identical. */}
       {slides.map((image, index) => (
         <ProjectPhoto
           key={image.url}
@@ -160,7 +177,7 @@ function Hero() {
           alt={latestMedia?.title || "Featured project"}
           sizes="100vw"
           priority={index === 0}
-          className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
+          className="fixed inset-x-0 top-16 h-[calc(100lvh_-_4rem_+_env(safe-area-inset-bottom))] transition-opacity duration-1000 ease-in-out"
           style={{
             opacity: index === currentSlide ? 1 : 0,
             zIndex: index === currentSlide ? 1 : 0,
