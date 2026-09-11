@@ -182,7 +182,7 @@ const Navbar: React.FC = () => {
             <Link to="/" className="text-black text-2xl">
               <div className="flex items-center gap-2">
                 <img src={logo} alt="" className="w-16 h-16" />
-                <span className="hidden md:block lg:text-xl text-lg font-light tracking-wide">
+                <span className="hidden md:block lg:text-[22px] text-lg font-light tracking-wide">
                   Architecture Simple
                 </span>
               </div>

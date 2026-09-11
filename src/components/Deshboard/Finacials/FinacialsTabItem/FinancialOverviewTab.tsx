@@ -208,12 +208,50 @@ export default function FinancialOverviewTab() {
                       {formatCurrency(revenue.invoiceBilled)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm text-sky-700 pl-7">
-                    <span>Client Paid</span>
-                    <span className="font-medium">
-                      {formatCurrency(revenue.invoiceClientPaid)}
-                    </span>
-                  </div>
+                  {/* Broken apart, because only half of it is revenue.
+                      Additional services are income and are in the Gross
+                      Revenue above; a reimbursement is the firm's own outlay
+                      coming back, so it is money received that is not income —
+                      it clears the reimbursable line under Cost instead.
+
+                      Shown as one figure, this line claimed more had reached
+                      revenue than had, and the lines beneath Gross Revenue
+                      stopped summing to it — the same way the consultation
+                      fees did before they were split out above. */}
+                  <details className="pl-3 border-l-2 border-sky-200 group">
+                    <summary className="flex justify-between text-sm text-sky-700 cursor-pointer list-none marker:hidden">
+                      <span className="flex items-center gap-1">
+                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                        Client Paid
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(revenue.invoiceClientPaid)}
+                      </span>
+                    </summary>
+                    <div className="mt-1 space-y-1 pl-4">
+                      <div className="flex justify-between text-xs text-sky-700">
+                        <span title="Counts as income, and is included in Gross Revenue above">
+                          Additional services
+                        </span>
+                        <span>
+                          {formatCurrency(
+                            revenue.invoiceByType?.additionalService
+                              ?.clientPaid ?? revenue.invoiceRevenue,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span title="The firm's own outlay being repaid — received, but not income. It clears the reimbursable line under Cost rather than adding to revenue.">
+                          Reimbursements repaid
+                        </span>
+                        <span>
+                          {formatCurrency(
+                            revenue.invoiceByType?.reimbursable?.clientPaid ?? 0,
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </details>
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Approved Refunds</span>
                     <span className="font-medium">

@@ -46,6 +46,7 @@ type StatusFilter = "all" | "active" | "accepted";
 /** Columns the table can be ordered by. */
 type SortKey =
   | "client"
+  | "manager"
   | "status"
   | "startDate"
   | "endDate"
@@ -344,6 +345,11 @@ const Proposals = () => {
               return (
                 dir * (a.clientName || "").localeCompare(b.clientName || "")
               );
+            // `managerNameOf` reads the PM from whichever shape the API
+            // returned it in, and gives "" for an unassigned project — so
+            // those gather at one end instead of scattering through the list.
+            case "manager":
+              return dir * managerNameOf(a).localeCompare(managerNameOf(b));
             case "status":
               return dir * (a.status || "").localeCompare(b.status || "");
             // A project with no start or end date sorts as 0, which parks the
@@ -357,8 +363,9 @@ const Proposals = () => {
               return dir * (a.originalTotal - b.originalTotal);
             case "originalPaid":
               return dir * (a.originalPaid - b.originalPaid);
+            // The signed figure, because that is the one the column shows.
             case "amendmentTotal":
-              return dir * (a.amendmentTotal - b.amendmentTotal);
+              return dir * (a.contractedAmendment - b.contractedAmendment);
             case "amendmentPaid":
               return dir * (a.amendmentPaid - b.amendmentPaid);
             case "contractedTotal":
@@ -599,10 +606,10 @@ const Proposals = () => {
                 anyway or the rows show through as they scroll beneath it. */}
             <thead className="bg-gray-50 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-gray-50 [&_th]:border-b [&_th]:border-gray-200">
               <tr>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
+                <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Proposal #
                 </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
+                <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Amendment Total #
                 </th>
                 <SortableTh label="Client" sortKey="client" />
@@ -612,9 +619,7 @@ const Proposals = () => {
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
                   Location
                 </th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-tight">
-                  Project Manager
-                </th>
+                <SortableTh label="Project Manager" sortKey="manager" />
                 <SortableTh label="Status" sortKey="status" />
                 <SortableTh label="Start Date" sortKey="startDate" />
                 <SortableTh label="End Date" sortKey="endDate" />
@@ -735,7 +740,7 @@ const Proposals = () => {
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap">
                         <span
-                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(proposal.status)}`}
+                          className={`px-2 py-1 inline-flex text-[10px] leading-5 font-semibold rounded-full ${getStatusBadgeClass(proposal.status)}`}
                         >
                           {proposal.status}
                         </span>
@@ -796,13 +801,25 @@ const Proposals = () => {
                       >
                         {formatCurrency(proposal.originalPaid)}
                       </td>
-                      <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-semibold text-purple-700">
-                        {formatCurrency(proposal.amendmentTotal)}
+                      {/* Signed amendments only, matching the totals row and
+                          the dashboard. Counting drafts here was what made a
+                          project read $9 collapsed but $5 + a draft expanded —
+                          the number claimed more was agreed than had been. */}
+                      <td
+                        className="px-2 py-2 whitespace-nowrap text-xs text-center font-semibold text-purple-700"
+                        title={
+                          proposal.amendmentTotal !== proposal.contractedAmendment
+                            ? `${formatCurrency(proposal.amendmentTotal - proposal.contractedAmendment)} more is quoted on unsigned amendments, and is not counted`
+                            : undefined
+                        }
+                      >
+                        {formatCurrency(proposal.contractedAmendment)}
                       </td>
                       <td
                         className={`px-2 py-2 whitespace-nowrap text-xs text-center font-semibold ${
-                          proposal.amendmentPaid >= proposal.amendmentTotal &&
-                          proposal.amendmentTotal > 0
+                          proposal.amendmentPaid >=
+                            proposal.contractedAmendment &&
+                          proposal.contractedAmendment > 0
                             ? "text-green-600"
                             : "text-gray-500"
                         }`}
@@ -896,7 +913,22 @@ const Proposals = () => {
                           <td className="px-2 py-2 whitespace-nowrap text-xs text-center text-gray-400">
                             —
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap text-xs text-center font-semibold text-purple-700">
+                          {/* An unsigned amendment shows its quote greyed and
+                              struck through rather than as a plain figure: the
+                              value is still worth seeing, but reading down the
+                              column it must not look like something to add. */}
+                          <td
+                            className={`px-2 py-2 whitespace-nowrap text-xs text-center font-semibold ${
+                              amendment.status === "ACCEPTED"
+                                ? "text-purple-700"
+                                : "text-gray-300 line-through"
+                            }`}
+                            title={
+                              amendment.status === "ACCEPTED"
+                                ? undefined
+                                : "Not signed, so it is not counted in the amendment total"
+                            }
+                          >
                             {formatCurrency(
                               Number(amendment.totalAmount || 0) *
                                 proposal.share,
