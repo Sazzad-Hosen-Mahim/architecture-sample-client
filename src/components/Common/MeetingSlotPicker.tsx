@@ -11,7 +11,7 @@ import {
   slotDateTime,
   startOfDay,
   toDateInputValue,
-  WEEKDAY_LABELS,
+  // WEEKDAY_LABELS,
   type DaySlot,
 } from "@/utils/scheduleSlots";
 import { useGetOfficeHoursQuery } from "@/redux/api/adminDashboard/siteSettingsApi";
@@ -183,15 +183,15 @@ export default function MeetingSlotPicker({
 
   // "Saturday and Sunday" — only worth saying when the studio isn't open all
   // week, so a firm with no closed days sees no extra copy.
-  const openDaysLabel = useMemo(() => {
-    const days = officeHours?.days;
-    if (!days || days.length === 0 || days.length === 7) return "";
-    const names = WEEKDAY_LABELS.filter((d) => days.includes(d.value)).map(
-      (d) => d.label,
-    );
-    if (names.length === 1) return names[0];
-    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  }, [officeHours]);
+  // const openDaysLabel = useMemo(() => {
+  //   const days = officeHours?.days;
+  //   if (!days || days.length === 0 || days.length === 7) return "";
+  //   const names = WEEKDAY_LABELS.filter((d) => days.includes(d.value)).map(
+  //     (d) => d.label,
+  //   );
+  //   if (names.length === 1) return names[0];
+  //   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  // }, [officeHours]);
 
   /** Start times that are free — the options for the Start dropdown. */
   const startOptions = slots.filter((s) => !s.busy && !s.past);
@@ -253,9 +253,9 @@ export default function MeetingSlotPicker({
         <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-lg px-3 py-4">
           <CalendarDays className="w-4 h-4" />
           Pick a date to see the available times.
-          {openDaysLabel && (
+          {/* {openDaysLabel && (
             <span className="text-gray-400">We're open {openDaysLabel}.</span>
-          )}
+          )} */}
         </div>
       ) : selectedDay && !isOpenDay(selectedDay, officeHours) ? (
         // Said plainly rather than shown as a grid of greyed-out slots:

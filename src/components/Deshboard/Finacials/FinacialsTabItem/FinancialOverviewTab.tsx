@@ -159,7 +159,7 @@ export default function FinancialOverviewTab() {
                     </summary>
                     <div className="mt-1 space-y-1 pl-4">
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>Contract payments</span>
+                        <span>Contract Payments</span>
                         <span>
                           {formatCurrency(
                             (revenue.originalClientPaid || 0) -
@@ -179,7 +179,7 @@ export default function FinancialOverviewTab() {
                               : ""
                           } × ${formatCurrency(revenue.consultationFeeUsd)}`}
                         >
-                          Consultation fees ({revenue.consultationsNet ?? 0})
+                          Consultation Fees ({revenue.consultationsNet ?? 0})
                         </span>
                         <span>{formatCurrency(revenue.consultationFees)}</span>
                       </div>
@@ -231,7 +231,7 @@ export default function FinancialOverviewTab() {
                     <div className="mt-1 space-y-1 pl-4">
                       <div className="flex justify-between text-xs text-sky-700">
                         <span title="Counts as income, and is included in Gross Revenue above">
-                          Additional services
+                          Additional Services
                         </span>
                         <span>
                           {formatCurrency(
@@ -242,11 +242,12 @@ export default function FinancialOverviewTab() {
                       </div>
                       <div className="flex justify-between text-xs text-gray-500">
                         <span title="The firm's own outlay being repaid — received, but not income. It clears the reimbursable line under Cost rather than adding to revenue.">
-                          Reimbursements repaid
+                          Reimbursements Repaid
                         </span>
                         <span>
                           {formatCurrency(
-                            revenue.invoiceByType?.reimbursable?.clientPaid ?? 0,
+                            revenue.invoiceByType?.reimbursable?.clientPaid ??
+                              0,
                           )}
                         </span>
                       </div>
