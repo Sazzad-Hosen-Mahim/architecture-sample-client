@@ -70,7 +70,10 @@ const ViewProposalDetailsModal = ({
       services.forEach((s) => paid.add(s.id));
       return paid;
     };
-    const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+    const norm = (v: unknown) =>
+      String(v ?? "")
+        .trim()
+        .toLowerCase();
 
     if (proposal.proposalType === "AMENDMENT") {
       const entry = (paymentInfo.amendmentPayments || []).find(
@@ -98,7 +101,9 @@ const ViewProposalDetailsModal = ({
     );
     // Position pairing reads both sides in contract order, not the order the
     // API happened to return them in.
-    const ordered = [...services].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const ordered = [...services].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
     ordered.forEach((service, idx) => {
       if (paidStageNames.has(norm(service.name)) || stages[idx]?.paid) {
         paid.add(service.id);
@@ -139,8 +144,11 @@ const ViewProposalDetailsModal = ({
       label: status,
     };
     return (
+      // Tighter and smaller on a phone: "Pending Approval" is the widest thing
+      // in a services row, and at full size it alone decided the column's
+      // width. `inline-block` so the padding still holds when it wraps.
       <span
-        className={`px-2 py-1 rounded text-xs font-medium ${c.bg} ${c.text}`}
+        className={`inline-block px-1 py-0.5 text-[10px] sm:px-2 sm:py-1 sm:text-xs rounded font-medium ${c.bg} ${c.text}`}
       >
         {c.label}
       </span>
@@ -341,29 +349,29 @@ const ViewProposalDetailsModal = ({
               <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-2">
                 Services
               </h3>
+              {/* `w-full`, not `min-w-full`: the table should settle into the
+                  dialog rather than take whatever width its widest row asks
+                  for. `overflow-x-auto` stays as a fallback for a phone
+                  narrower than the columns can compress to. */}
               <div className="overflow-x-auto">
-                <table className="min-w-full border border-gray-300">
+                <table className="w-full border border-gray-300">
                   <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">
-                        Service
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-700">
-                        Rate
-                      </th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">
+                    {/* Padding and type step up at `sm`. On a portrait phone the
+                        full-size cells could not fit six columns, so the table
+                        scrolled sideways and half of it was off-screen. */}
+                    <tr className="[&>th]:px-1.5 [&>th]:py-1.5 [&>th]:text-[10px] [&>th]:font-medium [&>th]:text-gray-700 sm:[&>th]:px-4 sm:[&>th]:py-2 sm:[&>th]:text-xs">
+                      <th className="text-left">Service</th>
+                      <th className="text-center">Rate</th>
+                      {/* Quantity is the one column a client never needs: it is
+                          1 on every standard phase, and Rate × Quantity is
+                          already shown as Amount beside it. */}
+                      <th className="hidden sm:table-cell text-center">
                         Quantity
                       </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-700">
-                        Amount
-                      </th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">
-                        Status
-                      </th>
+                      <th className="text-center">Amount</th>
+                      <th className="text-center">Status</th>
                       {paidServiceIds && (
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700">
-                          Payment
-                        </th>
+                        <th className="text-center">Payment</th>
                       )}
                     </tr>
                   </thead>
@@ -376,61 +384,70 @@ const ViewProposalDetailsModal = ({
                     {[...proposal.services]
                       .sort(
                         (a: ProposalService, b: ProposalService) =>
-                          serviceScopeOrder(a.name) - serviceScopeOrder(b.name) ||
+                          serviceScopeOrder(a.name) -
+                            serviceScopeOrder(b.name) ||
                           (a.order ?? 0) - (b.order ?? 0),
                       )
                       .map((service: ProposalService) => (
-                      <tr key={service.id}>
-                        <td className="px-4 py-2 text-sm">
-                          <div>
-                            <div className="font-medium">{service.name}</div>
-                            {service.description && (
-                              <div className="text-xs text-gray-500">
-                                {service.description}
+                        <tr
+                          key={service.id}
+                          className="[&>td]:px-1.5 [&>td]:py-1.5 [&>td]:text-[11px] sm:[&>td]:px-4 sm:[&>td]:py-2 sm:[&>td]:text-sm"
+                        >
+                          <td>
+                            <div>
+                              {/* `break-words`: a long phase name would otherwise
+                                set the column's floor and push the money
+                                columns off a narrow screen. */}
+                              <div className="font-medium break-words">
+                                {service.name}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-right">
-                          ${service.rate}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-center">
-                          {service.quantity}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-right font-medium">
-                          ${service.amount}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-center">
-                          {getApprovalStatusBadge(service.approvalStatus)}
-                          {service.approvalStatus === "REJECTED" &&
-                            service.rejectionReason && (
-                              <div
-                                className="text-xs text-red-500 mt-1 max-w-[200px]"
-                                title={service.rejectionReason}
-                              >
-                                {service.rejectionReason}
-                              </div>
-                            )}
-                        </td>
-                        {paidServiceIds && (
-                          <td className="px-4 py-2 text-sm text-center">
-                            {/* Both states are shown: an absent badge would
-                                read the same as a phase nobody has billed. */}
-                            <span
-                              className={`text-xs font-semibold px-2 py-1 rounded border whitespace-nowrap ${
-                                paidServiceIds.has(service.id)
-                                  ? "bg-green-100 text-green-800 border-green-200"
-                                  : "bg-gray-50 text-gray-500 border-gray-200"
-                              }`}
-                            >
-                              {paidServiceIds.has(service.id)
-                                ? "Paid"
-                                : "Unpaid"}
-                            </span>
+                              {service.description && (
+                                <div className="text-[10px] sm:text-xs text-gray-500 break-words">
+                                  {service.description}
+                                </div>
+                              )}
+                            </div>
                           </td>
-                        )}
-                      </tr>
-                    ))}
+                          <td className="text-center whitespace-nowrap">
+                            ${service.rate}
+                          </td>
+                          <td className="hidden sm:table-cell text-center">
+                            {service.quantity}
+                          </td>
+                          <td className="text-center font-medium whitespace-nowrap">
+                            ${service.amount}
+                          </td>
+                          <td className="text-center">
+                            {getApprovalStatusBadge(service.approvalStatus)}
+                            {service.approvalStatus === "REJECTED" &&
+                              service.rejectionReason && (
+                                <div
+                                  className="text-[10px] sm:text-xs text-red-500 mt-1 max-w-[110px] sm:max-w-[200px] break-words"
+                                  title={service.rejectionReason}
+                                >
+                                  {service.rejectionReason}
+                                </div>
+                              )}
+                          </td>
+                          {paidServiceIds && (
+                            <td className="text-center">
+                              {/* Both states are shown: an absent badge would
+                                read the same as a phase nobody has billed. */}
+                              <span
+                                className={`inline-block text-[10px] sm:text-xs font-semibold px-1 py-0.5 sm:px-2 sm:py-1 rounded border whitespace-nowrap ${
+                                  paidServiceIds.has(service.id)
+                                    ? "bg-green-100 text-green-800 border-green-200"
+                                    : "bg-gray-50 text-gray-500 border-gray-200"
+                                }`}
+                              >
+                                {paidServiceIds.has(service.id)
+                                  ? "Paid"
+                                  : "Unpaid"}
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
